@@ -20,7 +20,7 @@ const NotionsPage = () => {
 
   useEffect(() => {
     setIsComplete(false);
-    fetch("http://127.0.0.1:8000/fetch_notion_snippet?date="+formatDate(new Date()), {
+    fetch("https://notion-daily.onrender.com/fetch_notion_snippet?date="+formatDate(new Date()), {
       method: "GET",
       headers: {
         "Api-Key": process.env.NEXT_PUBLIC_API_KEY as string,
@@ -50,7 +50,7 @@ const NotionsPage = () => {
       }} onBlur={async () => {
         setIsComplete(false);
         setCompare([]);
-        fetch("http://127.0.0.1:8000/fetch_notion_snippet?date="+formatDate(selectedDate), {
+        fetch("https://notion-daily.onrender.com/fetch_notion_snippet?date="+formatDate(selectedDate), {
           method: "GET",
           headers: {
             "Api-Key": process.env.NEXT_PUBLIC_API_KEY as string,

@@ -1,5 +1,5 @@
 async function fetchNotionSnippetCompareCheck(date: null | string) {
-  const res = await fetch("http://127.0.0.1:8000/fetch_notion_snippet_compare_check?date=" + date, {
+  const res = await fetch("https://notion-daily.onrender.com/fetch_notion_snippet_compare_check?date=" + date, {
     method: "GET",
     headers: { "Content-Type": "application/json", "Api-Key": process.env.NEXT_PUBLIC_API_KEY as string, },
   });
