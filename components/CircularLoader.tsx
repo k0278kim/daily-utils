@@ -1,0 +1,11 @@
+type circularLoaderProps = {
+  color: string
+}
+
+export default function CircularLoader({ color }: circularLoaderProps) {
+  return (
+    <div className="flex justify-center items-center h-full">
+      <div className={`w-full aspect-square border-3 border-[#${color}] border-t-transparent rounded-full animate-spin`}></div>
+    </div>
+  );
+}

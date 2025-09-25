@@ -1,12 +1,8 @@
-export interface Snippet {
-  user_email: string;
-  snippet_date: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  team_alias: string;
-  full_name: string;
-  avatar_url: string;
-  badge: string;
-  point: number;
+export type Notion = {
+  id: string,
+  name: string[],
+  relations: string[],
+  who: string[],
+  who_email: string[],
+  content: string[]
 }
