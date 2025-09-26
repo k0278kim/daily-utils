@@ -43,9 +43,9 @@ const NotionsPage = () => {
   }, [])
 
 
-  return <div className={"flex flex-col items-center bg-gray-100 w-screen h-screen p-20"}>
-    <div className={"flex space-x-5 items-center mb-10"}>
-      <input type={"date"} className={"text-xl font-bold rounded-2xl bg-white border-[1px] border-gray-200 p-5"} onChange={(e) => {
+  return <div className={"flex flex-col items-center bg-gray-100 w-screen h-screen md:p-20 overflow-y-scroll"}>
+    <div className={"flex space-x-5 items-center w-screen md:w-fit bg-white border-[1px] border-gray-200 fixed top-0 md:top-5 justify-between md:justify-center px-5 md:px-3 md:rounded-2xl"}>
+      <input type={"date"} className={"md:w-fit md:text-xl font-bold md:rounded-2xl bg-white p-5"} onChange={(e) => {
         setSelectedDate(e.target.valueAsDate);
       }} onBlur={async () => {
         setIsComplete(false);
@@ -85,23 +85,23 @@ const NotionsPage = () => {
               setCompare(compares["result"]);
               setIsUpload(false);
             }
-          }} className={`flex items-center justify-center h-16 w-20 rounded-2xl bg-black text-white font-semibold text-xl duration-200 ${isUpload ? "opacity-50" : "opacity-100"}`}>
+          }} className={`flex items-center justify-center h-10 w-15 rounded-sm md:h-12 md:w-16 md:rounded-xl bg-black text-white font-semibold text-sm md:text-lg duration-200 ${isUpload ? "opacity-50" : "opacity-100"}`}>
             { isUpload ? <div className={"w-5 aspect-square"}><CircularLoader color={"#FFFFFF"}/></div> : "업로드" }
           </motion.button>
       }
     </div>
-    <div className={"flex w-screen space-x-5 justify-center"}>
+    <div className={"flex flex-col md:flex-row md:w-screen md:space-x-5 justify-center space-y-2.5 p-5 mt-16 md:p-0"}>
       {
         isComplete && snippets
         ? snippets.length == 0
-            ? <div className={"text-2xl"}>아직 스니펫을 작성한 사람이 없어요.</div>
+            ? <div className={"md:text-2xl"}>아직 스니펫을 작성한 사람이 없어요.</div>
           : snippets.map((snippet) => {
               const filter = compare.filter((f) => f["user_email"] == snippet.who_email);
               const isEqual = filter.length > 0 ? filter[0]["check"] : -1;
               return <NotionBlock key={snippet.id} snippet={snippet} isEqual={isEqual}/>
             })
           : <div className={"flex items-center justify-center h-[60vh]"}><div className={"w-10 aspect-square"}>
-            <CircularLoader color={"000000"} />
+            <CircularLoader color={"101010"} />
           </div></div>
       }
     </div>
@@ -115,7 +115,7 @@ type notionBlockType = {
 
 const NotionBlock = ({ snippet, isEqual }: notionBlockType) => {
 
-  return <div className={"w-[30vw] h-fit max-h-[70vh] overflow-y-scroll border-[1px] bg-white border-gray-200 rounded-2xl flex flex-col p-10"}>
+  return <div className={"w-full md:w-[30vw] h-fit md:max-h-[70vh] overflow-y-scroll border-[1px] bg-white border-gray-200 rounded-2xl flex flex-col p-10"}>
     <div className={"flex mb-5 space-x-2.5 items-center"}>
       {
         isEqual == -1
