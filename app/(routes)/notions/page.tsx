@@ -6,9 +6,11 @@ import {Notion} from "@/model/notion";
 import addSnippet from "@/app/api/add_snippet";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import {motion} from "framer-motion";
+import {AnimatePresence, motion} from "framer-motion";
 import CircularLoader from "@/components/CircularLoader";
 import fetchNotionSnippetCompareCheck from "@/app/api/notion_snippet_compare_check";
+import fetchNotionSnippet from "@/app/api/fetch_notion_snippet";
+import Image from "next/image";
 
 const NotionsPage = () => {
 
@@ -20,13 +22,7 @@ const NotionsPage = () => {
 
   useEffect(() => {
     setIsComplete(false);
-    fetch("https://notion-daily.onrender.com/fetch_notion_snippet?date="+formatDate(new Date()), {
-      method: "GET",
-      headers: {
-        "Api-Key": process.env.NEXT_PUBLIC_API_KEY as string,
-      }
-    })
-      .then((res) => res.json())
+    fetchNotionSnippet(formatDate(new Date()))
       .then((json) => {
         setSnippets(json);
         setIsComplete(true);
@@ -42,55 +38,80 @@ const NotionsPage = () => {
     })();
   }, [])
 
+  const dailySnippetFormatDate = (date: Date) => {
+    if (date > new Date(date.getFullYear(), date.getMonth(), date.getDate(), 9, 0)) {
+      return formatDate(date);
+    } else {
+      date.setDate(date.getDate() - 1)
+      return formatDate(date);
+    }
+  }
+
+  const loadSnippets = async () => {
+    setIsComplete(false);
+    setCompare([]);
+    fetchNotionSnippet(formatDate(selectedDate))
+      .then((json) => {
+        setSnippets(json);
+        console.log(json)
+        setIsComplete(true);
+      })
+      .catch((err) => console.error(err));
+    const compares = await fetchNotionSnippetCompareCheck(formatDate(selectedDate));
+    console.log(compares);
+    setCompare(compares["result"]);
+  }
 
   return <div className={"flex flex-col items-center bg-gray-100 w-screen h-screen md:p-20 overflow-y-scroll"}>
-    <div className={"flex space-x-5 items-center w-screen md:w-fit bg-white border-[1px] border-gray-200 fixed top-0 md:top-5 justify-between md:justify-center px-5 md:px-3 md:rounded-2xl"}>
-      <input type={"date"} className={"md:w-fit md:text-xl font-bold md:rounded-2xl bg-white p-5"} onChange={(e) => {
+    <div className={"flex space-x-2.5 items-center w-screen bg-white border-[1px] border-gray-200 fixed top-0 justify-between md:justify-center px-5 md:px-3"}>
+      <motion.input layoutId={"motion-input"} type={"date"} className={"md:w-fit md:text-xl font-bold md:rounded-2xl bg-white p-5"} onChange={(e) => {
         setSelectedDate(e.target.valueAsDate);
       }} onBlur={async () => {
-        setIsComplete(false);
-        setCompare([]);
-        fetch("https://notion-daily.onrender.com/fetch_notion_snippet?date="+formatDate(selectedDate), {
-          method: "GET",
-          headers: {
-            "Api-Key": process.env.NEXT_PUBLIC_API_KEY as string,
-          }
-        })
-          .then((res) => res.json())
-          .then((json) => {
-            setSnippets(json);
-            console.log(json)
-            setIsComplete(true);
-          })
-          .catch((err) => console.error(err));
-        const compares = await fetchNotionSnippetCompareCheck(formatDate(selectedDate));
-        console.log(compares);
-        setCompare(compares["result"]);
+        await loadSnippets();
       }} value={formatDate(selectedDate) || ""} />
-      {
-        formatDate(new Date()) == formatDate(selectedDate)
-          && <motion.button onClick={async () => {
-            if (!isUpload) {
-              setIsUpload(true);
-              const res = []
-              for await (const snippet of snippets) {
-                const result = (snippet.content).join("\n");
-                res.push(await addSnippet(snippet.who_email[0], formatDate(new Date())!, result));
-              }
-              if (res.length != 0) {
-                console.log(res);
-              }
-              const compares = await fetchNotionSnippetCompareCheck(formatDate(selectedDate));
-              console.log(compares);
-              setCompare(compares["result"]);
-              setIsUpload(false);
-            }
-          }} className={`flex items-center justify-center h-10 w-15 rounded-sm md:h-12 md:w-16 md:rounded-xl bg-black text-white font-semibold text-sm md:text-lg duration-200 ${isUpload ? "opacity-50" : "opacity-100"}`}>
-            { isUpload ? <div className={"w-5 aspect-square"}><CircularLoader color={"#FFFFFF"}/></div> : "업로드" }
-          </motion.button>
-      }
+      <motion.div className={"flex space-x-2.5"} transition={{ duration: 0.2 }}>
+        <motion.button className={"w-fit h-10 px-2.5 space-x-2.5 flex items-center justify-center rounded-lg hover:bg-gray-100 active:bg-gray-200 border-[1px] border-gray-300 text-sm font-semibold"}
+                       onClick={async () => {
+                         await loadSnippets();
+                       }}
+        >
+          <div className={"w-6 aspect-square relative"}>
+            <Image src={"arrow-path.svg"} alt={""} fill className={"object-cover"} />
+          </div>
+          <p>다시 불러오기</p>
+        </motion.button>
+        <AnimatePresence>
+          {
+            dailySnippetFormatDate(new Date())! <= formatDate(selectedDate)!
+              && <motion.button
+                initial={{ scale: 0.7, filter: "blur(10px)", opacity: 0 }}
+                animate={{ scale: 1, filter: "blur(0px)", opacity: 1 }}
+                exit={{ scale: 0.7, filter: "blur(10px)", opacity: 0 }}
+                transition={{ duration: 0.1 }}
+              onClick={async () => {
+                if (!isUpload) {
+                  setIsUpload(true);
+                  const res = []
+                  const results = await fetchNotionSnippet(formatDate(selectedDate));
+                  for await (const snippet of results) {
+                    const result = (snippet.content).join("\n");
+                    res.push(await addSnippet(snippet.who_email[0], formatDate(selectedDate)!, result));
+                  }
+                  if (res.length != 0) {
+                    console.log(res);
+                  }
+                  const compares = await fetchNotionSnippetCompareCheck(formatDate(selectedDate));
+                  setCompare(compares["result"]);
+                  setIsUpload(false);
+                }
+              }} className={`flex items-center justify-center px-5 h-10 w-fit rounded-sm md:h-10 md:w-fit md:rounded-md bg-black text-white font-semibold text-sm duration-200 ${isUpload ? "opacity-50" : "opacity-100"}`}>
+                { isUpload ? <div className={"w-5 aspect-square"}><CircularLoader color={"#FFFFFF"}/></div> : "스니펫 업로드" }
+              </motion.button>
+          }
+        </AnimatePresence>
+      </motion.div>
     </div>
-    <div className={"flex flex-col md:flex-row md:w-screen md:space-x-5 justify-center space-y-2.5 p-5 mt-16 md:p-0"}>
+    <div className={"flex flex-1 flex-col md:flex-row md:w-screen md:space-x-5 justify-center space-y-2.5 p-5 mt-16 md:p-0"}>
       {
         isComplete && snippets
         ? snippets.length == 0
@@ -115,7 +136,7 @@ type notionBlockType = {
 
 const NotionBlock = ({ snippet, isEqual }: notionBlockType) => {
 
-  return <div className={"w-full md:w-[30vw] h-fit md:max-h-[70vh] overflow-y-scroll border-[1px] bg-white border-gray-200 rounded-2xl flex flex-col p-10"}>
+  return <div className={"w-full md:w-[30vw] h-fit md:max-h-full overflow-y-scroll border-[1px] bg-white border-gray-200 rounded-2xl flex flex-col p-10"}>
     <div className={"flex mb-5 space-x-2.5 items-center"}>
       {
         isEqual == -1

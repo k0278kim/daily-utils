@@ -27,14 +27,6 @@ const SnippetsPage = () => {
       setSelectedDate(e.target.valueAsDate);
     }} onBlur={() => {
       setIsComplete(false);
-      fetch("https://notion-daily.onrender.com/fetch_snippet?date_from="+formatDate(selectedDate)+"&date_to="+formatDate(selectedDate))
-        .then((res) => res.json())
-        .then((json) => {
-          setSnippets(json);
-          console.log(json)
-          setIsComplete(true);
-        })
-        .catch((err) => console.error(err));
     }} value={formatDate(selectedDate) || ""} />
     <div className={"flex space-x-5"}>
       {
