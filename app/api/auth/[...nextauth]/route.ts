@@ -28,6 +28,17 @@ async function refreshAccessToken(token: JWT) {
 }
 
 const handler = NextAuth({
+  cookies: {
+    sessionToken: {
+      name: `__Secure-next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "none", // ✅ iframe 안에서도 동작 가능
+        path: "/",
+        secure: true, // ✅ https 필요
+      },
+    },
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
