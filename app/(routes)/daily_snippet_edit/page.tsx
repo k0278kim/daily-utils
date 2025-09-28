@@ -8,9 +8,11 @@ import addSnippet from "@/app/api/add_snippet";
 import CircularLoader from "@/components/CircularLoader";
 import IconTextButton from "@/components/IconTextButton";
 import {driveUploadFile} from "@/app/api/drive_upload_file";
-import {useSession} from "next-auth/react";
+import {signIn, useSession} from "next-auth/react";
 import {driveGetFile} from "@/app/api/drive/drive_get_file";
 import {driveDeleteFile} from "@/app/api/drive_delete_file";
+import TextButton from "@/components/TextButton";
+import {motion} from "framer-motion";
 
 const DailyEdit = () => {
   const template = `### What
@@ -35,6 +37,7 @@ const DailyEdit = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [loadStatus, setLoadStatus] = useState(false);
   const [editorDisabled, setEditorDisabled] = useState(true);
+  const [loadOverflow, setLoadOverflow] = useState(false);
 
   const snippetDriveId = "1ez6X_PnNC2Jaa-VcN6wEo_OikZQ-WbXC";
 
@@ -78,6 +81,29 @@ const DailyEdit = () => {
     })();
 
   }, [session]);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setLoadOverflow(true);
+    }, 3000);
+  }, [])
+
+  if (!session) return <div className="flex flex-col w-screen h-screen items-center justify-center relative space-y-10">
+    <motion.div className={"w-10 aspect-square"} layoutId={"circular"}>
+      <CircularLoader />
+    </motion.div>
+    {
+      loadOverflow && <motion.div
+        initial={{ opacity: 0, translateY: 20 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ duration: 0.5 }}
+        className={"flex flex-col space-y-5 items-center justify-center"}>
+        <motion.p
+          className={"text-gray-700 text-2xl"}>혹시 로그인을 하지 않으셨나요?</motion.p>
+        <TextButton text={"다시 Google 로그인"} onClick={() => signIn("google")}/>
+      </motion.div>
+    }
+  </div>;
 
   return <div className={"w-screen h-screen bg-gray-100"}>
     <div className={"flex flex-col md:p-20 h-full space-y-10"}>

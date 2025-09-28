@@ -1,6 +1,9 @@
 "use client";
 import { useSession, signIn, signOut } from "next-auth/react";
 import {useEffect} from "react";
+import CircularLoader from "@/components/CircularLoader";
+import TextButton from "@/components/TextButton";
+import {motion} from "framer-motion";
 
 export default function Page() {
   const { data: session, status } = useSession();
@@ -15,17 +18,28 @@ export default function Page() {
     }
   }, [session]);
 
-  if (status === "loading") return <p>Loading...</p>;
-  if (!session)
-    return <button onClick={() => signIn("google")}>Google 로그인</button>;
+  if (status === "loading") return <div className="flex w-screen h-screen items-center justify-center relative">
+    <div className={"w-10 aspect-square"}>
+      <CircularLoader />
+    </div>
+  </div>;
 
   return (
-    <div>
-      <p>{session.user?.email}님 환영합니다</p>
-      <button onClick={() => signOut()}>로그아웃</button>
-      <div>
-        <h2>내 Google Drive 파일</h2>
-      </div>
+    <div className={"w-screen h-screen flex flex-col items-center justify-center"}>
+      {
+        session
+          ? <div className={"flex flex-col items-center space-y-5"}>
+              <p className={"text-2xl font-bold"}>{session.user?.email}</p>
+              <TextButton onClick={() => {
+                location.href = "/daily_snippet_edit"
+              }} text={"Daily Snippet 작성하기"}></TextButton>
+              <TextButton onClick={() => signOut()} text={"로그아웃"}></TextButton>
+          </div>
+          : <div className={"flex flex-col"}>
+            <motion.div className={"p-5 bg-black rounded-xl text-white font-semibold text-xl"} onClick={() => signIn("google")}>Google 로그인</motion.div>
+          </div>
+      }
+
     </div>
   );
 }
