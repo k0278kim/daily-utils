@@ -100,7 +100,9 @@ const DailyEdit = () => {
         <motion.p
           className={"text-gray-700 text-2xl font-bold"}>혹시 로그인을 하지 않으셨나요?</motion.p>
         <TextButton text={"다시 Google로 로그인"} onClick={() => {
-          window.open("https://daily-utils-plantfarm.vercel.app", "_blank", "width=500, height=700");
+          window.open("/api/auth/signin/google",
+            "GoogleLogin",
+            "width=500,height=700");
         }}/>
       </motion.div>
     }
