@@ -1,8 +1,8 @@
 import { getToken } from "next-auth/jwt";
 import { google } from "googleapis";
-import { NextResponse } from "next/server";
+import {NextRequest, NextResponse} from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     if (!token?.accessToken) {
@@ -24,8 +24,12 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, fileId });
-  } catch (err: any) {
-    console.error("🚨 Delete error:", err.response?.data || err.message);
+  } catch (err) {
+    if (err instanceof Error) {
+      console.error("Drive API error:", err.message);
+    } else {
+      console.error("Unknown error:", err);
+    }
     return NextResponse.json({ error: "Delete failed" }, { status: 500 });
   }
 }

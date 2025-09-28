@@ -1,10 +1,9 @@
 "use client";
 import { useSession, signIn, signOut } from "next-auth/react";
-import {useEffect, useState} from "react";
+import {useEffect} from "react";
 
 export default function Page() {
   const { data: session, status } = useSession();
-  const [files, setFiles] = useState<any[]>([]);
 
   useEffect(() => {
     if (session) {
@@ -26,15 +25,6 @@ export default function Page() {
       <button onClick={() => signOut()}>로그아웃</button>
       <div>
         <h2>내 Google Drive 파일</h2>
-        <ul>
-          {files.map((f) => (
-            <li key={f.id}>
-              <a href={f.webViewLink} target="_blank" rel="noreferrer">
-                {f.name}
-              </a>
-            </li>
-          ))}
-        </ul>
       </div>
     </div>
   );

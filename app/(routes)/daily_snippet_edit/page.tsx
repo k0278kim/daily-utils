@@ -1,7 +1,6 @@
 "use client"
 import React, {useEffect, useState} from "react";
 import Editor from "@/components/MdEditor";
-import IconButton from "@/components/IconButton";
 import formatDate from "@/lib/utils/format_date";
 import fetchSnippet from "@/app/api/fetch_snippet";
 import {Snippet} from "@/model/snippet";
@@ -28,7 +27,7 @@ const DailyEdit = () => {
 
 ### Tomorrow
 `;
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [submitText, setSubmitText] = useState<string>("발행하기");
   const [snippetContent, setSnippetContent] = useState(template);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
@@ -105,7 +104,7 @@ const DailyEdit = () => {
                 <div className={"w-4 aspect-square flex items-center justify-center"}>
                 {
                   isUploading || !loadStatus
-                    ? <div className={"w-4 aspect-square"}><CircularLoader color={"#efefef"} /></div>
+                    ? <div className={"w-4 aspect-square"}><CircularLoader/></div>
                     : <div className={`w-2 aspect-square rounded-full ${snippet.length == 1 ? "bg-green-500" : "bg-gray-400"}`}></div>
                 }
                 </div>
@@ -160,7 +159,7 @@ const DailyEdit = () => {
               }, 1000);
             }
           }}>{ isUploading ? <div className={"flex space-x-2.5"}>
-            <div className={"w-5 aspect-square"}><CircularLoader color={"#FFFFFF"}/></div>
+            <div className={"w-5 aspect-square"}><CircularLoader/></div>
             <p>{submitText}</p>
           </div> : editorDisabled ? "Google Drive 업로드 확인하기" : "발행하기" }</button>
         </div>

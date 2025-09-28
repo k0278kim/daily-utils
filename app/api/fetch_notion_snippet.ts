@@ -1,5 +1,3 @@
-import {Snippet} from "next/dist/compiled/@next/font/dist/google";
-
 async function fetchNotionSnippet(date: null | string) {
   const res = await fetch("https://notion-daily.onrender.com/fetch_notion_snippet?date=" + date, {
     method: "GET",

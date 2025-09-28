@@ -1,8 +1,8 @@
 import { getToken } from "next-auth/jwt";
 import { google } from "googleapis";
-import { NextResponse } from "next/server";
+import {NextRequest, NextResponse} from "next/server";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const fileId = searchParams.get("fileId"); // 다운로드할 파일 ID
 
@@ -20,7 +20,9 @@ export async function GET(req: Request) {
     { responseType: "stream" }
   );
 
-  return new Response(response.data as any, {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
+  return new Response(response.data, {
     headers: { "Content-Type": "application/octet-stream" },
   });
 }

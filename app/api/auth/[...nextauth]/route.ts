@@ -1,14 +1,15 @@
 import { google } from "googleapis";
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import {JWT} from "next-auth/jwt";
 
-async function refreshAccessToken(token: any) {
+async function refreshAccessToken(token: JWT) {
   try {
     const client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET
     );
-    client.setCredentials({ refresh_token: token.refreshToken });
+    client.setCredentials({ refresh_token: token.refreshToken as string });
 
     const { credentials } = await client.refreshAccessToken();
     console.log("🔄 Token refreshed:", credentials);
@@ -45,7 +46,7 @@ const handler = NextAuth({
       if (account) {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
-        token.expiresAt = Date.now() + account.expires_in * 1000;
+        token.expiresAt = Date.now() + (account.expires_in as number) * 1000;
         return token;
       }
 

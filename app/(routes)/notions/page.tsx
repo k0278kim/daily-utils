@@ -105,7 +105,7 @@ const NotionsPage = () => {
                   setIsUpload(false);
                 }
               }} className={`flex items-center justify-center px-5 h-10 w-fit rounded-sm md:h-10 md:w-fit md:rounded-md bg-black text-white font-semibold text-sm duration-200 ${isUpload ? "opacity-50" : "opacity-100"}`}>
-                { isUpload ? <div className={"w-5 aspect-square"}><CircularLoader color={"#FFFFFF"}/></div> : "스니펫 업로드" }
+                { isUpload ? <div className={"w-5 aspect-square"}><CircularLoader/></div> : "스니펫 업로드" }
               </motion.button>
           }
         </AnimatePresence>
@@ -122,7 +122,7 @@ const NotionsPage = () => {
               return <NotionBlock key={snippet.id} snippet={snippet} isEqual={isEqual}/>
             })
           : <div className={"flex items-center justify-center h-[60vh]"}><div className={"w-10 aspect-square"}>
-            <CircularLoader color={"101010"} />
+            <CircularLoader/>
           </div></div>
       }
     </div>
@@ -140,7 +140,7 @@ const NotionBlock = ({ snippet, isEqual }: notionBlockType) => {
     <div className={"flex mb-5 space-x-2.5 items-center"}>
       {
         isEqual == -1
-          ? <div className={"w-5 aspect-square"}><CircularLoader color={"efefef"} /></div>
+          ? <div className={"w-5 aspect-square"}><CircularLoader/></div>
           : <div className={`w-2 aspect-square rounded-full ${isEqual == 1 ? "bg-green-500" : isEqual == 2 ? "bg-red-500" : "bg-gray-200"}`}></div>
       }
       <p className={`text-sm font-semibold ${isEqual == 1 ? "text-green-700" : isEqual == 2 ? "text-red-500" : "text-gray-700"}`}>{

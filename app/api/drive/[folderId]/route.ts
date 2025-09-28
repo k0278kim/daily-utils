@@ -1,8 +1,8 @@
 import { getToken } from "next-auth/jwt";
 import { google } from "googleapis";
-import { NextResponse } from "next/server";
+import {NextRequest, NextResponse} from "next/server";
 
-export async function GET(req: Request, { params }: { params: Promise<{ folderId: string }>} ) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ folderId: string }>} ) {
   try {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     if (!token?.accessToken) {
@@ -24,8 +24,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ folderId
     });
 
     return NextResponse.json(res.data.files);
-  } catch (err: any) {
-    console.error("Drive API error:", err.response?.data || err.message);
+  } catch (err) {
+    if (err instanceof Error) {
+      console.error("Drive API error:", err.message);
+    } else {
+      console.error("Unknown error:", err);
+    }
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

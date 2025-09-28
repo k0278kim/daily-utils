@@ -1,4 +1,4 @@
-import MDEditor, {ContextStore} from "@uiw/react-md-editor";
+import MDEditor from "@uiw/react-md-editor";
 import React from "react";
 
 type editorProps = {
