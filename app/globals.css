@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
 @plugin "@tailwindcss/typography" {
   className: "prose";   /* 기본값은 prose지만, 바꿀 수 있음 */
 }
@@ -57,6 +56,9 @@ body {
   font-family: Pretendard;
 }
 
+.w-md-editor-preview {
+  @apply prose max-w-none;
+}
 .prose {
   --tw-prose-body: theme(colors.gray.800);
   --tw-prose-headings: theme(colors.gray.900);
