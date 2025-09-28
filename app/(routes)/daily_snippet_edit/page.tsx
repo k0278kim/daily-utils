@@ -162,7 +162,7 @@ const DailyEdit = () => {
           }}>{ isUploading ? <div className={"flex space-x-2.5"}>
             <div className={"w-5 aspect-square"}><CircularLoader color={"#FFFFFF"}/></div>
             <p>{submitText}</p>
-          </div> : "발행하기" }</button>
+          </div> : editorDisabled ? "Google Drive 업로드 확인하기" : "발행하기" }</button>
         </div>
       </div>
       <div className={"flex-1"}>
