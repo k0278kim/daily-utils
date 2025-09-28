@@ -191,7 +191,10 @@ const DailyEdit = () => {
           </div> : editorDisabled ? "Google Drive 업로드 확인하기" : "발행하기" }</button>
         </div>
       </div>
-      <div className={"flex-1"}>
+      <div className={"flex-1 relative"}>
+        <div className={"absolute w-full h-full flex items-end justify-center bg-gray-800/40 rounded-md"}>
+          <div className={"bg-black rounded-md p-5 mb-10 text-white"}>입력할 수 없어요</div>
+        </div>
         <SnippetEditor content={snippetContent} onSnippetChange={onSnippetChange} editorDisabled={editorDisabled} />
       </div>
     </div>
