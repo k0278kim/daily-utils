@@ -59,6 +59,7 @@ body {
 .w-md-editor-preview {
   @apply prose max-w-none;
 }
+
 .prose {
   --tw-prose-body: theme(colors.gray.800);
   --tw-prose-headings: theme(colors.gray.900);

@@ -8,7 +8,7 @@ type iconTextButtonType = {
 }
 
 const IconTextButton = ({src, text, onClick}: iconTextButtonType) => {
-  return <motion.button className={"w-fit px-2.5 space-x-2.5 flex items-center justify-center rounded-lg bg-white hover:bg-gray-100 active:bg-gray-200 border-[1px] border-gray-300 font-semibold"}
+  return <motion.button className={"cursor-pointer w-fit min-h-10 px-2.5 space-x-2.5 flex items-center justify-center rounded-lg bg-white hover:bg-gray-100 active:bg-gray-200 border-[1px] border-gray-300 font-semibold"}
                         onClick={onClick}
   >
     <div className={"w-4 aspect-square relative"}>

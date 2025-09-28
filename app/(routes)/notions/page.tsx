@@ -33,7 +33,6 @@ const NotionsPage = () => {
   useEffect(() => {
     (async() => {
       const compares = await fetchNotionSnippetCompareCheck(formatDate(new Date()));
-      console.log(compares);
       setCompare(compares["result"]);
     })();
   }, [])
@@ -53,12 +52,10 @@ const NotionsPage = () => {
     fetchNotionSnippet(formatDate(selectedDate))
       .then((json) => {
         setSnippets(json);
-        console.log(json)
         setIsComplete(true);
       })
       .catch((err) => console.error(err));
     const compares = await fetchNotionSnippetCompareCheck(formatDate(selectedDate));
-    console.log(compares);
     setCompare(compares["result"]);
   }
 
@@ -98,7 +95,6 @@ const NotionsPage = () => {
                     res.push(await addSnippet(snippet.who_email[0], formatDate(selectedDate)!, result));
                   }
                   if (res.length != 0) {
-                    console.log(res);
                   }
                   const compares = await fetchNotionSnippetCompareCheck(formatDate(selectedDate));
                   setCompare(compares["result"]);

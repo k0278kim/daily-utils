@@ -35,8 +35,9 @@ export default function Page() {
               }} text={"Daily Snippet 작성하기"}></TextButton>
               <TextButton onClick={() => signOut()} text={"로그아웃"}></TextButton>
           </div>
-          : <div className={"flex flex-col"}>
-            <motion.div className={"p-5 bg-black rounded-xl text-white font-semibold text-xl"} onClick={() => signIn("google")}>Google 로그인</motion.div>
+          : <div className={"flex flex-col space-y-10"}>
+            <p className={"text-6xl font-black"}>Daily Utils</p>
+            <motion.div className={"cursor-pointer text-center p-5 bg-black rounded-xl text-white font-semibold text-xl"} onClick={() => signIn("google")}>Google 로그인</motion.div>
           </div>
       }
 
