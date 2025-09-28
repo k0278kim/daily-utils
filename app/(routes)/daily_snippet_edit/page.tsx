@@ -120,7 +120,8 @@ const DailyEdit = () => {
               setSnippetContent(template);
             }
           }} />}
-          <button className={`rounded-lg font-bold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
+          <IconTextButton src={"/arrow-up-right.svg"} text={"Daily Snippet"} onClick={() => { window.open("https://daily.1000.school")}} />
+          <button className={`rounded-lg font-semibold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
             if (!isUploading && session?.user?.email != "") {
               setEditorDisabled(true);
               const email = session?.user?.email as string;

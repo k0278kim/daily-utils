@@ -9,6 +9,7 @@ async function refreshAccessToken(token: JWT) {
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET
     );
+    console.log(token)
     client.setCredentials({ refresh_token: token.refreshToken as string });
 
     const { credentials } = await client.refreshAccessToken();
@@ -45,10 +46,16 @@ const handler = NextAuth({
       // 로그인 직후
       if (account) {
         token.accessToken = account.access_token;
-        token.refreshToken = account.refresh_token;
         token.expiresAt = Date.now() + (account.expires_in as number) * 1000;
+
+        // refresh_token이 새로 오면 업데이트, 없으면 기존 값 유지
+        if (account.refresh_token) {
+          token.refreshToken = account.refresh_token;
+        }
+
         return token;
       }
+
 
       // 토큰이 아직 유효하면 그대로 반환
       if (Date.now() < (token.expiresAt as number)) {
