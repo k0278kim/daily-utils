@@ -99,11 +99,7 @@ const DailyEdit = () => {
         className={"flex flex-col space-y-5 items-center justify-center"}>
         <motion.p
           className={"text-gray-700 text-2xl font-bold"}>혹시 로그인을 하지 않으셨나요?</motion.p>
-        <TextButton text={"다시 Google로 로그인"} onClick={() => {
-          window.open("/api/auth/signin/google",
-            "GoogleLogin",
-            "width=500,height=700");
-        }}/>
+        <TextButton text={"다시 Google로 로그인"} onClick={() => signIn("google")}/>
       </motion.div>
     }
   </div>;
