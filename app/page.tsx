@@ -1,12 +1,14 @@
 "use client";
 import { useSession, signIn, signOut } from "next-auth/react";
-import {useEffect} from "react";
+import {useEffect, useState} from "react";
 import CircularLoader from "@/components/CircularLoader";
 import TextButton from "@/components/TextButton";
 import {motion} from "framer-motion";
 
 export default function Page() {
   const { data: session, status } = useSession();
+
+  const [space, setSpace] = useState(0);
 
   useEffect(() => {
     if (session) {
@@ -33,10 +35,14 @@ export default function Page() {
               <TextButton onClick={() => {
                 location.href = "/daily_snippet_edit"
               }} text={"Daily Snippet 작성하기"}></TextButton>
+              <TextButton onClick={() => {
+                location.href = "/snippets"
+              }} text={"Snippet 조회하기"}></TextButton>
               <TextButton onClick={() => signOut()} text={"로그아웃"}></TextButton>
           </div>
-          : <div className={"flex flex-col space-y-10"}>
-            <p className={"text-6xl font-black"}>Daily Utils</p>
+          : <div className={"flex flex-col space-y-10 items-center"}>
+            <p className={"text-2xl font-bold"}>도다리도 뚜뚜려보고 건너는 양털 팀의</p>
+            <p className={"text-7xl font-black"}>Daily Utils</p>
             <motion.div className={"cursor-pointer text-center p-5 bg-black rounded-xl text-white font-semibold text-xl"} onClick={() => signIn("google")}>Google 로그인</motion.div>
           </div>
       }

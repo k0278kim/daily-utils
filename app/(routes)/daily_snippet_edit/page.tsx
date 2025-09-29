@@ -14,6 +14,7 @@ import {driveDeleteFile} from "@/app/api/drive_delete_file";
 import TextButton from "@/components/TextButton";
 import {motion} from "framer-motion";
 import LoadOrLogin from "@/components/LoadOrLogin";
+import IconButton from "@/components/IconButton";
 
 const DailyEdit = () => {
   const template = `### What
@@ -93,7 +94,7 @@ const DailyEdit = () => {
   return <div className={"w-screen h-screen bg-gray-100"}>
     <div className={"flex flex-col md:p-20 h-full space-y-10"}>
       <div className={"flex h-12"}>
-        <div className={"flex"}>
+        <div className={"flex space-x-2.5"}>
           {
             dailySnippetAvailableDate().map((date) => {
               const dateSplit = date!.split("-");
@@ -101,20 +102,18 @@ const DailyEdit = () => {
               return <button
                 key={date}
                 onClick={() => {
-                  setSelectedDate(date!);
-                  if (snippet.length == 1) {
-                    setSnippetContent(snippet[0].content);
-                    setEditorDisabled(true);
-                  } else {
-                    if (!loadStatus) {
+                  if (loadStatus) {
+                    setSelectedDate(date!);
+                    if (snippet.length == 1) {
+                      setSnippetContent(snippet[0].content);
                       setEditorDisabled(true);
                     } else {
                       setEditorDisabled(false);
+                      setSnippetContent(template);
                     }
-                    setSnippetContent(template);
                   }
                 }}
-                className={`flex items-center space-x-2.5 rounded-lg p-3 border-[1px] cursor-pointer ${selectedDate == date ? "bg-white border-gray-200" : "border-transparent text-gray-600"} font-bold`}>
+                className={`flex items-center space-x-2.5 rounded-lg p-3 border-[1px] cursor-pointer ${!loadStatus ? "bg-gray-200 text-gray-500" : selectedDate == date ? "bg-white border-gray-200" : "border-transparent text-gray-600"} font-bold`}>
                 <p>{`${dateSplit[0]}년 ${dateSplit[1]}월 ${dateSplit[2]}일`}</p>
                 <div className={"w-4 aspect-square flex items-center justify-center"}>
                 {
@@ -135,6 +134,7 @@ const DailyEdit = () => {
               setSnippetContent(template);
             }
           }} />}
+          <IconTextButton src={"/arrow-up-right.svg"} text={"Snippet 조회하기"} onClick={() => location.href="/snippets"} />
           <IconTextButton src={"/arrow-up-right.svg"} text={"Daily Snippet"} onClick={() => { window.open("https://daily.1000.school")}} />
           <button className={`rounded-lg font-semibold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
             if (!isUploading && session?.user?.email != "") {
@@ -197,7 +197,7 @@ type snippetEditorType = {
 }
 
 const SnippetEditor = ({ content, onSnippetChange, editorDisabled }: snippetEditorType) => {
-  return <div className={`w-full h-full border-[1px] border-gray-300 rounded-2xl ${editorDisabled ? "opacity-50" : ""}`}>
+  return <div className={`w-full h-full border-[1px] border-gray-300 rounded-2xl ${editorDisabled ? "opacity-30" : ""}`}>
     <Editor content={content} contentChange={onSnippetChange} disabled={editorDisabled} />
   </div>
 }

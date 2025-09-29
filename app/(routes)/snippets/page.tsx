@@ -56,6 +56,11 @@ const SnippetsPage = () => {
 
   if (!session || snippets.length == 0) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
   return <div className={"w-screen h-fit min-h-screen bg-gray-100 flex flex-col py-32"}>
+    <div className={"fixed w-full bottom-10 flex justify-center"}>
+      <div className={"p-5 rounded-xl w-fit bg-gray-800 text-white font-bold cursor-pointer"} onClick={() => location.href="/daily_snippet_edit"}>
+        Daily Snippet 작성
+      </div>
+    </div>
     <div className={"fixed top-0 w-screen flex justify-center bg-white p-5 border-b-[1px] border-b-gray-200 space-x-5"}>
       <Image src={"/chevron-left.svg"} alt={""} width={30} height={30} onClick={async () => {
         setLoading(true);
@@ -120,11 +125,11 @@ const WeekCalendar = ({ date_from, snippets, selectedDate, setSelectedDate, load
         date.setDate(date.getDate() + i);
         const daySnippets = snippets.filter((f)=>f.snippet_date == formatDate(date));
         return <div key={date.getDate()} className={"flex flex-col space-y-2.5 items-center"} onClick={() => setSelectedDate(formatDate(date)!)}>
-          <div className={`flex w-full h-10 rounded-2xl font-semibold text-lg space-x-2.5 items-center justify-center ${formatDate(date) == selectedDate ? daySnippets.length == 0 ? "bg-gray-400" : daySnippets.length == 3 ? "bg-green-500" : "bg-yellow-500" : daySnippets.length == 0 ? "bg-gray-100" : daySnippets.length == 3 ? "bg-green-100" : "bg-yellow-100"}`}>
+          <div className={`flex w-full h-10 rounded-lg font-semibold text-lg space-x-2.5 items-center justify-center ${formatDate(date) == selectedDate ? daySnippets.length == 0 ? "bg-gray-400" : daySnippets.length == 3 ? "bg-green-500" : "bg-yellow-500" : daySnippets.length == 0 ? "bg-gray-100" : daySnippets.length == 3 ? "bg-green-100" : "bg-yellow-100"}`}>
             {
               !loading
               ? daySnippets.map((snippet, i) => {
-                return <div key={i} className={`w-3 aspect-square rounded-full ${formatDate(date) == selectedDate ? "bg-white" : daySnippets.length == 3 ? "bg-green-600" : "bg-yellow-600"}`}></div>
+                return <div key={i} className={`w-3 aspect-square rounded-full ${formatDate(date) == selectedDate ? "bg-white" : daySnippets.length == 3 ? "bg-green-500" : "bg-yellow-500"}`}></div>
               })
               : <div className={"w-4 aspect-square"}><CircularLoader/></div>
             }

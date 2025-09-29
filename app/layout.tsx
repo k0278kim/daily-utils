@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "식물농장 Daily Utils",
-  description: "식물농장 팀의 데일리 유틸입니다.",
+  title: "도다리도 뚜뚜려보고 건너는 양털 Daily Utils",
+  description: "도다리도 뚜뚜려보고 건너는 양털 팀의 데일리 유틸입니다.",
 };
 
 export default function RootLayout({
