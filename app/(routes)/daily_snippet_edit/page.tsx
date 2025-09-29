@@ -106,7 +106,11 @@ const DailyEdit = () => {
                     setSnippetContent(snippet[0].content);
                     setEditorDisabled(true);
                   } else {
-                    setEditorDisabled(false);
+                    if (!loadStatus) {
+                      setEditorDisabled(true);
+                    } else {
+                      setEditorDisabled(false);
+                    }
                     setSnippetContent(template);
                   }
                 }}
