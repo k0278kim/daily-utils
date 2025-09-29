@@ -13,6 +13,7 @@ import {driveGetFile} from "@/app/api/drive/drive_get_file";
 import {driveDeleteFile} from "@/app/api/drive_delete_file";
 import TextButton from "@/components/TextButton";
 import {motion} from "framer-motion";
+import LoadOrLogin from "@/components/LoadOrLogin";
 
 const DailyEdit = () => {
   const template = `### What
@@ -87,22 +88,7 @@ const DailyEdit = () => {
     }, 3000);
   }, [])
 
-  if (!session) return <div className="flex flex-col w-screen h-screen items-center justify-center relative space-y-10">
-    <motion.div className={"w-10 aspect-square"} layoutId={"circular"}>
-      <CircularLoader />
-    </motion.div>
-    {
-      loadOverflow && <motion.div
-        initial={{ opacity: 0, translateY: 20 }}
-        animate={{ opacity: 1, translateY: 0 }}
-        transition={{ duration: 0.5 }}
-        className={"flex flex-col space-y-5 items-center justify-center"}>
-        <motion.p
-          className={"text-gray-700 text-2xl font-bold"}>혹시 로그인을 하지 않으셨나요?</motion.p>
-        <TextButton text={"다시 Google로 로그인"} onClick={() => signIn("google")}/>
-      </motion.div>
-    }
-  </div>;
+  if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
 
   return <div className={"w-screen h-screen bg-gray-100"}>
     <div className={"flex flex-col md:p-20 h-full space-y-10"}>
