@@ -16,20 +16,44 @@ import {motion} from "framer-motion";
 import LoadOrLogin from "@/components/LoadOrLogin";
 import IconButton from "@/components/IconButton";
 
-const DailyEdit = () => {
-  const template = `### What
-1. a
-2. b
-3. c
-### Why
-- a
-- b
-- c
-### Highlight
+const DailyHealthcheckEdit = () => {
+  const template = `1점 : 팀 나가겠습니다
+  
+2점 : 샤갈 장난치냐?
 
-### Lowlight
+3점 : 욕 나오기 직전이야
 
-### Tomorrow
+4점 : 오늘 좀 아쉬웠어
+
+5점 : 무난무난 잘 흘러 갔어.
+
+6점 : 오늘 좋았어! 
+
+7점 : 오늘 행복했어! 진짜 일기장에 적어두고 싶어
+
+8점 : 진짜 말 안됨. 평생 기억에 남을 거야
+
+9점 : 진짜 우리팀 투자 받음. 교수님한테 컨택 받거나 뭐 쨌든 미쳤음
+
+10점 : 하룰랄라
+
+### Fun(재밌었는가?)
+- 
+
+### Pawn or Players(시켜서 했는가? 능동적으로 했는가?)
+- 
+
+### Speed(빠르게 일이나 회의를 끝냈는가?)
+- 
+
+### Suitable Process(업무 방식이 본인에게 맞는가?)
+- 
+
+### Teamwork(우린 팀 분위기가 좋은가?)
+- 
+
+### 건의사항
+-
 `;
   const { data: session } = useSession();
   const [submitText, setSubmitText] = useState<string>("발행하기");
@@ -41,7 +65,7 @@ const DailyEdit = () => {
   const [editorDisabled, setEditorDisabled] = useState(true);
   const [loadOverflow, setLoadOverflow] = useState(false);
 
-  const snippetDriveId = "1ez6X_PnNC2Jaa-VcN6wEo_OikZQ-WbXC";
+  const healthcheckDriveId = "1CJaV0aGo_5xkQg6tCIca8VYb6WLE4ja-";
 
   const onSnippetChange = (str: string) => {
     setSnippetContent(str);
@@ -58,18 +82,13 @@ const DailyEdit = () => {
     }
   }
 
-  const getMySnippets = async (email: string) => {
-    const availableDate = dailySnippetAvailableDate();
-    const snippets = await fetchSnippet(availableDate[0]!, availableDate.length == 2 ? availableDate[1]! : availableDate[0]!);
-    return snippets.filter((snippet: Snippet) => snippet.user_email == email).sort((a: Snippet, b: Snippet) => Number(new Date(a.snippet_date)) - Number(new Date(b.snippet_date)));
-  }
-
   useEffect(() => {
     setLoadStatus(false);
     (async() => {
       if (session) {
-        await getMySnippets(session?.user?.email as string).then((res) => {
+        await driveGetFile(healthcheckDriveId).then((res) => {
           setSnippets(res);
+          console.log(res);
           const snip: Snippet[] = res.filter((sn: Snippet) => sn.snippet_date == selectedDate);
           if (snip.length == 1) {
             setSnippetContent(snip[0].content);
@@ -134,45 +153,29 @@ const DailyEdit = () => {
               setSnippetContent(template);
             }
           }} />}
-          <IconTextButton src={"/arrow-up-right.svg"} text={"Snippet 조회하기"} onClick={() => location.href="/snippets"} />
-          <IconTextButton src={"/arrow-up-right.svg"} text={"Daily Snippet"} onClick={() => { window.open("https://daily.1000.school")}} />
+          {/*<IconTextButton src={"/arrow-up-right.svg"} text={"Snippet 조회하기"} onClick={() => location.href="/snippets"} />*/}
+          {/*<IconTextButton src={"/arrow-up-right.svg"} text={"Daily Snippet"} onClick={() => { window.open("https://daily.1000.school")}} />*/}
           <button className={`rounded-lg font-semibold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
             if (!isUploading && session?.user?.email != "") {
               setEditorDisabled(true);
               const email = session?.user?.email as string;
               setIsUploading(true);
-              setSubmitText("Daily Snippet 채널에 업로드가 가능한지 확인 중")
-              const result = await addSnippet(email, selectedDate!, snippetContent);
-              const myDriveList = (await driveGetFile(snippetDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${session?.user?.name}`);
-              if (result.length == 1) {
-                setSnippets(await getMySnippets(session?.user?.email as string));
+              const myDriveList = (await driveGetFile(healthcheckDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${email}`);
+              if (myDriveList.length == 0) {
+                setSubmitText("Google Drive에 파일이 업로드되어 있지 않아서 업로드하고 있어요")
+              } else {
                 setSubmitText("Google Drive에서 파일 정리 중")
                 for await (const file of myDriveList) {
                   await driveDeleteFile(file.id);
                 }
-                setSubmitText("Google Drive에 파일 업로드 중")
-                await driveUploadFile(snippetDriveId, `${selectedDate!}_${session?.user?.name}`, snippetContent);
-                setSubmitText("업로드 완료");
-              } else {
-                setSubmitText("이미 업로드가 되어 있어요");
-                setEditorDisabled(true);
               }
-              if (myDriveList.length == 0) {
-                setSubmitText("Google Drive에 파일이 업로드되어 있지 않아서 업로드하고 있어요")
-                await getMySnippets(session?.user?.email as string).then(async (res) => {
-                  setSnippets(res);
-                  const snip: Snippet[] = res.filter((sn: Snippet) => sn.snippet_date == selectedDate);
-                  if (snip.length == 1) {
-                    setSnippetContent(snip[0].content);
-                    await driveUploadFile(snippetDriveId, `${selectedDate!}_${session?.user?.name}`, snip[0].content);
-                  }
-                });
-                setSubmitText("업로드 완료");
-                setEditorDisabled(true);
-              }
+              setSubmitText("Google Drive에 파일 업로드 중")
+              await driveUploadFile(healthcheckDriveId, `${selectedDate!}_${email}`, snippetContent);
+              setSubmitText("업로드 완료");
               setTimeout(() => {
                 setIsUploading(false);
               }, 1000);
+
             }
           }}>{ isUploading ? <div className={"flex space-x-2.5"}>
             <div className={"w-5 aspect-square"}><CircularLoader/></div>
@@ -184,22 +187,22 @@ const DailyEdit = () => {
         <div className={"absolute w-full h-full flex items-end justify-center bg-gray-800/40 rounded-md"}>
           <div className={"bg-black rounded-md p-5 mb-10 text-white"}>입력할 수 없어요</div>
         </div>
-        <SnippetEditor content={snippetContent} onSnippetChange={onSnippetChange} editorDisabled={editorDisabled} />
+        <HealthcheckEditor content={snippetContent} onSnippetChange={onSnippetChange} editorDisabled={editorDisabled} />
       </div>
     </div>
   </div>
 }
 
-type snippetEditorType = {
+type healthcheckEditorType = {
   content: string,
   onSnippetChange: (value: string) => void;
   editorDisabled: boolean;
 }
 
-const SnippetEditor = ({ content, onSnippetChange, editorDisabled }: snippetEditorType) => {
+const HealthcheckEditor = ({ content, onSnippetChange, editorDisabled }: healthcheckEditorType) => {
   return <div className={`w-full h-full border-[1px] border-gray-300 rounded-2xl ${editorDisabled ? "opacity-30" : ""}`}>
     <Editor content={content} contentChange={onSnippetChange} disabled={editorDisabled} />
   </div>
 }
 
-export default DailyEdit;
+export default DailyHealthcheckEdit;

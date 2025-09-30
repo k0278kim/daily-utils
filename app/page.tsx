@@ -36,6 +36,9 @@ export default function Page() {
                 location.href = "/daily_snippet_edit"
               }} text={"Daily Snippet 작성하기"}></TextButton>
               <TextButton onClick={() => {
+                location.href = "/healthcheck_edit"
+              }} text={"Health Check 작성하기"}></TextButton>
+              <TextButton onClick={() => {
                 location.href = "/snippets"
               }} text={"Snippet 조회하기"}></TextButton>
               <TextButton onClick={() => signOut()} text={"로그아웃"}></TextButton>
