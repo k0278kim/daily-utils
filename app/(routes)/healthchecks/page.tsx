@@ -12,10 +12,10 @@ import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import Image from "next/image";
 
-const SnippetsPage = () => {
+const HealthchecksPage = () => {
 
   const {data: session} = useSession();
-  const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [docs, setDocs] = useState<Snippet[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [loadOverflow, setLoadOverflow] = useState(false);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
@@ -41,10 +41,8 @@ const SnippetsPage = () => {
 
     (async() => {
       if (date_from != null && date_to != null) {
-        setLoading(true);
         const snippetResult = await fetchSnippet(date_from, date_to);
-        setSnippets(snippetResult);
-        setLoading(false);
+        setDocs(snippetResult);
       }
     })();
 
@@ -56,7 +54,7 @@ const SnippetsPage = () => {
     }, 3000);
   }, []);
 
-  if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
+  if (!session || docs.length == 0) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
   return <div className={"w-screen h-fit min-h-screen bg-gray-100 flex flex-col py-32"}>
     <div className={"fixed w-full bottom-10 flex justify-center"}>
       <div className={"p-5 rounded-xl w-fit bg-gray-800 text-white font-bold cursor-pointer"} onClick={() => location.href="/daily_snippet_edit"}>
@@ -64,7 +62,7 @@ const SnippetsPage = () => {
       </div>
     </div>
     <div className={"fixed top-0 w-screen flex justify-center bg-white p-5 border-b-[1px] border-b-gray-200 space-x-5"}>
-      <Image src={"/chevron-left.svg"} alt={""} width={30} height={30} className={"cursor-pointer"} onClick={async () => {
+      <Image src={"/chevron-left.svg"} alt={""} width={30} height={30} onClick={async () => {
         setLoading(true);
         const newDate = new Date(dateFrom);
         newDate.setDate(newDate.getDate() - 7);
@@ -72,13 +70,13 @@ const SnippetsPage = () => {
         const {date_from, date_to} = weekDates(formatDate(newDate)!);
         if (date_from != null && date_to != null) {
           const snippetResult = await fetchSnippet(date_from, date_to);
-          setSnippets(snippetResult);
+          setDocs(snippetResult);
           setSelectedDate(date_from);
           setLoading(false);
         }
       }} />
-      <WeekCalendar date_from={dateFrom} snippets={snippets} selectedDate={selectedDate!} setSelectedDate={setSelectedDate} loading={loading} />
-      <Image src={"/chevron-right.svg"} alt={""} width={30} height={30} className={"cursor-pointer"} onClick={async () => {
+      <WeekCalendar date_from={dateFrom} snippets={docs} selectedDate={selectedDate!} setSelectedDate={setSelectedDate} loading={loading} />
+      <Image src={"/chevron-right.svg"} alt={""} width={30} height={30} onClick={async () => {
         setLoading(true);
         const newDate = new Date(dateFrom);
         newDate.setDate(newDate.getDate() + 7);
@@ -86,7 +84,7 @@ const SnippetsPage = () => {
         const {date_from, date_to} = weekDates(formatDate(newDate)!);
         if (date_from != null && date_to != null) {
           const snippetResult = await fetchSnippet(date_from, date_to);
-          setSnippets(snippetResult);
+          setDocs(snippetResult);
           setSelectedDate(date_from);
           setLoading(false);
         }
@@ -95,9 +93,9 @@ const SnippetsPage = () => {
     <div className={"flex space-x-5 justify-center w-full"}>
       {
         !loading
-        ? snippets.filter((f) => f.snippet_date == selectedDate).length != 0
-          ? snippets.filter((f) => f.snippet_date == selectedDate).map((snippet: Snippet, i) => <div key={i} className={"h-fit"}>
-            <SnippetBlock snippet={snippet}/>
+        ? docs.filter((f) => f.snippet_date == selectedDate).length != 0
+          ? docs.filter((f) => f.snippet_date == selectedDate).map((snippet: Snippet, i) => <div key={i} className={"h-fit"}>
+            <HealthchecksBlock snippet={snippet}/>
           </div>)
           : <motion.div
             initial={{ opacity: 0, translateY: 20 }}
@@ -126,7 +124,7 @@ const WeekCalendar = ({ date_from, snippets, selectedDate, setSelectedDate, load
         const date = new Date(date_from);
         date.setDate(date.getDate() + i);
         const daySnippets = snippets.filter((f)=>f.snippet_date == formatDate(date));
-        return <div key={date.getDate()} className={"cursor-pointer flex flex-col space-y-2.5 items-center"} onClick={() => setSelectedDate(formatDate(date)!)}>
+        return <div key={date.getDate()} className={"flex flex-col space-y-2.5 items-center"} onClick={() => setSelectedDate(formatDate(date)!)}>
           <div className={`flex w-full h-10 rounded-lg font-semibold text-lg space-x-2.5 items-center justify-center ${formatDate(date) == selectedDate ? daySnippets.length == 0 ? "bg-gray-400" : daySnippets.length == 3 ? "bg-green-500" : "bg-yellow-500" : daySnippets.length == 0 ? "bg-gray-100" : daySnippets.length == 3 ? "bg-green-100" : "bg-yellow-100"}`}>
             {
               !loading
@@ -146,13 +144,13 @@ const WeekCalendar = ({ date_from, snippets, selectedDate, setSelectedDate, load
   </div>
 }
 
-export default SnippetsPage;
+export default HealthchecksPage;
 
-type snippetBlockType = {
+type healthcheckBlockType = {
   snippet: Snippet;
 }
 
-const SnippetBlock = ({ snippet }: snippetBlockType) => {
+const HealthchecksBlock = ({ snippet }: healthcheckBlockType) => {
 
   return <div className={"w-full md:w-[30vw] h-fit md:max-h-full overflow-y-scroll border-[1px] bg-white border-gray-200 rounded-2xl flex flex-col p-10"}>
     <p className={"font-bold text-xl"}>{snippet.full_name}</p>

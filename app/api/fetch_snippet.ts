@@ -1,9 +1,8 @@
 async function fetchSnippet(dateFrom: string, dateTo: string) {
-  const res = await fetch("https://notion-daily.onrender.com/fetch_snippet?date_from=" + dateFrom + "&date_to=" + dateTo, {
+  const data = await fetch("https://n8n.1000.school/webhook/ae38a67a-6dbd-4404-8a54-74c565b1868e?api_id="+process.env.NEXT_PUBLIC_SNIPPET_API_ID as string + "&date_from=" + dateFrom + "&date_to=" + dateTo, {
     method: "GET",
-    headers: { "Content-Type": "application/json", "Api-Key": process.env.NEXT_PUBLIC_API_KEY as string, },
-  });
-  return await res.json();
+  })
+  return (await data.json())[0].snippets;
 }
 
 export default fetchSnippet;

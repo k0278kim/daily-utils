@@ -15,6 +15,8 @@ import TextButton from "@/components/TextButton";
 import {motion} from "framer-motion";
 import LoadOrLogin from "@/components/LoadOrLogin";
 import IconButton from "@/components/IconButton";
+import {useRouter} from "next/navigation";
+import {snippetDriveId} from "@/app/data/drive_id";
 
 const DailyEdit = () => {
   const template = `### What
@@ -41,7 +43,7 @@ const DailyEdit = () => {
   const [editorDisabled, setEditorDisabled] = useState(true);
   const [loadOverflow, setLoadOverflow] = useState(false);
 
-  const snippetDriveId = "1ez6X_PnNC2Jaa-VcN6wEo_OikZQ-WbXC";
+  const router = useRouter();
 
   const onSnippetChange = (str: string) => {
     setSnippetContent(str);
@@ -153,9 +155,16 @@ const DailyEdit = () => {
                 setSubmitText("Google Drive에 파일 업로드 중")
                 await driveUploadFile(snippetDriveId, `${selectedDate!}_${session?.user?.name}`, snippetContent);
                 setSubmitText("업로드 완료");
+                setTimeout(() => {
+                  setIsUploading(false);
+                }, 1000);
+                router.push("/healthcheck_edit")
               } else {
                 setSubmitText("이미 업로드가 되어 있어요");
                 setEditorDisabled(true);
+                setTimeout(() => {
+                  setIsUploading(false);
+                }, 1000);
               }
               if (myDriveList.length == 0) {
                 setSubmitText("Google Drive에 파일이 업로드되어 있지 않아서 업로드하고 있어요")
@@ -169,10 +178,10 @@ const DailyEdit = () => {
                 });
                 setSubmitText("업로드 완료");
                 setEditorDisabled(true);
+                setTimeout(() => {
+                  setIsUploading(false);
+                }, 1000);
               }
-              setTimeout(() => {
-                setIsUploading(false);
-              }, 1000);
             }
           }}>{ isUploading ? <div className={"flex space-x-2.5"}>
             <div className={"w-5 aspect-square"}><CircularLoader/></div>

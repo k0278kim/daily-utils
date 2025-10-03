@@ -15,6 +15,8 @@ import TextButton from "@/components/TextButton";
 import {motion} from "framer-motion";
 import LoadOrLogin from "@/components/LoadOrLogin";
 import IconButton from "@/components/IconButton";
+import {useRouter} from "next/navigation";
+import {healthcheckDriveId} from "@/app/data/drive_id";
 
 const DailyHealthcheckEdit = () => {
   const template = `1점 : 팀 나가겠습니다
@@ -62,10 +64,12 @@ const DailyHealthcheckEdit = () => {
   const [snippets, setSnippets] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [loadStatus, setLoadStatus] = useState(false);
-  const [editorDisabled, setEditorDisabled] = useState(true);
   const [loadOverflow, setLoadOverflow] = useState(false);
 
-  const healthcheckDriveId = "1CJaV0aGo_5xkQg6tCIca8VYb6WLE4ja-";
+  const router = useRouter();
+
+
+
 
   const onSnippetChange = (str: string) => {
     setSnippetContent(str);
@@ -92,8 +96,6 @@ const DailyHealthcheckEdit = () => {
           const snip: Snippet[] = res.filter((sn: Snippet) => sn.snippet_date == selectedDate);
           if (snip.length == 1) {
             setSnippetContent(snip[0].content);
-          } else {
-            setEditorDisabled(false);
           }
           setLoadStatus(true);
         });
@@ -125,9 +127,7 @@ const DailyHealthcheckEdit = () => {
                     setSelectedDate(date!);
                     if (snippet.length == 1) {
                       setSnippetContent(snippet[0].content);
-                      setEditorDisabled(true);
                     } else {
-                      setEditorDisabled(false);
                       setSnippetContent(template);
                     }
                   }
@@ -147,17 +147,15 @@ const DailyHealthcheckEdit = () => {
           }
         </div>
         <div className={"flex space-x-2.5 flex-1 justify-end"}>
-          { !editorDisabled && <IconTextButton src={"/arrow-path.svg"} text={"초기화"} onClick={() => {
+          <IconTextButton src={"/arrow-path.svg"} text={"초기화"} onClick={() => {
             const confirm = window.confirm("작성하시던 내용을 초기화하시겠습니까?");
             if (confirm) {
               setSnippetContent(template);
             }
-          }} />}
+          }} />
           {/*<IconTextButton src={"/arrow-up-right.svg"} text={"Snippet 조회하기"} onClick={() => location.href="/snippets"} />*/}
-          {/*<IconTextButton src={"/arrow-up-right.svg"} text={"Daily Snippet"} onClick={() => { window.open("https://daily.1000.school")}} />*/}
           <button className={`rounded-lg font-semibold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
             if (!isUploading && session?.user?.email != "") {
-              setEditorDisabled(true);
               const email = session?.user?.email as string;
               setIsUploading(true);
               const myDriveList = (await driveGetFile(healthcheckDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${email}`);
@@ -174,20 +172,20 @@ const DailyHealthcheckEdit = () => {
               setSubmitText("업로드 완료");
               setTimeout(() => {
                 setIsUploading(false);
-              }, 1000);
-
+                router.push("/");
+              }, 2000);
             }
           }}>{ isUploading ? <div className={"flex space-x-2.5"}>
             <div className={"w-5 aspect-square"}><CircularLoader/></div>
             <p>{submitText}</p>
-          </div> : editorDisabled ? "Google Drive 업로드 확인하기" : "발행하기" }</button>
+          </div> : "Google Drive에 업로드"}</button>
         </div>
       </div>
       <div className={"flex-1 relative"}>
         <div className={"absolute w-full h-full flex items-end justify-center bg-gray-800/40 rounded-md"}>
           <div className={"bg-black rounded-md p-5 mb-10 text-white"}>입력할 수 없어요</div>
         </div>
-        <HealthcheckEditor content={snippetContent} onSnippetChange={onSnippetChange} editorDisabled={editorDisabled} />
+        <HealthcheckEditor content={snippetContent} onSnippetChange={onSnippetChange} />
       </div>
     </div>
   </div>
@@ -196,12 +194,11 @@ const DailyHealthcheckEdit = () => {
 type healthcheckEditorType = {
   content: string,
   onSnippetChange: (value: string) => void;
-  editorDisabled: boolean;
 }
 
-const HealthcheckEditor = ({ content, onSnippetChange, editorDisabled }: healthcheckEditorType) => {
-  return <div className={`w-full h-full border-[1px] border-gray-300 rounded-2xl ${editorDisabled ? "opacity-30" : ""}`}>
-    <Editor content={content} contentChange={onSnippetChange} disabled={editorDisabled} />
+const HealthcheckEditor = ({ content, onSnippetChange }: healthcheckEditorType) => {
+  return <div className={`w-full h-full border-[1px] border-gray-300 rounded-2xl`}>
+    <Editor content={content} contentChange={onSnippetChange} disabled={false} />
   </div>
 }
 
