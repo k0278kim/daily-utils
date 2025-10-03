@@ -35,7 +35,7 @@ const PraisesPage = () => {
         console.log(praisesRes);
         setPraises(praisesRes.sort((a, b) => (new Date(b.created_at)).getTime() - (new Date(a.created_at).getTime())));
         const email = session?.user?.email;
-        if (email) {
+        if (email && !me) {
           const me = await fetchUserByEmail(email);
           setMe(me[0]);
           setSelectedUser(me[0])
@@ -55,7 +55,7 @@ const PraisesPage = () => {
         <div className={"font-black text-2xl mt-5 mb-5"}>칭찬 챌린지</div>
         <IconTextButton src={"/plus.svg"} text={"칭찬하기"} onClick={() => setAddPraiseOverlay(true)} darkmode={true} />
         <div className={"flex flex-col"}>{
-          users.map((user: User) => <UserBlock key={user.email} user={user} selectedUser={selectedUser ? selectedUser : me} setSelectedUser={setSelectedUser} />)
+          users.map((user: User) => <UserBlock key={user.email} user={user} selectedUser={selectedUser ? selectedUser : me} setSelectedUser={setSelectedUser} praisesNumber={praises.filter((praise) => praise.praise_to.email == user.email).length} />)
         }</div>
       </div>
       <div className={`ml-72 flex-1 w-full h-full bg-gray-900 flex justify-center overflow-y-scroll duration-500 ${addPraiseOverlay ? "rounded-r-4xl" : ""}`}>{
@@ -69,7 +69,7 @@ const PraisesPage = () => {
             : <motion.div
               initial={{ opacity: 0, translateY: 20 }}
               animate={{ opacity: 1, translateY: 0 }}
-              className={"text-gray-500 font-semibold text-2xl items-center"}>아직 받은 칭찬이 없어요.</motion.div>
+              className={"text-gray-500 font-semibold text-2xl items-center h-full flex justify-center"}>아직 받은 칭찬이 없어요.</motion.div>
           : <motion.div className={"w-10 aspect-square"} layoutId={"circular"}>
             <CircularLoader />
           </motion.div>
@@ -82,15 +82,17 @@ const PraisesPage = () => {
 type userBlockType = {
   user: User,
   selectedUser: User | undefined,
-  setSelectedUser: (user: User) => void
+  setSelectedUser: (user: User) => void,
+  praisesNumber: number
 }
-const UserBlock = ({ user, selectedUser, setSelectedUser }: userBlockType) => {
+const UserBlock = ({ user, selectedUser, setSelectedUser, praisesNumber }: userBlockType) => {
   console.log(selectedUser);
-  return <div className={`cursor-pointer w-full h-fit p-3 rounded-lg hover:bg-gray-700 ${selectedUser?.uuid === user.uuid ? "bg-gray-700" : ""}`} onClick={() => setSelectedUser(user)}>
+  return <div className={`flex items-center justify-between cursor-pointer w-full h-fit p-3 rounded-lg hover:bg-gray-700 ${selectedUser?.uuid === user.uuid ? "bg-gray-700" : ""}`} onClick={() => setSelectedUser(user)}>
     <div className={"flex flex-col"}>
       <p className={"font-semibold"}>{user.name}</p>
       <p className={"text-gray-400 text-sm"}>{user.nickname}</p>
     </div>
+    <div className={`w-7 h-7 flex items-center justify-center text-white/70 font-bold rounded-full ${selectedUser?.uuid == user.uuid ? "bg-gray-800" : "bg-gray-700"}`}>{praisesNumber}</div>
   </div>
 }
 
@@ -217,7 +219,7 @@ const AddPraiseOverlay = ({ setPraises, praiseFromEmail, setAddPraiseOverlay, me
                       }));
                     }
                   })} defaultValue={praiseTo?.name} onKeyDown={nameKeyPress} />
-                  <IconButton src={"/check.svg"} onClick={() => {
+                  <IconTextButton text={"등록"} src={"/check.svg"} onClick={() => {
                     if (searchUsers.length == 1) {
                       if (editString == "") {
                         setPraiseTo(null);

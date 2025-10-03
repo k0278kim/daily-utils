@@ -49,6 +49,9 @@ export default function Page() {
               <TextButton onClick={() => {
                 location.href = "/snippets"
               }} text={"Snippet 조회하기"}></TextButton>
+            <TextButton onClick={() => {
+              location.href = "/praises"
+            }} text={"칭찬 챌린지"}></TextButton>
               <TextButton onClick={() => {
                 signOut();
                 setUser(null);
