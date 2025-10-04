@@ -2,19 +2,14 @@
 import React, {useEffect, useState} from "react";
 import Editor from "@/components/MdEditor";
 import formatDate from "@/lib/utils/format_date";
-import fetchSnippet from "@/app/api/fetch_snippet";
 import {Snippet} from "@/model/snippet";
-import addSnippet from "@/app/api/add_snippet";
 import CircularLoader from "@/components/CircularLoader";
 import IconTextButton from "@/components/IconTextButton";
 import {driveUploadFile} from "@/app/api/drive_upload_file";
 import {signIn, useSession} from "next-auth/react";
 import {driveGetFile} from "@/app/api/drive_get_file";
 import {driveDeleteFile} from "@/app/api/drive_delete_file";
-import TextButton from "@/components/TextButton";
-import {motion} from "framer-motion";
 import LoadOrLogin from "@/components/LoadOrLogin";
-import IconButton from "@/components/IconButton";
 import {useRouter} from "next/navigation";
 import {healthcheckDriveId} from "@/app/data/drive_id";
 
@@ -67,9 +62,6 @@ const DailyHealthcheckEdit = () => {
   const [loadOverflow, setLoadOverflow] = useState(false);
 
   const router = useRouter();
-
-
-
 
   const onSnippetChange = (str: string) => {
     setSnippetContent(str);

@@ -92,7 +92,7 @@ const SnippetsPage = () => {
         }
       }} />
     </div>
-    <div className={"flex space-x-5 justify-center w-full"}>
+    <div className={"flex space-x-5 justify-center w-full scrollbar-hide"}>
       {
         !loading
         ? snippets.filter((f) => f.snippet_date == selectedDate).length != 0
@@ -154,7 +154,7 @@ type snippetBlockType = {
 
 const SnippetBlock = ({ snippet }: snippetBlockType) => {
 
-  return <div className={"w-full md:w-[30vw] h-fit md:max-h-full overflow-y-scroll border-[1px] bg-white border-gray-200 rounded-2xl flex flex-col p-10"}>
+  return <div className={"w-full md:w-[30vw] h-fit md:max-h-full border-[1px] bg-white border-gray-200 rounded-2xl flex flex-col p-10"}>
     <p className={"font-bold text-xl"}>{snippet.full_name}</p>
     <p>{snippet.user_email}</p>
     <div className={"text-sm mt-5 p-3 rounded-lg bg-gray-100 text-gray-700"}>
