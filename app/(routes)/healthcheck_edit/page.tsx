@@ -146,6 +146,23 @@ const DailyHealthcheckEdit = () => {
             }
           }} />
           {/*<IconTextButton src={"/arrow-up-right.svg"} text={"Snippet 조회하기"} onClick={() => location.href="/snippets"} />*/}
+          <IconTextButton src={"/globe.svg"} text={"임시저장"} onClick={() => {
+            const confirm = window.confirm("지금 상태로 헬스체크를 임시저장할까요?");
+            if (confirm) {
+              window.localStorage.setItem(`healthcheck__tempsave__${selectedDate!}`, snippetContent);
+            }
+          }} />
+          <IconTextButton src={"/globe.svg"} text={"임시저장 불러오기"} onClick={() => {
+            const result = window.localStorage.getItem(`healthcheck__tempsave__${selectedDate!}`);
+            if (result) {
+              const confirm = window.confirm("임시저장한 헬스체크를 불러올까요?");
+              if (confirm) {
+                setSnippetContent(result!);
+              }
+            } else {
+              window.alert("임시저장한 헬스체크가 없어요.");
+            }
+          }} />
           <button className={`rounded-lg font-semibold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
             if (!isUploading && session?.user?.email != "") {
               const email = session?.user?.email as string;
@@ -162,6 +179,7 @@ const DailyHealthcheckEdit = () => {
               setSubmitText("Google Drive에 파일 업로드 중")
               await driveUploadFile(healthcheckDriveId, `${selectedDate!}_${email}`, snippetContent);
               setSubmitText("업로드 완료");
+              window.localStorage.removeItem(`healthcheck__tempsave__${selectedDate!}`);
               setTimeout(() => {
                 setIsUploading(false);
                 router.push("/");

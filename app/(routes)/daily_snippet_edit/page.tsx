@@ -4,17 +4,14 @@ import Editor from "@/components/MdEditor";
 import formatDate from "@/lib/utils/format_date";
 import fetchSnippet from "@/app/api/fetch_snippet";
 import {Snippet} from "@/model/snippet";
-import addSnippet from "@/app/api/add_snippet";
+import {addSnippet} from "@/app/api/snippet/add_snippet/add_snippet";
 import CircularLoader from "@/components/CircularLoader";
 import IconTextButton from "@/components/IconTextButton";
 import {driveUploadFile} from "@/app/api/drive_upload_file";
 import {signIn, useSession} from "next-auth/react";
 import {driveGetFile} from "@/app/api/drive_get_file";
 import {driveDeleteFile} from "@/app/api/drive_delete_file";
-import TextButton from "@/components/TextButton";
-import {motion} from "framer-motion";
 import LoadOrLogin from "@/components/LoadOrLogin";
-import IconButton from "@/components/IconButton";
 import {useRouter} from "next/navigation";
 import {snippetDriveId} from "@/app/data/drive_id";
 
@@ -138,13 +135,30 @@ const DailyEdit = () => {
           }} />}
           <IconTextButton src={"/arrow-up-right.svg"} text={"Snippet 조회하기"} onClick={() => location.href="/snippets"} />
           <IconTextButton src={"/arrow-up-right.svg"} text={"Daily Snippet"} onClick={() => { window.open("https://daily.1000.school")}} />
+          <IconTextButton src={"/globe.svg"} text={"임시저장"} onClick={() => {
+            const confirm = window.confirm("지금 상태로 스니펫을 임시저장할까요?");
+            if (confirm) {
+              window.localStorage.setItem(`snippet__tempsave__${selectedDate!}`, snippetContent);
+            }
+          }} />
+          <IconTextButton src={"/globe.svg"} text={"임시저장 불러오기"} onClick={() => {
+            const result = window.localStorage.getItem(`snippet__tempsave__${selectedDate!}`);
+            if (result) {
+              const confirm = window.confirm("임시저장한 스니펫을 불러올까요?");
+              if (confirm) {
+                setSnippetContent(result!);
+              }
+            } else {
+              window.alert("임시저장한 스니펫이 없어요.");
+            }
+          }} />
           <button className={`rounded-lg font-semibold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
             if (!isUploading && session?.user?.email != "") {
               setEditorDisabled(true);
               const email = session?.user?.email as string;
               setIsUploading(true);
               setSubmitText("Daily Snippet 채널에 업로드가 가능한지 확인 중")
-              const result = await addSnippet(email, selectedDate!, snippetContent);
+              const result = (await addSnippet(email, selectedDate!, snippetContent)).received;
               const myDriveList = (await driveGetFile(snippetDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${session?.user?.name}`);
               if (result.length == 1) {
                 setSnippets(await getMySnippets(session?.user?.email as string));
@@ -155,6 +169,7 @@ const DailyEdit = () => {
                 setSubmitText("Google Drive에 파일 업로드 중")
                 await driveUploadFile(snippetDriveId, `${selectedDate!}_${session?.user?.name}`, snippetContent);
                 setSubmitText("업로드 완료");
+                window.localStorage.removeItem(`snippet__tempsave__${selectedDate!}`);
                 setTimeout(() => {
                   setIsUploading(false);
                 }, 1000);
