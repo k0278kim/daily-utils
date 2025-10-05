@@ -3,7 +3,7 @@
 import {useEffect, useState} from "react";
 import formatDate from "@/lib/utils/format_date";
 import {Notion} from "@/model/notion";
-import addSnippet from "@/app/api/add_snippet";
+import {addSnippet} from "@/app/api/snippet/add_snippet/add_snippet";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {AnimatePresence, motion} from "framer-motion";
