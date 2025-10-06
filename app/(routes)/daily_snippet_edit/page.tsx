@@ -82,6 +82,9 @@ const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) => {
           setLoadStatus(true);
         });
       }
+      if (!isUploading) {
+        setEditorDisabled(false);
+      }
     })();
 
   }, [session]);

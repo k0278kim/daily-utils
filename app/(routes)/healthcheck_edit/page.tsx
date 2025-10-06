@@ -12,29 +12,11 @@ import {driveDeleteFile} from "@/app/api/drive_delete_file";
 import LoadOrLogin from "@/components/LoadOrLogin";
 import {useRouter} from "next/navigation";
 import {healthcheckDriveId} from "@/app/data/drive_id";
+import {DriveFolder} from "@/model/driveFolder";
+import {driveGetFile} from "@/app/api/drive_get_file";
 
 const DailyHealthcheckEdit = () => {
-  const template = `1점 : 팀 나가겠습니다
-  
-2점 : 샤갈 장난치냐?
-
-3점 : 욕 나오기 직전이야
-
-4점 : 오늘 좀 아쉬웠어
-
-5점 : 무난무난 잘 흘러 갔어.
-
-6점 : 오늘 좋았어! 
-
-7점 : 오늘 행복했어! 진짜 일기장에 적어두고 싶어
-
-8점 : 진짜 말 안됨. 평생 기억에 남을 거야
-
-9점 : 진짜 우리팀 투자 받음. 교수님한테 컨택 받거나 뭐 쨌든 미쳤음
-
-10점 : 하룰랄라
-
-### Fun(재밌었는가?)
+  const template = `### Fun(재밌었는가?)
 - 
 
 ### Pawn or Players(시켜서 했는가? 능동적으로 했는가?)
@@ -54,17 +36,18 @@ const DailyHealthcheckEdit = () => {
 `;
   const { data: session } = useSession();
   const [submitText, setSubmitText] = useState<string>("발행하기");
-  const [snippetContent, setSnippetContent] = useState(template);
+  const [checkContent, setCheckContent] = useState(template);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
-  const [snippets, setSnippets] = useState([]);
+  const [healthchecks, setHealthchecks] = useState<DriveFolder[] | []>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [loadStatus, setLoadStatus] = useState(false);
   const [loadOverflow, setLoadOverflow] = useState(false);
+  const [disabled, setDisabled] = useState<boolean>(false);
 
   const router = useRouter();
 
-  const onSnippetChange = (str: string) => {
-    setSnippetContent(str);
+  const onContentChange = (str: string) => {
+    setCheckContent(str);
   }
 
   const dailySnippetAvailableDate = () => {
@@ -80,17 +63,22 @@ const DailyHealthcheckEdit = () => {
 
   useEffect(() => {
     setLoadStatus(false);
+    setDisabled(true);
     (async() => {
       if (session) {
-        await driveGetFolder(healthcheckDriveId).then((res) => {
-          setSnippets(res);
-          console.log(res);
-          const snip: Snippet[] = res.filter((sn: Snippet) => sn.snippet_date == selectedDate);
-          if (snip.length == 1) {
-            setSnippetContent(snip[0].content);
+        await driveGetFolder(healthcheckDriveId).then(async (res: DriveFolder[]) => {
+          const filtered = res.filter((r) => r.name == `${selectedDate}_${session?.user?.email}`)
+          setHealthchecks(filtered);
+          console.log(filtered);
+          const fold: DriveFolder[] = res.filter((df: DriveFolder) => df.name.split("_")[0] == selectedDate);
+          if (fold.length == 1) {
+            setCheckContent(await driveGetFile(session?.accessToken, fold[0].id));
           }
           setLoadStatus(true);
         });
+      }
+      if (!isUploading) {
+        setDisabled(false);
       }
     })();
 
@@ -111,16 +99,16 @@ const DailyHealthcheckEdit = () => {
           {
             dailySnippetAvailableDate().map((date) => {
               const dateSplit = date!.split("-");
-              const snippet: Snippet[] = snippets.filter((snip: Snippet) => snip.snippet_date == date);
+              const fold: DriveFolder[] = healthchecks.filter((df: DriveFolder) => df.name.split("_")[0] == date);
               return <button
                 key={date}
-                onClick={() => {
+                onClick={async () => {
                   if (loadStatus) {
                     setSelectedDate(date!);
-                    if (snippet.length == 1) {
-                      setSnippetContent(snippet[0].content);
+                    if (fold.length == 1) {
+                      setCheckContent(await driveGetFile(session?.accessToken, fold[0].id));
                     } else {
-                      setSnippetContent(template);
+                      setCheckContent(template);
                     }
                   }
                 }}
@@ -130,7 +118,7 @@ const DailyHealthcheckEdit = () => {
                 {
                   isUploading || !loadStatus
                     ? <div className={"w-4 aspect-square"}><CircularLoader/></div>
-                    : <div className={`w-2 aspect-square rounded-full ${snippet.length == 1 ? "bg-green-500" : "bg-gray-400"}`}></div>
+                    : <div className={`w-2 aspect-square rounded-full ${healthchecks.length == 1 ? "bg-green-500" : "bg-gray-400"}`}></div>
                 }
                 </div>
 
@@ -142,14 +130,14 @@ const DailyHealthcheckEdit = () => {
           <IconTextButton src={"/arrow-path.svg"} text={"초기화"} onClick={() => {
             const confirm = window.confirm("작성하시던 내용을 초기화하시겠습니까?");
             if (confirm) {
-              setSnippetContent(template);
+              setCheckContent(template);
             }
           }} />
           {/*<IconTextButton src={"/arrow-up-right.svg"} text={"Snippet 조회하기"} onClick={() => location.href="/snippets"} />*/}
           <IconTextButton src={"/globe.svg"} text={"임시저장"} onClick={() => {
             const confirm = window.confirm("지금 상태로 헬스체크를 임시저장할까요?");
             if (confirm) {
-              window.localStorage.setItem(`healthcheck__tempsave__${selectedDate!}`, snippetContent);
+              window.localStorage.setItem(`healthcheck__tempsave__${selectedDate!}`, checkContent);
             }
           }} />
           <IconTextButton src={"/globe.svg"} text={"임시저장 불러오기"} onClick={() => {
@@ -157,7 +145,7 @@ const DailyHealthcheckEdit = () => {
             if (result) {
               const confirm = window.confirm("임시저장한 헬스체크를 불러올까요?");
               if (confirm) {
-                setSnippetContent(result!);
+                setCheckContent(result!);
               }
             } else {
               window.alert("임시저장한 헬스체크가 없어요.");
@@ -165,6 +153,7 @@ const DailyHealthcheckEdit = () => {
           }} />
           <button className={`text-sm rounded-lg font-semibold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
             if (!isUploading && session?.user?.email != "") {
+              setDisabled(true);
               const email = session?.user?.email as string;
               setIsUploading(true);
               const myDriveList = (await driveGetFolder(healthcheckDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${email}`);
@@ -177,12 +166,13 @@ const DailyHealthcheckEdit = () => {
                 }
               }
               setSubmitText("Google Drive에 파일 업로드 중")
-              await driveUploadFile(healthcheckDriveId, `${selectedDate!}_${email}`, snippetContent);
+              await driveUploadFile(healthcheckDriveId, `${selectedDate!}_${email}`, checkContent);
               setSubmitText("업로드 완료");
               window.localStorage.removeItem(`healthcheck__tempsave__${selectedDate!}`);
+              setDisabled(false);
               setTimeout(() => {
                 setIsUploading(false);
-                router.push("/");
+                setSubmitText("업로드 시작");
               }, 2000);
             }
           }}>{ isUploading ? <div className={"flex space-x-2.5"}>
@@ -195,7 +185,7 @@ const DailyHealthcheckEdit = () => {
         <div className={"absolute w-full h-full flex items-end justify-center bg-gray-800/40 rounded-md"}>
           <div className={"bg-black rounded-md p-5 mb-10 text-white"}>입력할 수 없어요</div>
         </div>
-        <HealthcheckEditor content={snippetContent} onSnippetChange={onSnippetChange} />
+        <HealthcheckEditor content={checkContent} onSnippetChange={onContentChange} disabled={disabled} />
       </div>
     </div>
   </div>
@@ -204,11 +194,12 @@ const DailyHealthcheckEdit = () => {
 type healthcheckEditorType = {
   content: string,
   onSnippetChange: (value: string) => void;
+  disabled: boolean;
 }
 
-const HealthcheckEditor = ({ content, onSnippetChange }: healthcheckEditorType) => {
-  return <div className={`w-full h-full border-[1px] border-gray-300 rounded-2xl`}>
-    <Editor content={content} contentChange={onSnippetChange} disabled={false} />
+const HealthcheckEditor = ({ content, onSnippetChange, disabled }: healthcheckEditorType) => {
+  return <div className={`w-full h-full border-[1px] border-gray-300 rounded-2xl ${disabled ? "opacity-30" : ""}`}>
+    <Editor content={content} contentChange={onSnippetChange} disabled={disabled} />
   </div>
 }
 
