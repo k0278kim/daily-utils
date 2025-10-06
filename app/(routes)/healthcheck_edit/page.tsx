@@ -104,8 +104,8 @@ const DailyHealthcheckEdit = () => {
 
   if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
 
-  return <div className={"w-screen h-screen bg-gray-100"}>
-    <div className={"flex flex-col md:p-20 h-full space-y-10"}>
+  return <div className={"w-full h-full bg-gray-100"}>
+    <div className={"flex flex-col p-10 h-full space-y-10"}>
       <div className={"flex h-12"}>
         <div className={"flex space-x-2.5"}>
           {
@@ -124,7 +124,7 @@ const DailyHealthcheckEdit = () => {
                     }
                   }
                 }}
-                className={`flex items-center space-x-2.5 rounded-lg p-3 border-[1px] cursor-pointer ${!loadStatus ? "bg-gray-200 text-gray-500" : selectedDate == date ? "bg-white border-gray-200" : "border-transparent text-gray-600"} font-bold`}>
+                className={`text-sm flex items-center space-x-2.5 rounded-lg p-3 border-[1px] cursor-pointer ${!loadStatus ? "bg-gray-200 text-gray-500" : selectedDate == date ? "bg-white border-gray-200" : "border-transparent text-gray-600"} font-bold`}>
                 <p>{`${dateSplit[0]}년 ${dateSplit[1]}월 ${dateSplit[2]}일`}</p>
                 <div className={"w-4 aspect-square flex items-center justify-center"}>
                 {
@@ -163,7 +163,7 @@ const DailyHealthcheckEdit = () => {
               window.alert("임시저장한 헬스체크가 없어요.");
             }
           }} />
-          <button className={`rounded-lg font-semibold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
+          <button className={`text-sm rounded-lg font-semibold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
             if (!isUploading && session?.user?.email != "") {
               const email = session?.user?.email as string;
               setIsUploading(true);

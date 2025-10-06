@@ -10,7 +10,7 @@ type iconTextButtonType = {
 }
 
 const IconTextButton = ({src, text, onClick, darkmode, className}: iconTextButtonType) => {
-  return <motion.button className={`cursor-pointer w-fit min-h-10 px-2.5 space-x-2.5 flex items-center justify-center rounded-lg font-semibold border-[1px] 
+  return <motion.button className={`text-sm cursor-pointer w-fit min-h-10 px-2.5 space-x-2.5 flex items-center justify-center rounded-lg font-semibold border-[1px] 
     ${!darkmode
       ? "bg-white hover:bg-gray-100 active:bg-gray-200 border-gray-300"
       : "bg-gray-800 hover:bg-gray-700 active:bg-gray-600 border-gray-700"

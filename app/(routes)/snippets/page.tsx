@@ -57,13 +57,13 @@ const SnippetsPage = () => {
   }, []);
 
   if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
-  return <div className={"w-screen h-fit min-h-screen bg-gray-100 flex flex-col py-32"}>
-    <div className={"fixed w-full bottom-10 flex justify-center"}>
-      <div className={"p-5 rounded-xl w-fit bg-gray-800 text-white font-bold cursor-pointer"} onClick={() => location.href="/daily_snippet_edit"}>
-        Daily Snippet 작성
-      </div>
-    </div>
-    <div className={"fixed top-0 w-screen flex justify-center bg-white p-5 border-b-[1px] border-b-gray-200 space-x-5"}>
+  return <div className={"w-full h-fit min-h-screen bg-gray-100 flex flex-col py-32"}>
+    {/*<div className={"fixed w-full bottom-10 flex justify-center"}>*/}
+    {/*  <div className={"p-5 rounded-xl w-fit bg-gray-800 text-white font-bold cursor-pointer"} onClick={() => location.href="/daily_edit"}>*/}
+    {/*    Daily Snippet 작성*/}
+    {/*  </div>*/}
+    {/*</div>*/}
+    <div className={"fixed top-0 w-full flex justify-center bg-white p-5 border-b-[1px] border-b-gray-200 space-x-5"}>
       <Image src={"/chevron-left.svg"} alt={""} width={30} height={30} className={"cursor-pointer"} onClick={async () => {
         setLoading(true);
         const newDate = new Date(dateFrom);

@@ -17,6 +17,7 @@ import {addPraise} from "@/app/actions/addPraise";
 import {roundTransition} from "@/app/transition/round_transition";
 import {easeInOutTranstion} from "@/app/transition/ease_transition";
 import _ from "lodash";
+import LoadOrLogin from "@/components/LoadOrLogin";
 
 const PraisesPage = () => {
 
@@ -27,6 +28,7 @@ const PraisesPage = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [me, setMe] = useState<User>();
   const [myPraises, setMyPraises] = useState<Praise[]>([]);
+  const [loadOverflow, setLoadOverflow] = useState(false);
 
   useEffect(() => {
     (async() => {
@@ -56,18 +58,20 @@ const PraisesPage = () => {
     }
   }, [selectedUser, praises]);
 
-  return <div className={"w-screen h-screen flex relative bg-gray-900"}>
+  if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
+
+  return <div className={"w-full h-full flex relative bg-gray-900"}>
     <AnimatePresence>
     {
-      addPraiseOverlay && <motion.div className={`fixed flex w-screen h-screen items-center justify-center bg-black/20 z-20 duration-1000 ${addPraiseOverlay ? "backdrop-blur-xl" : ""}`} transition={roundTransition} exit={{ opacity: 0 }}>
+      addPraiseOverlay && <motion.div className={`fixed flex w-full h-full items-center justify-center bg-black/20 z-20 duration-1000 ${addPraiseOverlay ? "backdrop-blur-xl" : ""}`} transition={roundTransition} exit={{ opacity: 0 }}>
         <AddPraiseOverlay setPraises={setPraises} praiseFromEmail={session?.user?.email} setAddPraiseOverlay={setAddPraiseOverlay} me={me} setMe={setMe} />
       </motion.div>
     }
     </AnimatePresence>
-    <motion.div className={`z-0 w-screen h-screen flex relative duration-500 ${addPraiseOverlay ? "scale-90" : ""}`}>
+    <motion.div className={`z-0 w-full h-full flex relative duration-500 ${addPraiseOverlay ? "scale-90" : ""}`}>
       <div className={`z-50 w-72 h-full border-r-[1px] border-r-gray-800 p-3 flex flex-col space-y-5 text-white bg-gray-800 fixed left-0 duration-1000 ${addPraiseOverlay ? "rounded-l-4xl" : ""}`}>
         <div className={"mt-5 mb-5 mx-3"}>
-          <p className={"font-semibold text-2xl mb-5 text-gray-300"}>칭찬 챌린지</p>
+          {/*<p className={"font-semibold text-2xl mb-5 text-gray-300"}>칭찬 챌린지</p>*/}
           <IconTextButton src={"/plus.svg"} className={"text-gray-300"} text={"칭찬하기"} onClick={() => setAddPraiseOverlay(true)} darkmode={true} />
         </div>
         <div className={"flex flex-col"}>{
