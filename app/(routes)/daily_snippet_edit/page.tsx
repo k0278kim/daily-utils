@@ -9,7 +9,7 @@ import CircularLoader from "@/components/CircularLoader";
 import IconTextButton from "@/components/IconTextButton";
 import {driveUploadFile} from "@/app/api/drive_upload_file";
 import {signIn, useSession} from "next-auth/react";
-import {driveGetFile} from "@/app/api/drive_get_file";
+import {driveGetFolder} from "@/app/api/drive_get_folder";
 import {driveDeleteFile} from "@/app/api/drive_delete_file";
 import LoadOrLogin from "@/components/LoadOrLogin";
 import {useRouter} from "next/navigation";
@@ -163,7 +163,7 @@ const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) => {
               setIsUploading(true);
               setSubmitText("Daily Snippet 채널에 업로드가 가능한지 확인 중")
               const result = (await addSnippet(email, selectedDate!, snippetContent)).received;
-              const myDriveList = (await driveGetFile(snippetDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${session?.user?.name}`);
+              const myDriveList = (await driveGetFolder(snippetDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${session?.user?.name}`);
               if (result.length == 1) {
                 setSnippets(await getMySnippets(session?.user?.email as string));
                 setSubmitText("Google Drive에서 파일 정리 중")

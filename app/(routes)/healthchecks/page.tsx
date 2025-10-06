@@ -1,6 +1,6 @@
 "use client"
 
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {Snippet} from "@/model/snippet";
 import {useSession} from "next-auth/react";
 import LoadOrLogin from "@/components/LoadOrLogin";
@@ -11,15 +11,23 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import {driveGetFolder} from "@/app/api/drive_get_folder";
+import {healthcheckDriveId} from "@/app/data/drive_id";
+import {DriveFolder} from "@/model/driveFolder";
+import {driveGetFile} from "@/app/api/drive_get_file";
+import fetchUserByEmail from "@/app/api/team/user/get_user_by_email/fetch_user_by_email";
 
 const HealthchecksPage = () => {
 
   const {data: session} = useSession();
-  const [docs, setDocs] = useState<Snippet[]>([]);
+  const [docs, setDocs] = useState<DriveFolder[]>([]);
   const [dateFrom, setDateFrom] = useState("");
+  const [selectedDateDocs, setSelectedDateDocs] = useState<{email: string, date: string, content: string}[]>([]);
   const [loadOverflow, setLoadOverflow] = useState(false);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
   const [loading, setLoading] = useState(false);
+  const [fileLoading, setFileLoading] = useState(false);
+  const latestRequestId = useRef(0);
 
   const weekDates = (date: string) => {
     const today = new Date(date);
@@ -41,12 +49,35 @@ const HealthchecksPage = () => {
 
     (async() => {
       if (date_from != null && date_to != null) {
-        const snippetResult = await fetchSnippet(date_from, date_to);
-        setDocs(snippetResult);
+        const driveFiles:DriveFolder[] = await driveGetFolder(healthcheckDriveId);
+        console.log(driveFiles);
+        setDocs(driveFiles);
       }
     })();
 
   }, []);
+
+  useEffect(() => {
+    if (session) {
+      setFileLoading(true);
+      const requestId = ++latestRequestId.current;
+      const docsResult = [];
+      const filteredDocs = docs.filter((doc) => doc.name.split("_")[0] == selectedDate);
+      (async() => {
+        for await (const doc of filteredDocs) {
+          docsResult.push({
+            email: doc.name.split("_")[1],
+            date: doc.name.split("_")[0],
+            content: await driveGetFile(session?.accessToken, doc.id)
+          });
+        }
+        if (requestId === latestRequestId.current) {
+          setSelectedDateDocs(docsResult);
+          setFileLoading(false);
+        }
+      })();
+    }
+  }, [session, selectedDate, docs]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -55,52 +86,34 @@ const HealthchecksPage = () => {
   }, []);
 
   if (!session || docs.length == 0) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
-  return <div className={"w-screen h-fit min-h-screen bg-gray-100 flex flex-col py-32"}>
-    <div className={"fixed w-full bottom-10 flex justify-center"}>
-      <div className={"p-5 rounded-xl w-fit bg-gray-800 text-white font-bold cursor-pointer"} onClick={() => location.href="/daily_snippet_edit"}>
-        Daily Snippet 작성
-      </div>
-    </div>
-    <div className={"fixed top-0 w-screen flex justify-center bg-white p-5 border-b-[1px] border-b-gray-200 space-x-5"}>
+  return <div className={"w-screen min-h-full h-fit bg-gray-100 flex flex-col relative"}>
+    <div className={"sticky top-0 w-screen flex justify-center bg-white p-5 border-b-[1px] border-b-gray-200 space-x-5"}>
       <Image src={"/chevron-left.svg"} alt={""} width={30} height={30} onClick={async () => {
-        setLoading(true);
         const newDate = new Date(dateFrom);
         newDate.setDate(newDate.getDate() - 7);
         setDateFrom(formatDate(newDate)!);
-        const {date_from, date_to} = weekDates(formatDate(newDate)!);
-        if (date_from != null && date_to != null) {
-          const snippetResult = await fetchSnippet(date_from, date_to);
-          setDocs(snippetResult);
-          setSelectedDate(date_from);
-          setLoading(false);
-        }
       }} />
-      <WeekCalendar date_from={dateFrom} snippets={docs} selectedDate={selectedDate!} setSelectedDate={setSelectedDate} loading={loading} />
+      <WeekCalendar date_from={dateFrom} docs={docs} selectedDate={selectedDate!} setSelectedDate={setSelectedDate} loading={loading} />
       <Image src={"/chevron-right.svg"} alt={""} width={30} height={30} onClick={async () => {
-        setLoading(true);
         const newDate = new Date(dateFrom);
         newDate.setDate(newDate.getDate() + 7);
         setDateFrom(formatDate(newDate)!);
-        const {date_from, date_to} = weekDates(formatDate(newDate)!);
-        if (date_from != null && date_to != null) {
-          const snippetResult = await fetchSnippet(date_from, date_to);
-          setDocs(snippetResult);
-          setSelectedDate(date_from);
-          setLoading(false);
-        }
       }} />
     </div>
-    <div className={"flex space-x-5 justify-center w-full"}>
+    <div className={"flex space-x-5 justify-center w-full py-5 flex-1"}>
       {
-        !loading
-        ? docs.filter((f) => f.snippet_date == selectedDate).length != 0
-          ? docs.filter((f) => f.snippet_date == selectedDate).map((snippet: Snippet, i) => <div key={i} className={"h-fit"}>
-            <HealthchecksBlock snippet={snippet}/>
-          </div>)
+        !loading && !fileLoading
+        ? docs.filter((f) => f.name.split("_")[0] == selectedDate).length != 0
+          ? selectedDateDocs.map((doc, i) => {
+            return <div key={i} className={"h-fit"}>
+              <HealthchecksBlock email={doc.email} date={doc.date} doc={doc.content}/>
+            </div>
+          })
           : <motion.div
             initial={{ opacity: 0, translateY: 20 }}
             animate={{ opacity: 1, translateY: 0 }}
-            className={"text-gray-500 font-semibold text-2xl mt-32"}>아직 스니펫을 올리지 않았어요.</motion.div>
+            transition={{ duration: 0.3, delay: 0.2 }}
+            className={"text-gray-400 font-semibold text-2xl flex items-center justify-center"}>팀 분위기가 별로인가요? 아무도 안적었네요.</motion.div>
         : <motion.div className={"w-10 aspect-square"} layoutId={"circular"}>
             <CircularLoader />
           </motion.div>
@@ -111,25 +124,25 @@ const HealthchecksPage = () => {
 
 type weekCalendarType = {
   date_from: string;
-  snippets: Snippet[];
+  docs: DriveFolder[];
   selectedDate: string;
   setSelectedDate: (date: string) => void;
   loading: boolean;
 }
 
-const WeekCalendar = ({ date_from, snippets, selectedDate, setSelectedDate, loading }: weekCalendarType) => {
+const WeekCalendar = ({ date_from, docs, selectedDate, setSelectedDate, loading }: weekCalendarType) => {
   return <div className={"max-w-[700px] md:max-w-[1000px] w-full h-fit grid grid-cols-7 gap-2.5"}>
     {
       Array.from({ length: 7 }, (_, i) => i).map((_, i) => {
         const date = new Date(date_from);
         date.setDate(date.getDate() + i);
-        const daySnippets = snippets.filter((f)=>f.snippet_date == formatDate(date));
+        const dayDocs = docs.filter((f)=>f.name.split("_")[0] == formatDate(date));
         return <div key={date.getDate()} className={"flex flex-col space-y-2.5 items-center"} onClick={() => setSelectedDate(formatDate(date)!)}>
-          <div className={`flex w-full h-10 rounded-lg font-semibold text-lg space-x-2.5 items-center justify-center ${formatDate(date) == selectedDate ? daySnippets.length == 0 ? "bg-gray-400" : daySnippets.length == 3 ? "bg-green-500" : "bg-yellow-500" : daySnippets.length == 0 ? "bg-gray-100" : daySnippets.length == 3 ? "bg-green-100" : "bg-yellow-100"}`}>
+          <div className={`flex w-full h-10 rounded-lg font-semibold text-lg space-x-2.5 items-center justify-center ${formatDate(date) == selectedDate ? dayDocs.length == 0 ? "bg-gray-400" : dayDocs.length == 3 ? "bg-green-500" : "bg-yellow-500" : dayDocs.length == 0 ? "bg-gray-100" : dayDocs.length == 3 ? "bg-green-100" : "bg-yellow-100"}`}>
             {
               !loading
-              ? daySnippets.map((snippet, i) => {
-                return <div key={i} className={`w-3 aspect-square rounded-full ${formatDate(date) == selectedDate ? "bg-white" : daySnippets.length == 3 ? "bg-green-500" : "bg-yellow-500"}`}></div>
+              ? dayDocs.map((snippet, i) => {
+                return <div key={i} className={`w-3 aspect-square rounded-full ${formatDate(date) == selectedDate ? "bg-white" : dayDocs.length == 3 ? "bg-green-500" : "bg-yellow-500"}`}></div>
               })
               : <div className={"w-4 aspect-square"}><CircularLoader/></div>
             }
@@ -147,21 +160,38 @@ const WeekCalendar = ({ date_from, snippets, selectedDate, setSelectedDate, load
 export default HealthchecksPage;
 
 type healthcheckBlockType = {
-  snippet: Snippet;
+  email: string;
+  date: string;
+  doc: string;
 }
 
-const HealthchecksBlock = ({ snippet }: healthcheckBlockType) => {
+const HealthchecksBlock = ({ email, date, doc }: healthcheckBlockType) => {
+
+  const [name, setName] = useState("");
+  useEffect(() => {
+    (async () => {
+      const user = (await fetchUserByEmail(email))[0];
+      setName(user.name);
+    })();
+  }, []);
 
   return <div className={"w-full md:w-[30vw] h-fit md:max-h-full overflow-y-scroll border-[1px] bg-white border-gray-200 rounded-2xl flex flex-col p-10"}>
-    <p className={"font-bold text-xl"}>{snippet.full_name}</p>
-    <p>{snippet.user_email}</p>
+    {
+      name
+        ? <p className={"font-bold text-xl"}>{
+          name
+        }</p>
+        : <div className={"bg-gray-100 rounded-full w-16 h-7"}></div>
+    }
+
+    <p>{email}</p>
     <div className={"text-sm mt-5 p-3 rounded-lg bg-gray-100 text-gray-700"}>
-      <p className={"font-semibold"}>마지막 업데이트</p>
-      <p>{snippet.updated_at}</p>
+      <p className={"font-semibold"}>업로드 일자</p>
+      <p>{date}</p>
     </div>
     <article className="prose mt-10">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-        {snippet.content}
+        {doc}
       </ReactMarkdown>
     </article>
   </div>

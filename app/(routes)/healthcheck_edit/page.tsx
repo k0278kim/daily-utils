@@ -7,7 +7,7 @@ import CircularLoader from "@/components/CircularLoader";
 import IconTextButton from "@/components/IconTextButton";
 import {driveUploadFile} from "@/app/api/drive_upload_file";
 import {signIn, useSession} from "next-auth/react";
-import {driveGetFile} from "@/app/api/drive_get_file";
+import {driveGetFolder} from "@/app/api/drive_get_folder";
 import {driveDeleteFile} from "@/app/api/drive_delete_file";
 import LoadOrLogin from "@/components/LoadOrLogin";
 import {useRouter} from "next/navigation";
@@ -82,7 +82,7 @@ const DailyHealthcheckEdit = () => {
     setLoadStatus(false);
     (async() => {
       if (session) {
-        await driveGetFile(healthcheckDriveId).then((res) => {
+        await driveGetFolder(healthcheckDriveId).then((res) => {
           setSnippets(res);
           console.log(res);
           const snip: Snippet[] = res.filter((sn: Snippet) => sn.snippet_date == selectedDate);
@@ -167,7 +167,7 @@ const DailyHealthcheckEdit = () => {
             if (!isUploading && session?.user?.email != "") {
               const email = session?.user?.email as string;
               setIsUploading(true);
-              const myDriveList = (await driveGetFile(healthcheckDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${email}`);
+              const myDriveList = (await driveGetFolder(healthcheckDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${email}`);
               if (myDriveList.length == 0) {
                 setSubmitText("Google Drive에 파일이 업로드되어 있지 않아서 업로드하고 있어요")
               } else {

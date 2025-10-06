@@ -69,7 +69,7 @@ const PraisesPage = () => {
     }
     </AnimatePresence>
     <motion.div className={`z-0 w-full h-full flex relative duration-500 ${addPraiseOverlay ? "scale-90" : ""}`}>
-      <div className={`z-50 w-72 h-full border-r-[1px] border-r-gray-800 p-3 flex flex-col space-y-5 text-white bg-gray-800 fixed left-0 duration-1000 ${addPraiseOverlay ? "rounded-l-4xl" : ""}`}>
+      <div className={`z-50 w-72 h-full border-r-[1px] border-r-gray-800 p-3 flex flex-col space-y-5 text-white bg-gray-800 sticky left-0 duration-1000 ${addPraiseOverlay ? "rounded-l-4xl" : ""}`}>
         <div className={"mt-5 mb-5 mx-3"}>
           {/*<p className={"font-semibold text-2xl mb-5 text-gray-300"}>칭찬 챌린지</p>*/}
           <IconTextButton src={"/plus.svg"} className={"text-gray-300"} text={"칭찬하기"} onClick={() => setAddPraiseOverlay(true)} darkmode={true} />
@@ -78,7 +78,6 @@ const PraisesPage = () => {
           users.map((user: User) => <UserBlock key={user.email} user={user} selectedUser={selectedUser ? selectedUser : me} setSelectedUser={setSelectedUser} praisesNumber={praises.filter((praise) => praise.praise_to.email == user.email).length} />)
         }</div>
       </div>
-      <div className={"w-72"}></div>
       <AnimatePresence>
         { selectedUser != undefined && myPraises.length > 0 &&
           <motion.div
