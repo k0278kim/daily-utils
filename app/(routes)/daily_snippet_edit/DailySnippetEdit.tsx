@@ -19,7 +19,7 @@ type dailySnippetEditProps = {
   setSelectedArea: (area: number) => void;
 };
 
-const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) => {
+export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) => {
   const template = `### What
 1. a
 2. b
@@ -232,5 +232,3 @@ const SnippetEditor = ({ content, onSnippetChange, editorDisabled }: snippetEdit
     <Editor content={content} contentChange={onSnippetChange} disabled={editorDisabled} />
   </div>
 }
-
-export default DailySnippetEdit;

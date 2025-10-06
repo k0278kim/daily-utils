@@ -1,6 +1,6 @@
 'use client'
 import {useSession} from "next-auth/react";
-import DailySnippetEdit from "@/app/(routes)/daily_snippet_edit/page";
+import {DailySnippetEdit} from "@/app/(routes)/daily_snippet_edit/DailySnippetEdit";
 import React, {useState} from "react";
 import {motion} from "framer-motion";
 import {roundTransition} from "@/app/transition/round_transition";
@@ -21,7 +21,7 @@ const DailyEdit = () => {
     <TopBar darkmode={false} routes={["Daily Edit"]} titles={["1. Snippet 작성", "2. Health Check 작성"]} selectedArea={selectedArea} setSelectedArea={setSelectedArea} />
     <div className={"flex-1 bg-gray-100"}>
       { selectedArea == 0
-        ? <DailySnippetEdit />
+        ? <DailySnippetEdit setSelectedArea={setSelectedArea} />
         : selectedArea == 1
           ? <DailyHealthcheckEdit />
           : <></>
