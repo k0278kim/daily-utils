@@ -1,11 +1,8 @@
 'use client'
 import {useSession} from "next-auth/react";
-import {DailySnippetEdit} from "@/app/(routes)/daily_snippet_edit/DailySnippetEdit";
+import {DailySnippetEdit} from "@/app/(routes)/daily_edit/DailySnippetEdit";
 import React, {useState} from "react";
-import {motion} from "framer-motion";
-import {roundTransition} from "@/app/transition/round_transition";
 import LoadOrLogin from "@/components/LoadOrLogin";
-import Image from "next/image";
 import DailyHealthcheckEdit from "@/app/(routes)/healthcheck_edit/page";
 import TopBar from "@/components/TopBar";
 

@@ -1,5 +1,5 @@
 "use client"
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import Editor from "@/components/MdEditor";
 import formatDate from "@/lib/utils/format_date";
 import {Snippet} from "@/model/snippet";
@@ -14,6 +14,7 @@ import {useRouter} from "next/navigation";
 import {healthcheckDriveId} from "@/app/data/drive_id";
 import {DriveFolder} from "@/model/driveFolder";
 import {driveGetFile} from "@/app/api/drive_get_file";
+import _ from "lodash";
 
 const DailyHealthcheckEdit = () => {
   const template = `### Fun(재밌었는가?)
@@ -43,6 +44,7 @@ const DailyHealthcheckEdit = () => {
   const [loadStatus, setLoadStatus] = useState(false);
   const [loadOverflow, setLoadOverflow] = useState(false);
   const [disabled, setDisabled] = useState<boolean>(false);
+  const dateRef = useRef<string | null>(null);
 
   const router = useRouter();
 
@@ -67,10 +69,9 @@ const DailyHealthcheckEdit = () => {
     (async() => {
       if (session) {
         await driveGetFolder(healthcheckDriveId).then(async (res: DriveFolder[]) => {
-          const filtered = res.filter((r) => r.name == `${selectedDate}_${session?.user?.email}`)
+          const filtered = res.filter((r) => r.name.split("_")[1] == session?.user?.email);
           setHealthchecks(filtered);
-          console.log(filtered);
-          const fold: DriveFolder[] = res.filter((df: DriveFolder) => df.name.split("_")[0] == selectedDate);
+          const fold: DriveFolder[] = res.filter((df: DriveFolder) => df.name == `${selectedDate}_${session?.user?.email}`);
           if (fold.length == 1) {
             setCheckContent(await driveGetFile(session?.accessToken, fold[0].id));
           }
@@ -99,17 +100,22 @@ const DailyHealthcheckEdit = () => {
           {
             dailySnippetAvailableDate().map((date) => {
               const dateSplit = date!.split("-");
-              const fold: DriveFolder[] = healthchecks.filter((df: DriveFolder) => df.name.split("_")[0] == date);
+              const fold: DriveFolder[] = healthchecks.filter((df: DriveFolder) => `${df.name.split("_")[0]}_${df.name.split("_")[1]}` == `${date}_${session?.user?.email}`);
               return <button
                 key={date}
                 onClick={async () => {
                   if (loadStatus) {
                     setSelectedDate(date!);
+                    setDisabled(true);
+                    dateRef.current = date;
                     if (fold.length == 1) {
-                      setCheckContent(await driveGetFile(session?.accessToken, fold[0].id));
+                      const getFile = await driveGetFile(session?.accessToken, fold[0].id);
+                      setCheckContent(fold[0].name.split("_")[0] == dateRef.current ? getFile : template);
+
                     } else {
                       setCheckContent(template);
                     }
+                    setDisabled(false);
                   }
                 }}
                 className={`text-sm flex items-center space-x-2.5 rounded-lg p-3 border-[1px] cursor-pointer ${!loadStatus ? "bg-gray-200 text-gray-500" : selectedDate == date ? "bg-white border-gray-200" : "border-transparent text-gray-600"} font-bold`}>
@@ -118,7 +124,7 @@ const DailyHealthcheckEdit = () => {
                 {
                   isUploading || !loadStatus
                     ? <div className={"w-4 aspect-square"}><CircularLoader/></div>
-                    : <div className={`w-2 aspect-square rounded-full ${healthchecks.length == 1 ? "bg-green-500" : "bg-gray-400"}`}></div>
+                    : <div className={`w-2 aspect-square rounded-full ${healthchecks.filter((df: DriveFolder) => `${df.name.split("_")[0]}_${df.name.split("_")[1]}` == `${date}_${session?.user?.email}`).length == 1 ? "bg-green-500" : "bg-gray-400"}`}></div>
                 }
                 </div>
 
@@ -133,7 +139,6 @@ const DailyHealthcheckEdit = () => {
               setCheckContent(template);
             }
           }} />
-          {/*<IconTextButton src={"/arrow-up-right.svg"} text={"Snippet 조회하기"} onClick={() => location.href="/snippets"} />*/}
           <IconTextButton src={"/globe.svg"} text={"임시저장"} onClick={() => {
             const confirm = window.confirm("지금 상태로 헬스체크를 임시저장할까요?");
             if (confirm) {

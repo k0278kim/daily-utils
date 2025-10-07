@@ -45,10 +45,10 @@ export default function Page() {
         session
           ? <div className={"flex flex-col items-center w-full h-full"}>
             <TopBar darkmode={selectedArea == 2} routes={[]} titles={["Snippet 조회", "Health Check 조회", "칭찬 챌린지"]} selectedArea={selectedArea} setSelectedArea={setSelectedArea} />
-            <div className={"flex-1 w-full h-full overflow-y-scroll"}>
+            <div className={"flex-1 w-full h-full overflow-y-scroll scrollbar-hide"}>
               {
                 selectedArea == 0
-                ? <iframe src={"/snippets"} className={"w-full h-full"} />
+                ? <SnippetsPage />
                 : selectedArea == 1
                   ? <HealthchecksPage />
                   : selectedArea == 2

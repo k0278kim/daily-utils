@@ -71,7 +71,6 @@ const PraisesPage = () => {
     <motion.div className={`z-0 w-full h-full flex relative duration-500 ${addPraiseOverlay ? "scale-90" : ""}`}>
       <div className={`z-50 w-72 h-full border-r-[1px] border-r-gray-800 p-3 flex flex-col space-y-5 text-white bg-gray-800 sticky left-0 duration-1000 ${addPraiseOverlay ? "rounded-l-4xl" : ""}`}>
         <div className={"mt-5 mb-5 mx-3"}>
-          {/*<p className={"font-semibold text-2xl mb-5 text-gray-300"}>칭찬 챌린지</p>*/}
           <IconTextButton src={"/plus.svg"} className={"text-gray-300"} text={"칭찬하기"} onClick={() => setAddPraiseOverlay(true)} darkmode={true} />
         </div>
         <div className={"flex flex-col"}>{
@@ -143,13 +142,17 @@ type userBlockType = {
   praisesNumber: number
 }
 const UserBlock = ({ user, selectedUser, setSelectedUser, praisesNumber }: userBlockType) => {
-  return <div className={`flex items-center justify-between cursor-pointer w-full h-fit px-5 py-3 rounded-lg hover:bg-gray-700 ${selectedUser?.uuid === user.uuid ? "bg-gray-900" : ""}`} onClick={() => setSelectedUser(user)}>
+  return <motion.div
+    initial={{ opacity: 0, translateX: -10 }}
+    animate={{ opacity: 1, translateX: 0 }}
+    layoutId={"user_"+user.name}
+    className={`flex items-center justify-between cursor-pointer w-full h-fit px-5 py-3 rounded-lg hover:bg-gray-700 ${selectedUser?.uuid === user.uuid ? "bg-gray-900" : ""}`} onClick={() => setSelectedUser(user)}>
     <div className={"flex flex-col"}>
       <p className={"font-semibold text-gray-300"}>{user.name}</p>
       <p className={"text-gray-400 text-sm"}>{user.nickname}</p>
     </div>
     <div className={`w-7 h-7 flex items-center justify-center text-white/70 font-bold rounded-full ${selectedUser?.uuid == user.uuid ? "bg-gray-800" : "bg-gray-700"}`}>{praisesNumber}</div>
-  </div>
+  </motion.div>
 }
 
 type praiseBlockType = {

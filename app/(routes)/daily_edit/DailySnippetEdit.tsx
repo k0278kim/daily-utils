@@ -43,6 +43,7 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
   const [loadStatus, setLoadStatus] = useState(false);
   const [editorDisabled, setEditorDisabled] = useState(true);
   const [loadOverflow, setLoadOverflow] = useState(false);
+  const [error, setError] = useState("");
 
   const router = useRouter();
 
@@ -71,16 +72,20 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
     setLoadStatus(false);
     (async() => {
       if (session) {
-        await getMySnippets(session?.user?.email as string).then((res) => {
-          setSnippets(res);
-          const snip: Snippet[] = res.filter((sn: Snippet) => sn.snippet_date == selectedDate);
-          if (snip.length == 1) {
-            setSnippetContent(snip[0].content);
-          } else {
-            setEditorDisabled(false);
-          }
-          setLoadStatus(true);
-        });
+        try {
+          await getMySnippets(session?.user?.email as string).then((res) => {
+            setSnippets(res);
+            const snip: Snippet[] = res.filter((sn: Snippet) => sn.snippet_date == selectedDate);
+            if (snip.length == 1) {
+              setSnippetContent(snip[0].content);
+            } else {
+              setEditorDisabled(false);
+            }
+            setLoadStatus(true);
+          });
+        } catch (e) {
+          setError(e as string);
+        }
       }
       if (!isUploading) {
         setEditorDisabled(false);
@@ -96,6 +101,7 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
   }, [])
 
   if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
+  if (error) return <div className={"w-full h-full flex items-center justify-center text-gray-700 text-2xl"}>Daily Snippet 서버에 접속할 수 없어요.</div>
 
   return <div className={"w-full h-full bg-gray-100"}>
     <div className={"flex flex-col p-10 h-full space-y-10"}>

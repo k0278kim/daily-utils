@@ -20,6 +20,7 @@ const SnippetsPage = () => {
   const [loadOverflow, setLoadOverflow] = useState(false);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const weekDates = (date: string) => {
     const today = new Date(date);
@@ -41,10 +42,14 @@ const SnippetsPage = () => {
 
     (async() => {
       if (date_from != null && date_to != null) {
-        setLoading(true);
-        const snippetResult = await fetchSnippet(date_from, date_to);
-        setSnippets(snippetResult);
-        setLoading(false);
+        try {
+          setLoading(true);
+          const snippetResult = await fetchSnippet(date_from, date_to);
+          setSnippets(snippetResult);
+          setLoading(false);
+        } catch (e) {
+          setError(e as string);
+        }
       }
     })();
 
@@ -57,13 +62,14 @@ const SnippetsPage = () => {
   }, []);
 
   if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
-  return <div className={"w-full h-fit min-h-screen bg-gray-100 flex flex-col py-32"}>
+  if (error) return <div className={"w-full h-full flex items-center justify-center text-gray-700 text-2xl"}>Daily Snippet 서버에 접속할 수 없어요.</div>
+  return <div className={"w-full h-fit min-h-screen bg-gray-100 flex flex-col"}>
     {/*<div className={"fixed w-full bottom-10 flex justify-center"}>*/}
     {/*  <div className={"p-5 rounded-xl w-fit bg-gray-800 text-white font-bold cursor-pointer"} onClick={() => location.href="/daily_edit"}>*/}
     {/*    Daily Snippet 작성*/}
     {/*  </div>*/}
     {/*</div>*/}
-    <div className={"fixed top-0 w-full flex justify-center bg-white p-5 border-b-[1px] border-b-gray-200 space-x-5"}>
+    <div className={"sticky top-0 w-full flex justify-center bg-white p-5 border-b-[1px] border-b-gray-200 space-x-5"}>
       <Image src={"/chevron-left.svg"} alt={""} width={30} height={30} className={"cursor-pointer"} onClick={async () => {
         setLoading(true);
         const newDate = new Date(dateFrom);
