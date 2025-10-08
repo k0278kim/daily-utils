@@ -29,6 +29,7 @@ const PraisesPage = () => {
   const [me, setMe] = useState<User>();
   const [myPraises, setMyPraises] = useState<Praise[]>([]);
   const [loadOverflow, setLoadOverflow] = useState(false);
+  const [hoverUser, setHoverUser] = useState<User | null>(null);
 
   useEffect(() => {
     (async() => {
@@ -74,7 +75,11 @@ const PraisesPage = () => {
           <IconTextButton src={"/plus.svg"} className={"text-gray-300"} text={"칭찬하기"} onClick={() => setAddPraiseOverlay(true)} darkmode={true} />
         </div>
         <div className={"flex flex-col"}>{
-          users.map((user: User) => <UserBlock key={user.email} user={user} selectedUser={selectedUser ? selectedUser : me} setSelectedUser={setSelectedUser} praisesNumber={praises.filter((praise) => praise.praise_to.email == user.email).length} />)
+          users.map((user: User) =>
+            <div key={user.email} className={"relative active:scale-90 duration-100"} onMouseOver={() => setHoverUser(user)} onMouseLeave={() => setHoverUser(null)}>
+              { hoverUser == user && <motion.div onClick={() => setSelectedUser(user)} transition={roundTransition} layoutId={"hover-user-bg"} className={"cursor-pointer w-full h-full absolute bg-gray-200/20 rounded-lg"}></motion.div>}
+              <UserBlock user={user} selectedUser={selectedUser ? selectedUser : me} setSelectedUser={setSelectedUser} praisesNumber={praises.filter((praise) => praise.praise_to.email == user.email).length} />
+            </div>)
         }</div>
       </div>
       <AnimatePresence>
@@ -146,12 +151,12 @@ const UserBlock = ({ user, selectedUser, setSelectedUser, praisesNumber }: userB
     initial={{ opacity: 0, translateX: -10 }}
     animate={{ opacity: 1, translateX: 0 }}
     layoutId={"user_"+user.name}
-    className={`flex items-center justify-between cursor-pointer w-full h-fit px-5 py-3 rounded-lg hover:bg-gray-700 ${selectedUser?.uuid === user.uuid ? "bg-gray-900" : ""}`} onClick={() => setSelectedUser(user)}>
+    className={`active:scale-90 duration-100 flex items-center justify-between cursor-pointer w-full h-fit px-5 py-3 rounded-lg ${selectedUser?.uuid === user.uuid ? "bg-gray-900" : ""}`} onClick={() => setSelectedUser(user)}>
     <div className={"flex flex-col"}>
       <p className={"font-semibold text-gray-300"}>{user.name}</p>
       <p className={"text-gray-400 text-sm"}>{user.nickname}</p>
     </div>
-    <div className={`w-7 h-7 flex items-center justify-center text-white/70 font-bold rounded-full ${selectedUser?.uuid == user.uuid ? "bg-gray-800" : "bg-gray-700"}`}>{praisesNumber}</div>
+    <div className={`duration-100 w-7 h-7 flex items-center justify-center text-white opacity-70 font-bold rounded-full ${selectedUser?.uuid == user.uuid ? "bg-gray-800" : "bg-gray-700"}`}>{praisesNumber}</div>
   </motion.div>
 }
 

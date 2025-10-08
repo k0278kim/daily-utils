@@ -19,6 +19,7 @@ import fetchUserByEmail from "@/app/api/team/user/get_user_by_email/fetch_user_b
 import {roundTransition} from "@/app/transition/round_transition";
 import {easeInOutTranstion} from "@/app/transition/ease_transition";
 import {driveDeleteFile} from "@/app/api/drive_delete_file";
+import {User} from "@/model/user";
 
 const HealthchecksPage = () => {
 
@@ -103,7 +104,7 @@ const HealthchecksPage = () => {
       initial={{ opacity: 0, translateY: "-100%" }}
       animate={{ opacity: 1, translateY: 0 }}
       transition={easeInOutTranstion}
-      className={"sticky top-0 w-screen flex justify-center bg-gray-100 p-5 space-x-5"}>
+      className={"sticky top-0 w-screen flex justify-center bg-gray-100 p-5 space-x-5 z-10"}>
       <Image src={"/chevron-left.svg"} alt={""} width={30} height={30} className={"active:scale-90 duration-100 cursor-pointer hover:bg-gray-400/20 rounded-lg"} onClick={async () => {
         const newDate = new Date(dateFrom);
         newDate.setDate(newDate.getDate() - 7);
@@ -124,7 +125,7 @@ const HealthchecksPage = () => {
         ? docs.filter((f) => f.name.split("_")[0] == selectedDate).length != 0
           ? selectedDateDocs.map((doc, i) => {
             return <div key={i} className={"h-fit"}>
-              <HealthchecksBlock email={doc.email} date={doc.date} doc={doc.content} id={doc.id} setRemovedId={setRemovedId} />
+              <HealthchecksBlock myEmail={session.user?.email as string} email={doc.email} date={doc.date} doc={doc.content} id={doc.id} setRemovedId={setRemovedId} />
             </div>
           })
           : <motion.div
@@ -181,6 +182,7 @@ const WeekCalendar = ({ date_from, docs, selectedDate, setSelectedDate, loading 
 export default HealthchecksPage;
 
 type healthcheckBlockType = {
+  myEmail: string;
   email: string;
   date: string;
   doc: string;
@@ -188,7 +190,7 @@ type healthcheckBlockType = {
   setRemovedId: Dispatch<SetStateAction<string[]>>;
 }
 
-const HealthchecksBlock = ({ email, date, doc, id, setRemovedId }: healthcheckBlockType) => {
+const HealthchecksBlock = ({ myEmail, email, date, doc, id, setRemovedId }: healthcheckBlockType) => {
 
   const [name, setName] = useState("");
   const [removeHover, setRemoveHover] = useState(false);
@@ -220,7 +222,7 @@ const HealthchecksBlock = ({ email, date, doc, id, setRemovedId }: healthcheckBl
         }
         <p className={"text-gray-500"}>{email}</p>
       </div>
-      <div className={"w-10 h-10 cursor-pointer hover:bg-red-50 active:scale-90 duration-100 rounded-lg relative p-2"} onMouseEnter={() => setRemoveHover(true)} onMouseLeave={() => setRemoveHover(false)} onClick={async () => {
+      { email == myEmail && <div className={"w-10 h-10 cursor-pointer hover:bg-red-50 active:scale-90 duration-100 rounded-lg relative p-2"} onMouseEnter={() => setRemoveHover(true)} onMouseLeave={() => setRemoveHover(false)} onClick={async () => {
         const answer = window.confirm("작성한 Health Check를 삭제하시겠습니까?");
         if (answer) {
           await driveDeleteFile(id);
@@ -228,9 +230,9 @@ const HealthchecksBlock = ({ email, date, doc, id, setRemovedId }: healthcheckBl
         }
       }}>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M14.7404 9L14.3942 18M9.60577 18L9.25962 9M19.2276 5.79057C19.5696 5.84221 19.9104 5.89747 20.25 5.95629M19.2276 5.79057L18.1598 19.6726C18.0696 20.8448 17.0921 21.75 15.9164 21.75H8.08357C6.90786 21.75 5.93037 20.8448 5.8402 19.6726L4.77235 5.79057M19.2276 5.79057C18.0812 5.61744 16.9215 5.48485 15.75 5.39432M3.75 5.95629C4.08957 5.89747 4.43037 5.84221 4.77235 5.79057M4.77235 5.79057C5.91878 5.61744 7.07849 5.48485 8.25 5.39432M15.75 5.39432V4.47819C15.75 3.29882 14.8393 2.31423 13.6606 2.27652C13.1092 2.25889 12.5556 2.25 12 2.25C11.4444 2.25 10.8908 2.25889 10.3394 2.27652C9.16065 2.31423 8.25 3.29882 8.25 4.47819V5.39432M15.75 5.39432C14.5126 5.2987 13.262 5.25 12 5.25C10.738 5.25 9.48744 5.2987 8.25 5.39432" stroke={removeHover ? "#FF0000" : "#0F172A"} stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M14.7404 9L14.3942 18M9.60577 18L9.25962 9M19.2276 5.79057C19.5696 5.84221 19.9104 5.89747 20.25 5.95629M19.2276 5.79057L18.1598 19.6726C18.0696 20.8448 17.0921 21.75 15.9164 21.75H8.08357C6.90786 21.75 5.93037 20.8448 5.8402 19.6726L4.77235 5.79057M19.2276 5.79057C18.0812 5.61744 16.9215 5.48485 15.75 5.39432M3.75 5.95629C4.08957 5.89747 4.43037 5.84221 4.77235 5.79057M4.77235 5.79057C5.91878 5.61744 7.07849 5.48485 8.25 5.39432M15.75 5.39432V4.47819C15.75 3.29882 14.8393 2.31423 13.6606 2.27652C13.1092 2.25889 12.5556 2.25 12 2.25C11.4444 2.25 10.8908 2.25889 10.3394 2.27652C9.16065 2.31423 8.25 3.29882 8.25 4.47819V5.39432M15.75 5.39432C14.5126 5.2987 13.262 5.25 12 5.25C10.738 5.25 9.48744 5.2987 8.25 5.39432" stroke={removeHover ? "#FF0000" : "#0F172A"} strokeWidth="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-      </div>
+      </div> }
     </div>
     <article className="prose mt-10">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>
