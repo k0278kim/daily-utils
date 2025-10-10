@@ -95,8 +95,8 @@ const DailyHealthcheckEdit = () => {
 
   return <div className={"w-full h-full bg-gray-100"}>
     <div className={"flex flex-col p-10 h-full space-y-10"}>
-      <div className={"flex h-12"}>
-        <div className={"flex space-x-2.5"}>
+      <div className={"flex h-fit md:h-12 space-x-2.5 md:space-x-0"}>
+        <div className={"flex flex-col space-y-2.5 md:space-y-0 md:flex-row md:space-x-2.5"}>
           {
             dailySnippetAvailableDate().map((date) => {
               const dateSplit = date!.split("-");
@@ -132,7 +132,7 @@ const DailyHealthcheckEdit = () => {
             })
           }
         </div>
-        <div className={"flex space-x-2.5 flex-1 justify-end"}>
+        <div className={"flex space-y-2.5 md:space-y-0 md:space-x-2.5 flex-1 md:justify-end flex-col md:flex-row"}>
           <IconTextButton src={"/arrow-path.svg"} text={"초기화"} onClick={() => {
             const confirm = window.confirm("작성하시던 내용을 초기화하시겠습니까?");
             if (confirm) {

@@ -119,12 +119,12 @@ const HealthchecksPage = () => {
         setSelectedDate(formatDate(newDate)!);
       }} />
     </motion.div>
-    <div className={"flex space-x-5 justify-center w-full py-5 flex-1"}>
+    <div className={"flex flex-col space-y-2.5 md:flex-row md:space-x-5 justify-center items-center md:items-start w-full py-5 flex-1"}>
       {
         !loading && !fileLoading
         ? docs.filter((f) => f.name.split("_")[0] == selectedDate).length != 0
           ? selectedDateDocs.map((doc, i) => {
-            return <div key={i} className={"h-fit"}>
+            return <div key={i} className={"p-2 md:p-0 h-fit"}>
               <HealthchecksBlock myEmail={session.user?.email as string} email={doc.email} date={doc.date} doc={doc.content} id={doc.id} setRemovedId={setRemovedId} />
             </div>
           })
@@ -132,7 +132,7 @@ const HealthchecksPage = () => {
             initial={{ opacity: 0, translateY: 20 }}
             animate={{ opacity: 1, translateY: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
-            className={"text-gray-400 font-semibold text-2xl flex items-center justify-center"}>팀 분위기가 별로인가요? 아무도 안적었네요.</motion.div>
+            className={"text-gray-400 font-semibold md:text-2xl flex items-center justify-center"}>팀 분위기가 별로인가요? 아무도 안적었네요.</motion.div>
         : <motion.div className={"w-10 aspect-square"} layoutId={"circular"}>
             <CircularLoader />
           </motion.div>
@@ -158,20 +158,22 @@ const WeekCalendar = ({ date_from, docs, selectedDate, setSelectedDate, loading 
         const date = new Date(date_from);
         date.setDate(date.getDate() + i);
         const dayDocs = docs.filter((f)=>f.name.split("_")[0] == formatDate(date));
-        return <div key={date.getDate()} onMouseOver={() => setHoverIndex(i)} className={"p-2.5 relative active:scale-90 duration-100 cursor-pointer flex flex-col space-y-2.5 items-center justify-center"} onClick={() => setSelectedDate(formatDate(date)!)}>
+        return <div key={date.getDate()} onMouseOver={() => setHoverIndex(i)} className={"p-2.5 relative active:scale-90 duration-100 cursor-pointer flex flex-col space-y-2.5 items-center md:justify-center"} onClick={() => setSelectedDate(formatDate(date)!)}>
           { hoverIndex == i && <motion.div transition={roundTransition} layoutId={"hover-bg"} className={"absolute w-full h-full bg-gray-400/10 z-10 rounded-xl"}></motion.div> }
-          <motion.div className={`duration-100 flex w-full h-10 rounded-lg font-semibold text-lg space-x-2.5 items-center justify-center ${formatDate(date) == selectedDate ? dayDocs.length == 0 ? "bg-gray-400" : dayDocs.length == 3 ? "bg-green-500" : "bg-yellow-500" : dayDocs.length == 0 ? "bg-gray-200" : dayDocs.length == 3 ? "bg-green-500/20" : "bg-yellow-500/20"}`}>
+          <motion.div className={`relative duration-100 flex w-7 h-7 md:w-full md:h-10 rounded-lg font-semibold text-lg md:space-x-2.5 items-center justify-center ${formatDate(date) == selectedDate ? dayDocs.length == 0 ? "bg-gray-400" : dayDocs.length == 3 ? "bg-green-500" : "bg-yellow-500" : dayDocs.length == 0 ? "bg-gray-200" : dayDocs.length == 3 ? "bg-green-500/20" : "bg-yellow-500/20"}`}>
+            <div className={"md:opacity-0 absolute text-sm flex items-center justify-center"}><p>{dayDocs.length}</p></div>
             {
               !loading
               ? dayDocs.map((snippet, i) => {
-                return <motion.div key={i} className={`duration-100 w-3 aspect-square rounded-full ${formatDate(date) == selectedDate ? "bg-white" : dayDocs.length == 3 ? "bg-green-500" : "bg-yellow-500"}`}></motion.div>
+                return <motion.div key={i} className={`duration-100 md:w-3 md:aspect-square rounded-full ${formatDate(date) == selectedDate ? "bg-white" : dayDocs.length == 3 ? "bg-green-500" : "bg-yellow-500"}`}>
+                </motion.div>
               })
               : <div className={"w-4 aspect-square"}><CircularLoader/></div>
             }
           </motion.div>
           { formatDate(new Date()) == formatDate(date)
-              ? <p className={`${formatDate(date) == selectedDate ? "font-semibold" : ""}`}>오늘</p>
-              : <p className={`${formatDate(date) == selectedDate ? "font-semibold" : ""}`}>{Number(date.getMonth() + 1)}.{date.getDate()} ({["일", "월", "화", "수", "목", "금", "토"][date.getDay()]})</p>
+              ? <p className={`text-sm ${formatDate(date) == selectedDate ? "font-semibold" : ""}`}>오늘</p>
+              : <p className={`text-sm ${formatDate(date) == selectedDate ? "font-semibold" : ""}`}>{Number(date.getMonth() + 1)}.{date.getDate()} ({["일", "월", "화", "수", "목", "금", "토"][date.getDay()]})</p>
           }
         </div>;
       })
