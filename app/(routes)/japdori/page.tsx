@@ -81,7 +81,7 @@ const JapdoriPage = () => {
     <motion.div className={`z-0 w-full h-full flex relative duration-500 ${addJapdoriOverlay ? "scale-90" : ""}`}>
       <div className={`z-50 w-72 h-full border-r-[1px] border-r-gray-800 p-3 flex flex-col space-y-5 text-white bg-gray-800 sticky left-0 duration-1000 ${addJapdoriOverlay ? "rounded-l-4xl" : ""}`}>
         <div className={"mt-5 mb-5 mx-3"}>
-          <IconTextButton src={"/plus.svg"} className={"text-gray-300"} text={"잡도리하기"} onClick={() => setAddJapdoriOverlay(true)} darkmode={true} />
+          <IconTextButton src={"/plus.svg"} className={"text-gray-300 bg-red-950"} text={"잡도리하기"} onClick={() => setAddJapdoriOverlay(true)} darkmode={true} />
         </div>
         <div className={"flex flex-col"}>{
           users.map((user: User) =>
@@ -165,7 +165,7 @@ const UserBlock = ({ user, selectedUser, setSelectedUser, japdoriesNumber }: use
       <p className={"font-semibold text-gray-300"}>{user.name}</p>
       <p className={"text-gray-400 text-sm"}>{user.nickname}</p>
     </div>
-    <div className={`duration-100 w-7 h-7 flex items-center justify-center text-white opacity-70 font-bold rounded-full ${selectedUser?.uuid == user.uuid ? "bg-gray-800" : "bg-gray-700"}`}>{japdoriesNumber}</div>
+    <div className={`duration-100 w-7 h-7 flex items-center justify-center text-white opacity-70 font-bold rounded-full ${japdoriesNumber > 0 ? "bg-red-500" : selectedUser?.uuid == user.uuid ? "bg-gray-800" : "bg-gray-700"}`}>{japdoriesNumber}</div>
   </motion.div>
 }
 
@@ -331,9 +331,9 @@ const AddJapdoriOverlay = ({ setJapdories, japdoriFromEmail, setAddJapdoriOverla
       </div>
     </motion.div>
     <div className={"border-gray-300 border-[1px] rounded-lg flex flex-col w-full]"}>
-      <input type={"text"} placeholder={"어떤 것을 칭찬할까요?"} onChange={onTitleChange} className={"p-5 font-semibold text-lg rounded-lg rounded-b-none w-full"} />
+      <input type={"text"} placeholder={"어떤 것을 잡도리할까요?"} onChange={onTitleChange} className={"p-5 font-semibold text-lg rounded-lg rounded-b-none w-full"} />
       <div className={"w-full h-[1px] bg-gray-300"}></div>
-      <textarea placeholder={"칭찬할 내용을 적어주세요."} onChange={onContentChange} className={"p-5 rounded-lg rounded-t-none w-full min-h-52"} />
+      <textarea placeholder={"잡도리할 내용을 적어주세요."} onChange={onContentChange} className={"p-5 rounded-lg rounded-t-none w-full min-h-52"} />
     </div>
     <div className={"flex w-full justify-end space-x-2.5"}>
       <button className={"w-fit rounded-lg bg-white text-gray-700 font-bold px-5 py-3 border-[1px] border-gray-300 hover:bg-gray-100"} onClick={() => setAddJapdoriOverlay(false)}>취소</button>
