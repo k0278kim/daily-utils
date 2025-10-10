@@ -45,7 +45,7 @@ export default function Page() {
       {
         session
           ? <div className={"flex flex-col items-center w-full h-full"}>
-            <TopBar darkmode={selectedArea == 2} routes={[]} titles={["Snippet 조회", "Health Check 조회", "칭찬 챌린지", "잡도리 챌린지"]} selectedArea={selectedArea} setSelectedArea={setSelectedArea} />
+            <TopBar darkmode={selectedArea == 2 || selectedArea == 3} routes={[]} titles={["Snippet 조회", "Health Check 조회", "칭찬 챌린지", "잡도리 챌린지"]} selectedArea={selectedArea} setSelectedArea={setSelectedArea} />
             <div className={"flex-1 w-full h-full overflow-y-scroll scrollbar-hide"}>
               {
                 selectedArea == 0
