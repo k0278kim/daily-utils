@@ -202,7 +202,7 @@ const DailyHealthcheckEdit = () => {
             const confirm = window.confirm("지금 상태로 헬스체크를 임시저장할까요?");
             if (confirm) {
               window.localStorage.setItem(`healthcheck__tempsave__${selectedDate!}`, writeComment.join("/*/*/"));
-              window.localStorage.setItem(`healthcheck__tempsave__score__${selectedDate!}`, writeComment.join("/*/*/"));
+              window.localStorage.setItem(`healthcheck__tempsave__score__${selectedDate!}`, writeScore.join("/*/*/"));
             }
           }} />
           <IconTextButton src={"/globe.svg"} text={"임시저장 불러오기"} onClick={() => {
@@ -212,6 +212,7 @@ const DailyHealthcheckEdit = () => {
               const confirm = window.confirm("임시저장한 헬스체크를 불러올까요?");
               if (confirm) {
                 setWriteComment(result.split("/*/*/"));
+                console.log(resultScore.split("/*/*/").map((s) => Number(s)))
                 setWriteScore(resultScore.split("/*/*/").map((s) => Number(s)));
               }
             } else {
