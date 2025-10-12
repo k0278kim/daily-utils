@@ -68,7 +68,7 @@ export default function Page() {
             <p className={"text-2xl font-bold"}>도다리도 뚜뚜려보고 건너는 양털 팀의</p>
             <p className={"text-7xl font-black"}>Daily Utils</p>
             <motion.div className={"cursor-pointer text-center p-5 bg-black rounded-xl text-white font-semibold text-xl"} onClick={async () => {
-              signIn("google");
+              signIn("google", { prompt: "consent", access_type: "offline" });
             }}>Google 로그인</motion.div>
           </div>
       }
