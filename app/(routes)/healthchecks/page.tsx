@@ -20,6 +20,7 @@ import {roundTransition} from "@/app/transition/round_transition";
 import {easeInOutTranstion} from "@/app/transition/ease_transition";
 import {driveDeleteFile} from "@/app/api/drive_delete_file";
 import {User} from "@/model/user";
+import {deleteUserHealthcheck} from "@/app/actions/deleteUserHealthcheck";
 
 const HealthchecksPage = () => {
 
@@ -33,6 +34,7 @@ const HealthchecksPage = () => {
   const [loading, setLoading] = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
   const latestRequestId = useRef(0);
+  const [me, setMe] = useState<User | null>(null);
 
   const weekDates = (date: string) => {
     const today = new Date(date);
@@ -63,6 +65,15 @@ const HealthchecksPage = () => {
   useEffect(() => {
     setDocs(docs.filter((doc) => !removedId.includes(doc.id)));
   }, [removedId]);
+
+  useEffect(() => {
+    (async () => {
+      if (session) {
+        const meRes: User[] = await fetchUserByEmail(session.user?.email as string);
+        setMe(meRes[0]);
+      }
+    })();
+  }, [session]);
 
   async function updateSelectedDateDocs (date: string) {
     setFileLoading(true);
@@ -125,7 +136,7 @@ const HealthchecksPage = () => {
         ? docs.filter((f) => f.name.split("_")[0] == selectedDate).length != 0
           ? selectedDateDocs.map((doc, i) => {
             return <div key={i} className={"p-2 md:p-0 h-fit"}>
-              <HealthchecksBlock myEmail={session.user?.email as string} email={doc.email} date={doc.date} doc={doc.content} id={doc.id} setRemovedId={setRemovedId} />
+              <HealthchecksBlock myEmail={session.user?.email as string} email={doc.email} date={doc.date} doc={doc.content} id={doc.id} setRemovedId={setRemovedId} me={me}/>
             </div>
           })
           : <motion.div
@@ -190,9 +201,10 @@ type healthcheckBlockType = {
   doc: string;
   id: string;
   setRemovedId: Dispatch<SetStateAction<string[]>>;
+  me: User | null;
 }
 
-const HealthchecksBlock = ({ myEmail, email, date, doc, id, setRemovedId }: healthcheckBlockType) => {
+const HealthchecksBlock = ({ myEmail, email, date, doc, id, setRemovedId, me }: healthcheckBlockType) => {
 
   const [name, setName] = useState("");
   const [removeHover, setRemoveHover] = useState(false);
@@ -228,6 +240,7 @@ const HealthchecksBlock = ({ myEmail, email, date, doc, id, setRemovedId }: heal
         const answer = window.confirm("작성한 Health Check를 삭제하시겠습니까?");
         if (answer) {
           await driveDeleteFile(id);
+          await deleteUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me!.uuid, date);
           setRemovedId((tempId) => [...tempId, id]);
         }
       }}>

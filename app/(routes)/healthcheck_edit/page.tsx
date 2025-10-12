@@ -113,15 +113,6 @@ const DailyHealthcheckEdit = () => {
             }
           }
           setLoadStatus(true);
-          // await driveGetFolder(healthcheckDriveId).then(async (res: DriveFolder[]) => {
-          //   const filtered = res.filter((r) => r.name.split("_")[1] == session?.user?.email);
-          //   setHealthchecks(filtered);
-          //   const fold: DriveFolder[] = res.filter((df: DriveFolder) => df.name == `${selectedDate}_${session?.user?.email}`);
-          //   if (fold.length == 1) {
-          //     setCheckContent(await driveGetFile(session?.accessToken, fold[0].id));
-          //   }
-          //   setLoadStatus(true);
-          // });
         }
       }
       if (!isUploading) {
@@ -129,7 +120,29 @@ const DailyHealthcheckEdit = () => {
       }
     })();
 
-  }, [session, me, selectedDate]);
+  }, [session, me]);
+
+  useEffect(() => {
+    setLoadStatus(false);
+    (async () => {
+      if (session && me) {
+        const todayAnswer: Healthcheck[] = await fetchUserHealthchecks("도다리도 뚜뚜려보고 건너는 양털", me!.uuid, selectedDate!, selectedDate!);
+        if (todayAnswer.length == 1) {
+          setMyHealthcheck(todayAnswer[0]);
+          setWriteScore(todayAnswer[0].responses.map((res) => res.score))
+          console.log(todayAnswer[0].responses.map((res) => res.answer), todayAnswer[0].responses.map((res) => res.score))
+          const answerMap = todayAnswer[0].responses.map((res) => res.answer)
+          setWriteComment(answerMap);
+          setInit(false);
+        } else {
+          setMyHealthcheck(null);
+          setWriteComment(Array.from({ length: questions.length }, (_, i) => ""));
+          setWriteScore(Array.from({ length: questions.length }, (_, i) => 4));
+        }
+        setLoadStatus(true);
+      }
+    })();
+  }, [selectedDate]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -168,7 +181,7 @@ const DailyHealthcheckEdit = () => {
                 {
                   isUploading || !loadStatus
                     ? <div className={"w-4 aspect-square"}><CircularLoader/></div>
-                    : <div className={`w-2 aspect-square rounded-full ${myHealthcheck && !retouched ? "bg-green-500" : "bg-gray-400"}`}></div>
+                    : <div className={`w-2 aspect-square rounded-full ${selectedDate == date ? myHealthcheck && !retouched ? "bg-green-500" : "bg-gray-400" : ""}`}></div>
                 }
                 </div>
 
@@ -294,7 +307,7 @@ type healthcheckEditCardType = {
 }
 
 const HealthcheckEditCard = ({ question, comment, onCommentChange, disabled, writeScore, setWriteScore, index }:healthcheckEditCardType) => {
-  return <div className={"flex space-x-10"}>
+  return <div className={"flex space-y-10 md:space-y-0 md:space-x-10 flex-col md:flex-row"}>
     <div className={"flex-2 flex flex-col space-y-5"}>
       <p className={"text-2xl font-semibold"}>{question}</p>
       <div className={"w-full h-10 flex items-center justify-between rounded-full border-[1px] border-gray-300 bg-gradient-to-r from-red-100 to-blue-100"}>
