@@ -1,5 +1,5 @@
 "use client"
-import React, {useEffect, useRef, useState} from "react";
+import React, {Dispatch, SetStateAction, useEffect, useRef, useState} from "react";
 import Editor from "@/components/MdEditor";
 import formatDate from "@/lib/utils/format_date";
 import {Snippet} from "@/model/snippet";
@@ -15,6 +15,17 @@ import {healthcheckDriveId} from "@/app/data/drive_id";
 import {DriveFolder} from "@/model/driveFolder";
 import {driveGetFile} from "@/app/api/drive_get_file";
 import _ from "lodash";
+import fetchHealthcheckQuestions from "@/app/api/healthcheck/fetch_questions/fetchHealthcheckQuestions";
+import {HealthcheckQuestions} from "@/model/healthcheckQuestions";
+import { motion } from "framer-motion";
+import {roundTransition} from "@/app/transition/round_transition";
+import fetchTeamHealthchecks from "@/app/api/healthcheck/fetch_team_healthchecks/fetchTeamHealthchecks";
+import fetchUserHealthchecks from "@/app/api/healthcheck/fetch_user_healthchecks/fetchUserHealthchecks";
+import fetchUserByEmail from "@/app/api/team/user/get_user_by_email/fetch_user_by_email";
+import {User} from "@/model/user";
+import {Healthcheck, HealthcheckResponse} from "@/model/healthcheck";
+import {addUserHealthcheck} from "@/app/actions/addUserHealthcheck";
+import {updateUserHealthcheck} from "@/app/actions/updateUserHealthcheck";
 
 const DailyHealthcheckEdit = () => {
   const template = `### Fun(재밌었는가?)
@@ -37,7 +48,6 @@ const DailyHealthcheckEdit = () => {
 `;
   const { data: session } = useSession();
   const [submitText, setSubmitText] = useState<string>("발행하기");
-  const [checkContent, setCheckContent] = useState(template);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
   const [healthchecks, setHealthchecks] = useState<DriveFolder[] | []>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -45,11 +55,19 @@ const DailyHealthcheckEdit = () => {
   const [loadOverflow, setLoadOverflow] = useState(false);
   const [disabled, setDisabled] = useState<boolean>(false);
   const dateRef = useRef<string | null>(null);
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [me, setMe] = useState<User | null>(null);
+  const [myHealthcheck, setMyHealthcheck] = useState<Healthcheck | null>(null);
+  const [writeScore, setWriteScore] = useState<number[]>([]);
+  const [writeComment, setWriteComment] = useState<string[]>([]);
+  const [init, setInit] = useState<boolean>(true);
+  const [retouched, setRetouched] = useState<boolean>(false);
 
-  const router = useRouter();
-
-  const onContentChange = (str: string) => {
-    setCheckContent(str);
+  const onCommentChange = (str: string, index: number) => {
+    console.log(str, index);
+    setWriteComment(prev => prev.map((v, i) => (i === index ? str : v)));
+    console.log(writeComment);
+    setRetouched(true);
   }
 
   const dailySnippetAvailableDate = () => {
@@ -68,22 +86,50 @@ const DailyHealthcheckEdit = () => {
     setDisabled(true);
     (async() => {
       if (session) {
-        await driveGetFolder(healthcheckDriveId).then(async (res: DriveFolder[]) => {
-          const filtered = res.filter((r) => r.name.split("_")[1] == session?.user?.email);
-          setHealthchecks(filtered);
-          const fold: DriveFolder[] = res.filter((df: DriveFolder) => df.name == `${selectedDate}_${session?.user?.email}`);
-          if (fold.length == 1) {
-            setCheckContent(await driveGetFile(session?.accessToken, fold[0].id));
+        const questions: HealthcheckQuestions = await fetchHealthcheckQuestions("도다리도 뚜뚜려보고 건너는 양털");
+        setQuestions(questions.questions);
+        if (!me) {
+          console.log("not me", me);
+          const meRes: User[] = await fetchUserByEmail(session.user?.email as string);
+          console.log("setme", meRes[0]);
+          setMe(meRes[0]);
+        }
+        if (me) {
+          console.log("it's me", me);
+          const todayAnswer: Healthcheck[] = await fetchUserHealthchecks("도다리도 뚜뚜려보고 건너는 양털", me!.uuid, selectedDate!, selectedDate!);
+          if (todayAnswer.length == 1) {
+            setMyHealthcheck(todayAnswer[0]);
+            if (init) {
+              setWriteScore(todayAnswer[0].responses.map((res) => res.score))
+              console.log(todayAnswer[0].responses.map((res) => res.answer), todayAnswer[0].responses.map((res) => res.score))
+              const answerMap = todayAnswer[0].responses.map((res) => res.answer)
+              setWriteComment(answerMap);
+              setInit(false);
+            }
+          } else {
+            if (init) {
+              setWriteComment(Array.from({ length: questions.questions.length }, (_, i) => ""));
+              setWriteScore(Array.from({ length: questions.questions.length }, (_, i) => 4));
+            }
           }
           setLoadStatus(true);
-        });
+          // await driveGetFolder(healthcheckDriveId).then(async (res: DriveFolder[]) => {
+          //   const filtered = res.filter((r) => r.name.split("_")[1] == session?.user?.email);
+          //   setHealthchecks(filtered);
+          //   const fold: DriveFolder[] = res.filter((df: DriveFolder) => df.name == `${selectedDate}_${session?.user?.email}`);
+          //   if (fold.length == 1) {
+          //     setCheckContent(await driveGetFile(session?.accessToken, fold[0].id));
+          //   }
+          //   setLoadStatus(true);
+          // });
+        }
       }
       if (!isUploading) {
         setDisabled(false);
       }
     })();
 
-  }, [session]);
+  }, [session, me, selectedDate]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -94,8 +140,8 @@ const DailyHealthcheckEdit = () => {
   if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
 
   return <div className={"w-full h-full bg-gray-100"}>
-    <div className={"flex flex-col p-10 h-full space-y-10"}>
-      <div className={"flex h-fit md:h-12 space-x-2.5 md:space-x-0"}>
+    <div className={"flex flex-col px-10 h-full space-y-10"}>
+      <div className={"sticky top-0 py-5 bg-gray-100 z-20 flex h-fit space-x-2.5 md:space-x-0"}>
         <div className={"flex flex-col space-y-2.5 md:space-y-0 md:flex-row md:space-x-2.5"}>
           {
             dailySnippetAvailableDate().map((date) => {
@@ -110,10 +156,8 @@ const DailyHealthcheckEdit = () => {
                     dateRef.current = date;
                     if (fold.length == 1) {
                       const getFile = await driveGetFile(session?.accessToken, fold[0].id);
-                      setCheckContent(fold[0].name.split("_")[0] == dateRef.current ? getFile : template);
 
                     } else {
-                      setCheckContent(template);
                     }
                     setDisabled(false);
                   }
@@ -124,7 +168,7 @@ const DailyHealthcheckEdit = () => {
                 {
                   isUploading || !loadStatus
                     ? <div className={"w-4 aspect-square"}><CircularLoader/></div>
-                    : <div className={`w-2 aspect-square rounded-full ${healthchecks.filter((df: DriveFolder) => `${df.name.split("_")[0]}_${df.name.split("_")[1]}` == `${date}_${session?.user?.email}`).length == 1 ? "bg-green-500" : "bg-gray-400"}`}></div>
+                    : <div className={`w-2 aspect-square rounded-full ${myHealthcheck && !retouched ? "bg-green-500" : "bg-gray-400"}`}></div>
                 }
                 </div>
 
@@ -136,21 +180,26 @@ const DailyHealthcheckEdit = () => {
           <IconTextButton src={"/arrow-path.svg"} text={"초기화"} onClick={() => {
             const confirm = window.confirm("작성하시던 내용을 초기화하시겠습니까?");
             if (confirm) {
-              setCheckContent(template);
+              setRetouched(true);
+              setWriteComment(Array.from({ length: questions.length }, (_, i) => ""));
+              setWriteScore(Array.from({ length: questions.length }, (_, i) => 4));
             }
           }} />
           <IconTextButton src={"/globe.svg"} text={"임시저장"} onClick={() => {
             const confirm = window.confirm("지금 상태로 헬스체크를 임시저장할까요?");
             if (confirm) {
-              window.localStorage.setItem(`healthcheck__tempsave__${selectedDate!}`, checkContent);
+              window.localStorage.setItem(`healthcheck__tempsave__${selectedDate!}`, writeComment.join("/*/*/"));
+              window.localStorage.setItem(`healthcheck__tempsave__score__${selectedDate!}`, writeComment.join("/*/*/"));
             }
           }} />
           <IconTextButton src={"/globe.svg"} text={"임시저장 불러오기"} onClick={() => {
             const result = window.localStorage.getItem(`healthcheck__tempsave__${selectedDate!}`);
-            if (result) {
+            const resultScore = window.localStorage.getItem(`healthcheck__tempsave__score__${selectedDate!}`);
+            if (result && resultScore) {
               const confirm = window.confirm("임시저장한 헬스체크를 불러올까요?");
               if (confirm) {
-                setCheckContent(result!);
+                setWriteComment(result.split("/*/*/"));
+                setWriteScore(resultScore.split("/*/*/").map((s) => Number(s)));
               }
             } else {
               window.alert("임시저장한 헬스체크가 없어요.");
@@ -161,6 +210,26 @@ const DailyHealthcheckEdit = () => {
               setDisabled(true);
               const email = session?.user?.email as string;
               setIsUploading(true);
+              console.log(myHealthcheck, me);
+              const body: HealthcheckResponse[] = [];
+              for (let i = 0; i < questions.length; i++) {
+                body.push({
+                  question: questions[i],
+                  answer: writeComment[i],
+                  score: writeScore[i]
+                });
+              }
+              console.log(body);
+              if (me) {
+                const todayAnswer: Healthcheck[] = await fetchUserHealthchecks("도다리도 뚜뚜려보고 건너는 양털", me!.uuid, selectedDate!, selectedDate!);
+                if (todayAnswer.length == 0) {
+                  console.log("add healthcheck");
+                  await addUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me?.uuid, selectedDate!, body);
+                } else {
+                  console.log("update healthcheck", body);
+                  await updateUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me?.uuid, selectedDate!, body);
+                }
+              }
               const myDriveList = (await driveGetFolder(healthcheckDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${email}`);
               if (myDriveList.length == 0) {
                 setSubmitText("Google Drive에 파일이 업로드되어 있지 않아서 업로드하고 있어요")
@@ -171,9 +240,10 @@ const DailyHealthcheckEdit = () => {
                 }
               }
               setSubmitText("Google Drive에 파일 업로드 중")
-              await driveUploadFile(healthcheckDriveId, `${selectedDate!}_${email}`, checkContent);
+              await driveUploadFile(healthcheckDriveId, `${selectedDate!}_${email}`, body.map((b) => `### ${b.question}\n\n- ${b.answer}`).join("\n\n"));
               setSubmitText("업로드 완료");
               window.localStorage.removeItem(`healthcheck__tempsave__${selectedDate!}`);
+              window.localStorage.removeItem(`healthcheck__tempsave__score__${selectedDate!}`);
               setDisabled(false);
               setTimeout(() => {
                 setIsUploading(false);
@@ -183,14 +253,19 @@ const DailyHealthcheckEdit = () => {
           }}>{ isUploading ? <div className={"flex space-x-2.5"}>
             <div className={"w-5 aspect-square"}><CircularLoader/></div>
             <p>{submitText}</p>
-          </div> : "Google Drive에 업로드"}</button>
+          </div> : myHealthcheck ? "업데이트" : "발행"}</button>
         </div>
       </div>
       <div className={"flex-1 relative"}>
-        <div className={"absolute w-full h-full flex items-end justify-center bg-gray-800/40 rounded-md"}>
-          <div className={"bg-black rounded-md p-5 mb-10 text-white"}>입력할 수 없어요</div>
+        <div className={"w-full h-full flex flex-col space-y-20 pb-20"}>
+          { !isUploading && loadStatus &&
+            questions.map((question, i) => <div key={question} className={"w-full h-full flex flex-col space-y-10"}>
+              <HealthcheckEditCard question={question} comment={writeComment[i]} onCommentChange={onCommentChange} disabled={disabled} writeScore={writeScore} setWriteScore={setWriteScore} index={i} />
+              { i <= question.length - 1 && <div className={"w-full h-[1px] bg-gray-300"}></div> }
+            </div>)
+          }
         </div>
-        <HealthcheckEditor content={checkContent} onSnippetChange={onContentChange} disabled={disabled} />
+        {/*<HealthcheckEditor content={checkContent} onSnippetChange={onContentChange} disabled={disabled} />*/}
       </div>
     </div>
   </div>
@@ -205,6 +280,48 @@ type healthcheckEditorType = {
 const HealthcheckEditor = ({ content, onSnippetChange, disabled }: healthcheckEditorType) => {
   return <div className={`w-full h-full border-[1px] border-gray-300 rounded-2xl ${disabled ? "opacity-30" : ""}`}>
     <Editor content={content} contentChange={onSnippetChange} disabled={disabled} />
+  </div>
+}
+
+type healthcheckEditCardType = {
+  question: string;
+  comment: string;
+  onCommentChange: (value: string, index: number) => void;
+  disabled: boolean;
+  writeScore: number[];
+  setWriteScore: Dispatch<SetStateAction<number[]>>;
+  index: number;
+}
+
+const HealthcheckEditCard = ({ question, comment, onCommentChange, disabled, writeScore, setWriteScore, index }:healthcheckEditCardType) => {
+  return <div className={"flex space-x-10"}>
+    <div className={"flex-2 flex flex-col space-y-5"}>
+      <p className={"text-2xl font-semibold"}>{question}</p>
+      <div className={"w-full h-10 flex items-center justify-between rounded-full border-[1px] border-gray-300 bg-gradient-to-r from-red-100 to-blue-100"}>
+        {Array.from({ length: 9 }, (_, index) => index).map((_, i) =>
+          <div key={question+"_"+i} className={"flex items-center justify-center w-full h-full relative"}>
+            { writeScore[index] == i && <motion.div transition={roundTransition} layoutId={"block-bg"+question} className={"w-full h-full bg-white rounded-full border-[1px] border-gray-300 absolute"}></motion.div>}
+            <motion.div key={i} className={`cursor-pointer active:scale-90 active:bg-black/20 z-10 flex items-center justify-center duration-100 rounded-full w-full h-full`} onClick={() => setWriteScore([...writeScore.slice(0, index), i, ...writeScore.slice(index + 1, writeScore.length + 1)])}>
+              <p>{i+1}</p>
+            </motion.div>
+          </div>
+        )}
+      </div>
+      <p className={"text-center"}>{[
+        "팀 나가겠습니다.",
+        "샤갈 장난치냐?",
+        "욕 나오기 직전이에요.",
+        "오늘 좀 아쉬웠어요.",
+        "무난무난하게 잘 흘러갔어요.",
+        "오늘 좋았어요!",
+        "오늘 행복했어요! 일기장에 적어두고 싶을만큼이요.",
+        "진짜 말이 안돼요. 평생 기억에 남을 것 같아요.",
+        "우리 팀 투자받았어요!!"
+      ][writeScore[index]]}</p>
+    </div>
+    <div className={"flex-3"}>
+      <textarea value={comment} placeholder={"'" + question + "' 에 대한 구체적인 경험을 공유해주세요."} className={"w-full h-full border-[1px] border-gray-300 p-7 rounded-2xl bg-white"} onChange={(e) => onCommentChange(e.target.value, index)} />
+    </div>
   </div>
 }
 
