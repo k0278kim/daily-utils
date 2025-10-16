@@ -12,6 +12,7 @@ import SnippetsPage from "@/app/(routes)/snippets/page";
 import HealthchecksPage from "@/app/(routes)/healthchecks/page";
 import PraisesPage from "@/app/(routes)/praises/page";
 import JapdoriPage from "@/app/(routes)/japdori/page";
+import ProfilePage from "@/app/(routes)/profile/page";
 
 export default function Page() {
   const { data: session, status } = useSession();
@@ -56,7 +57,9 @@ export default function Page() {
                     ? <PraisesPage />
                     : selectedArea == 3
                       ? <JapdoriPage />
-                      : <></>
+                      : selectedArea == -2
+                        ? <ProfilePage />
+                        : <></>
               }
             </div>
               {/*<TextButton onClick={() => {*/}

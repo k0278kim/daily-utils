@@ -41,7 +41,7 @@ const TopBar = ({ darkmode, routes, titles, selectedArea, setSelectedArea }: top
             <button className={`flex items-center px-3 rounded-sm text-sm font-semibold ${darkmode ? "bg-gray-800 text-gray-200" : "bg-gray-200 text-gray-700"}`} onClick={() => {
               window.location.href = "/daily_edit"
             }}>오늘 기록</button>
-            <Image src={session.user?.image as string} alt={""} width={30} height={30} className={"rounded-sm active:scale-90 duration-100 cursor-pointer"} onClick={() => signOut()}/>
+            <Image src={session.user?.image as string} alt={""} width={30} height={30} className={"rounded-sm active:scale-90 duration-100 cursor-pointer"} onClick={() => setSelectedArea(-2)}/>
           </div>
         }
       </div>

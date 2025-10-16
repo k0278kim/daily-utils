@@ -10,7 +10,7 @@ type loadOrLoginType = {
 }
 
 const LoadOrLogin = ({ loadOverflow, setLoadOverflow }: loadOrLoginType) => {
-  return <div className="flex flex-col w-screen h-screen items-center justify-center relative space-y-10">
+  return <div className="flex flex-col w-full h-full items-center justify-center relative space-y-10">
     <motion.div className={"w-10 aspect-square"} layoutId={"circular_"}>
       <CircularLoader />
     </motion.div>

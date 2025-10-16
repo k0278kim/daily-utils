@@ -43,6 +43,7 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
   const [loadStatus, setLoadStatus] = useState(false);
   const [editorDisabled, setEditorDisabled] = useState(true);
   const [loadOverflow, setLoadOverflow] = useState(false);
+  const [initCompleted, setInitCompleted] = useState(false);
   const [error, setError] = useState("");
 
   const router = useRouter();
@@ -69,9 +70,9 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
   }
 
   useEffect(() => {
-    setLoadStatus(false);
     (async() => {
-      if (session) {
+      if (session && !initCompleted) {
+        setLoadStatus(false);
         try {
           await getMySnippets(session?.user?.email as string).then((res) => {
             setSnippets(res);
@@ -83,7 +84,12 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
             }
             setLoadStatus(true);
           });
+          setInitCompleted(true);
         } catch (e) {
+          const confirm = window.confirm("지금 상태로 스니펫을 임시저장할까요?");
+          if (confirm) {
+            window.localStorage.setItem(`snippet__tempsave__${selectedDate!}`, snippetContent);
+          }
           setError(e as string);
         }
       }

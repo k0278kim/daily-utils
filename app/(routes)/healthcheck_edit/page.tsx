@@ -96,7 +96,7 @@ const DailyHealthcheckEdit = () => {
         }
         if (me) {
           console.log("it's me", me);
-          const todayAnswer: Healthcheck[] = await fetchUserHealthchecks("도다리도 뚜뚜려보고 건너는 양털", me!.uuid, selectedDate!, selectedDate!);
+          const todayAnswer: Healthcheck[] = await fetchUserHealthchecks(me!.uuid, selectedDate!, selectedDate!);
           if (todayAnswer.length == 1) {
             setMyHealthcheck(todayAnswer[0]);
             if (init) {
@@ -126,7 +126,7 @@ const DailyHealthcheckEdit = () => {
     setLoadStatus(false);
     (async () => {
       if (session && me) {
-        const todayAnswer: Healthcheck[] = await fetchUserHealthchecks("도다리도 뚜뚜려보고 건너는 양털", me!.uuid, selectedDate!, selectedDate!);
+        const todayAnswer: Healthcheck[] = await fetchUserHealthchecks(me!.uuid, selectedDate!, selectedDate!);
         if (todayAnswer.length == 1) {
           setMyHealthcheck(todayAnswer[0]);
           setWriteScore(todayAnswer[0].responses.map((res) => res.score))
@@ -235,7 +235,7 @@ const DailyHealthcheckEdit = () => {
               }
               console.log(body);
               if (me) {
-                const todayAnswer: Healthcheck[] = await fetchUserHealthchecks("도다리도 뚜뚜려보고 건너는 양털", me!.uuid, selectedDate!, selectedDate!);
+                const todayAnswer: Healthcheck[] = await fetchUserHealthchecks(me!.uuid, selectedDate!, selectedDate!);
                 if (todayAnswer.length == 0) {
                   console.log("add healthcheck");
                   await addUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me?.uuid, selectedDate!, body);

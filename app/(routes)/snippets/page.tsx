@@ -11,6 +11,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import {roundTransition} from "@/app/transition/round_transition";
 
 const SnippetsPage = () => {
 
@@ -69,7 +70,7 @@ const SnippetsPage = () => {
     {/*    Daily Snippet 작성*/}
     {/*  </div>*/}
     {/*</div>*/}
-    <div className={"sticky top-0 w-full flex justify-center bg-white p-5 border-b-[1px] border-b-gray-200 space-x-5"}>
+    <div className={"sticky top-0 w-full flex justify-center bg-gray-100 p-5 space-x-5"}>
       <Image src={"/chevron-left.svg"} alt={""} width={30} height={30} className={"cursor-pointer"} onClick={async () => {
         setLoading(true);
         const newDate = new Date(dateFrom);
@@ -98,7 +99,7 @@ const SnippetsPage = () => {
         }
       }} />
     </div>
-    <div className={"flex space-x-5 justify-center w-full scrollbar-hide"}>
+    <div className={"flex flex-col space-y-2.5 px-2.5 md:p-0 md:flex-row md:space-x-5 justify-center w-full scrollbar-hide"}>
       {
         !loading
         ? snippets.filter((f) => f.snippet_date == selectedDate).length != 0
@@ -126,25 +127,30 @@ type weekCalendarType = {
 }
 
 const WeekCalendar = ({ date_from, snippets, selectedDate, setSelectedDate, loading }: weekCalendarType) => {
-  return <div className={"max-w-[700px] md:max-w-[1000px] w-full h-fit grid grid-cols-7 gap-2.5"}>
+  const [hoverIndex, setHoverIndex] = useState(-1);
+
+  return <div className={"max-w-[700px] md:max-w-[1000px] w-full h-fit grid grid-cols-7"} onMouseLeave={() => setHoverIndex(-1)}>
     {
       Array.from({ length: 7 }, (_, i) => i).map((_, i) => {
         const date = new Date(date_from);
         date.setDate(date.getDate() + i);
-        const daySnippets = snippets.filter((f)=>f.snippet_date == formatDate(date));
-        return <div key={date.getDate()} className={"cursor-pointer flex flex-col space-y-2.5 items-center"} onClick={() => setSelectedDate(formatDate(date)!)}>
-          <div className={`flex w-full h-10 rounded-lg font-semibold text-lg space-x-2.5 items-center justify-center ${formatDate(date) == selectedDate ? daySnippets.length == 0 ? "bg-gray-400" : daySnippets.length == 3 ? "bg-green-500" : "bg-yellow-500" : daySnippets.length == 0 ? "bg-gray-100" : daySnippets.length == 3 ? "bg-green-100" : "bg-yellow-100"}`}>
+        const dayDocs = snippets.filter((f)=>f.snippet_date == formatDate(date));
+        return <div key={i} onMouseOver={() => setHoverIndex(i)} className={"p-2.5 relative active:scale-90 duration-100 cursor-pointer flex flex-col space-y-2.5 items-center md:justify-center"} onClick={() => setSelectedDate(formatDate(date)!)}>
+          { hoverIndex == i && <motion.div transition={roundTransition} layoutId={"hover-bg"} className={"absolute w-full h-full bg-gray-400/10 z-10 rounded-xl"}></motion.div> }
+          <motion.div className={`relative duration-100 flex w-7 h-7 md:w-full md:h-10 rounded-lg font-semibold text-lg md:space-x-2.5 items-center justify-center ${formatDate(date) == selectedDate ? dayDocs.length == 0 ? "bg-gray-400" : dayDocs.length == 3 ? "bg-green-500" : "bg-yellow-500" : dayDocs.length == 0 ? "bg-gray-200" : dayDocs.length == 3 ? "bg-green-500/20" : "bg-yellow-500/20"}`}>
+            <div className={"md:opacity-0 absolute text-sm flex items-center justify-center"}><p>{dayDocs.length}</p></div>
             {
               !loading
-              ? daySnippets.map((snippet, i) => {
-                return <div key={i} className={`w-3 aspect-square rounded-full ${formatDate(date) == selectedDate ? "bg-white" : daySnippets.length == 3 ? "bg-green-500" : "bg-yellow-500"}`}></div>
-              })
-              : <div className={"w-4 aspect-square"}><CircularLoader/></div>
+                ? dayDocs.map((snippet, i) => {
+                  return <motion.div key={i} className={`duration-100 md:w-3 md:aspect-square rounded-full ${formatDate(date) == selectedDate ? "bg-white" : dayDocs.length == 3 ? "bg-green-500" : "bg-yellow-500"}`}>
+                  </motion.div>
+                })
+                : <div className={"w-4 aspect-square"}><CircularLoader/></div>
             }
-          </div>
+          </motion.div>
           { formatDate(new Date()) == formatDate(date)
-              ? <p>오늘</p>
-              : <p className={`${formatDate(date) == selectedDate ? "font-semibold" : ""}`}>{date.getDate()} ({["일", "월", "화", "수", "목", "금", "토"][date.getDay()]})</p>
+            ? <p className={`text-sm ${formatDate(date) == selectedDate ? "font-semibold" : ""}`}>오늘</p>
+            : <p className={`text-sm ${formatDate(date) == selectedDate ? "font-semibold" : ""}`}>{Number(date.getMonth() + 1)}.{date.getDate()} ({["일", "월", "화", "수", "목", "금", "토"][date.getDay()]})</p>
           }
         </div>;
       })
