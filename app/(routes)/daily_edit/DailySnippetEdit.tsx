@@ -20,20 +20,7 @@ type dailySnippetEditProps = {
 };
 
 export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) => {
-  const template = `### What
-1. a
-2. b
-3. c
-### Why
-- a
-- b
-- c
-### Highlight
-
-### Lowlight
-
-### Tomorrow
-`;
+  const template = ``;
   const { data: session } = useSession();
   const [submitText, setSubmitText] = useState<string>("발행하기");
   const [snippetContent, setSnippetContent] = useState(template);
@@ -45,6 +32,7 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
   const [loadOverflow, setLoadOverflow] = useState(false);
   const [initCompleted, setInitCompleted] = useState(false);
   const [error, setError] = useState("");
+  const [tempContent, setTempContent] = useState("");
 
   const router = useRouter();
 
@@ -63,9 +51,16 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
     }
   }
 
+  useEffect(() => {
+    const availableDate = dailySnippetAvailableDate();
+    setSelectedDate(availableDate[0]);
+  }, []);
+
   const getMySnippets = async (email: string) => {
     const availableDate = dailySnippetAvailableDate();
-    const snippets = await fetchSnippet(availableDate[0]!, availableDate.length == 2 ? availableDate[1]! : availableDate[0]!);
+    const startYesterday = new Date(availableDate[0]!);
+    startYesterday.setDate(startYesterday.getDate() - 1);
+    const snippets = await fetchSnippet(formatDate(startYesterday)!, availableDate.length == 2 ? availableDate[1]! : availableDate[0]!);
     return snippets.filter((snippet: Snippet) => snippet.user_email == email).sort((a: Snippet, b: Snippet) => Number(new Date(a.snippet_date)) - Number(new Date(b.snippet_date)));
   }
 
@@ -75,6 +70,7 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
         setLoadStatus(false);
         try {
           await getMySnippets(session?.user?.email as string).then((res) => {
+            console.log(res);
             setSnippets(res);
             const snip: Snippet[] = res.filter((sn: Snippet) => sn.snippet_date == selectedDate);
             if (snip.length == 1) {
@@ -99,6 +95,19 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
     })();
 
   }, [session]);
+
+  useEffect(() => {
+    console.log(snippets);
+    if (snippets.length != 0) {
+      const yesterday = new Date(selectedDate!);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const snip: Snippet[] = snippets.filter((sn: Snippet) => sn.snippet_date == formatDate(yesterday));
+      console.log(snip);
+      if (snip.length == 1) {
+        setTempContent(snip[0].content);
+      }
+    }
+  }, [selectedDate, snippets]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -227,7 +236,7 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
         <div className={"absolute w-full h-full flex items-end justify-center bg-gray-800/40 rounded-md"}>
           <div className={"bg-black rounded-md p-5 mb-10 text-white"}>입력할 수 없어요</div>
         </div>
-        <SnippetEditor content={snippetContent} onSnippetChange={onSnippetChange} editorDisabled={editorDisabled} />
+        <SnippetEditor content={snippetContent} onSnippetChange={onSnippetChange} editorDisabled={editorDisabled} tempContent={tempContent} />
       </div>
     </div>
   </div>
@@ -237,10 +246,11 @@ type snippetEditorType = {
   content: string,
   onSnippetChange: (value: string) => void;
   editorDisabled: boolean;
+  tempContent: string;
 }
 
-const SnippetEditor = ({ content, onSnippetChange, editorDisabled }: snippetEditorType) => {
+const SnippetEditor = ({ content, onSnippetChange, editorDisabled, tempContent }: snippetEditorType) => {
   return <div className={`w-full h-full border-[1px] border-gray-300 rounded-2xl ${editorDisabled ? "opacity-30" : ""}`}>
-    <Editor content={content} contentChange={onSnippetChange} disabled={editorDisabled} />
+    <Editor content={content} contentChange={onSnippetChange} disabled={editorDisabled} tempContent={tempContent} />
   </div>
 }

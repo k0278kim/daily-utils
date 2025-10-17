@@ -1,8 +1,6 @@
 "use client"
 import React, {Dispatch, SetStateAction, useEffect, useRef, useState} from "react";
-import Editor from "@/components/MdEditor";
 import formatDate from "@/lib/utils/format_date";
-import {Snippet} from "@/model/snippet";
 import CircularLoader from "@/components/CircularLoader";
 import IconTextButton from "@/components/IconTextButton";
 import {driveUploadFile} from "@/app/api/drive_upload_file";
@@ -10,16 +8,13 @@ import {signIn, useSession} from "next-auth/react";
 import {driveGetFolder} from "@/app/api/drive_get_folder";
 import {driveDeleteFile} from "@/app/api/drive_delete_file";
 import LoadOrLogin from "@/components/LoadOrLogin";
-import {useRouter} from "next/navigation";
 import {healthcheckDriveId} from "@/app/data/drive_id";
 import {DriveFolder} from "@/model/driveFolder";
 import {driveGetFile} from "@/app/api/drive_get_file";
-import _ from "lodash";
 import fetchHealthcheckQuestions from "@/app/api/healthcheck/fetch_questions/fetchHealthcheckQuestions";
 import {HealthcheckQuestions} from "@/model/healthcheckQuestions";
 import { motion } from "framer-motion";
 import {roundTransition} from "@/app/transition/round_transition";
-import fetchTeamHealthchecks from "@/app/api/healthcheck/fetch_team_healthchecks/fetchTeamHealthchecks";
 import fetchUserHealthchecks from "@/app/api/healthcheck/fetch_user_healthchecks/fetchUserHealthchecks";
 import fetchUserByEmail from "@/app/api/team/user/get_user_by_email/fetch_user_by_email";
 import {User} from "@/model/user";
@@ -28,27 +23,9 @@ import {addUserHealthcheck} from "@/app/actions/addUserHealthcheck";
 import {updateUserHealthcheck} from "@/app/actions/updateUserHealthcheck";
 
 const DailyHealthcheckEdit = () => {
-  const template = `### Fun(재밌었는가?)
-- 
-
-### Pawn or Players(시켜서 했는가? 능동적으로 했는가?)
-- 
-
-### Speed(빠르게 일이나 회의를 끝냈는가?)
-- 
-
-### Suitable Process(업무 방식이 본인에게 맞는가?)
-- 
-
-### Teamwork(우린 팀 분위기가 좋은가?)
-- 
-
-### 건의사항
--
-`;
   const { data: session } = useSession();
   const [submitText, setSubmitText] = useState<string>("발행하기");
-  const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
+  const [selectedDate, setSelectedDate] = useState("");
   const [healthchecks, setHealthchecks] = useState<DriveFolder[] | []>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [loadStatus, setLoadStatus] = useState(false);
@@ -80,6 +57,11 @@ const DailyHealthcheckEdit = () => {
       return [formatDate(now)]
     }
   }
+
+  useEffect(() => {
+    const availableDate = dailySnippetAvailableDate();
+    setSelectedDate(availableDate[0]!);
+  }, []);
 
   useEffect(() => {
     setLoadStatus(false);
@@ -289,12 +271,6 @@ type healthcheckEditorType = {
   content: string,
   onSnippetChange: (value: string) => void;
   disabled: boolean;
-}
-
-const HealthcheckEditor = ({ content, onSnippetChange, disabled }: healthcheckEditorType) => {
-  return <div className={`w-full h-full border-[1px] border-gray-300 rounded-2xl ${disabled ? "opacity-30" : ""}`}>
-    <Editor content={content} contentChange={onSnippetChange} disabled={disabled} />
-  </div>
 }
 
 type healthcheckEditCardType = {
