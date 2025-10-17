@@ -287,7 +287,7 @@ const HealthcheckEditCard = ({ question, comment, onCommentChange, disabled, wri
   return <div className={"flex space-y-10 md:space-y-0 md:space-x-10 flex-col md:flex-row"}>
     <div className={"flex-2 flex flex-col space-y-5"}>
       <p className={"text-2xl font-semibold"}>{question}</p>
-      <div className={"w-full h-10 flex items-center justify-between rounded-full border-[1px] border-gray-300 bg-gradient-to-r from-red-100 to-blue-100"}>
+      <div className={"w-full h-10 flex items-center justify-between rounded-full border-[1px] border-gray-300 bg-gradient-to-r from-blue-100 to-red-100"}>
         {Array.from({ length: 9 }, (_, index) => index).map((_, i) =>
           <div key={question+"_"+i} className={"flex items-center justify-center w-full h-full relative"}>
             { writeScore[index] == i && <motion.div transition={roundTransition} layoutId={"block-bg"+question} className={"w-full h-full bg-white rounded-full border-[1px] border-gray-300 absolute"}></motion.div>}
