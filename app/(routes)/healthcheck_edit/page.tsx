@@ -221,7 +221,15 @@ const DailyHealthcheckEdit = () => {
                 const todayAnswer: Healthcheck[] = await fetchUserHealthchecks(me!.uuid, selectedDate!, selectedDate!);
                 if (todayAnswer.length == 0) {
                   console.log("add healthcheck");
-                  await addUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me?.uuid, selectedDate!, body);
+                  try {
+                    await addUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me?.uuid, selectedDate!, body);
+                  } catch (e) {
+                    const confirm = window.confirm("계정 세션에 문제가 발생했습니다. 지금 상태로 헬스체크를 임시저장할까요?");
+                    if (confirm) {
+                      window.localStorage.setItem(`healthcheck__tempsave__${selectedDate!}`, writeComment.join("/*/*/"));
+                      window.localStorage.setItem(`healthcheck__tempsave__score__${selectedDate!}`, writeScore.join("/*/*/"));
+                    }
+                  }
                 } else {
                   console.log("update healthcheck", body);
                   await updateUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me?.uuid, selectedDate!, body);
