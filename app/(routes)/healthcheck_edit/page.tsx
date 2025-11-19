@@ -64,43 +64,44 @@ const DailyHealthcheckEdit = () => {
   }, []);
 
   useEffect(() => {
-    setLoadStatus(false);
-    setDisabled(true);
-    (async() => {
-      if (session) {
-        const questions: HealthcheckQuestions = await fetchHealthcheckQuestions("도다리도 뚜뚜려보고 건너는 양털");
-        setQuestions(questions.questions);
-        if (!me) {
-          console.log("not me", me);
-          const meRes: User[] = await fetchUserByEmail(session.user?.email as string);
-          console.log("setme", meRes[0]);
-          setMe(meRes[0]);
-        }
-        if (me) {
-          console.log("it's me", me);
-          const todayAnswer: Healthcheck[] = await fetchUserHealthchecks(me!.uuid, selectedDate!, selectedDate!);
-          if (todayAnswer.length == 1) {
-            setMyHealthcheck(todayAnswer[0]);
-            if (init) {
-              setWriteScore(todayAnswer[0].responses.map((res) => res.score))
-              console.log(todayAnswer[0].responses.map((res) => res.answer), todayAnswer[0].responses.map((res) => res.score))
-              const answerMap = todayAnswer[0].responses.map((res) => res.answer)
-              setWriteComment(answerMap);
-              setInit(false);
-            }
-          } else {
-            if (init) {
-              setWriteComment(Array.from({ length: questions.questions.length }, (_, i) => ""));
-              setWriteScore(Array.from({ length: questions.questions.length }, (_, i) => 4));
-            }
+    if (init) {
+      setLoadStatus(false);
+      setDisabled(true);
+      (async() => {
+        if (session) {
+          const questions: HealthcheckQuestions = await fetchHealthcheckQuestions("도다리도 뚜뚜려보고 건너는 양털");
+          setQuestions(questions.questions);
+          if (!me) {
+            console.log("not me", me);
+            const meRes: User[] = await fetchUserByEmail(session.user?.email as string);
+            console.log("setme", meRes[0]);
+            setMe(meRes[0]);
           }
-          setLoadStatus(true);
+          if (me) {
+            const todayAnswer: Healthcheck[] = await fetchUserHealthchecks(me!.uuid, selectedDate!, selectedDate!);
+            if (todayAnswer.length == 1) {
+              setMyHealthcheck(todayAnswer[0]);
+              if (init) {
+                setWriteScore(todayAnswer[0].responses.map((res) => res.score))
+                console.log(todayAnswer[0].responses.map((res) => res.answer), todayAnswer[0].responses.map((res) => res.score))
+                const answerMap = todayAnswer[0].responses.map((res) => res.answer)
+                setWriteComment(answerMap);
+                setInit(false);
+              }
+            } else {
+              if (init) {
+                setWriteComment(Array.from({ length: questions.questions.length }, (_, i) => ""));
+                setWriteScore(Array.from({ length: questions.questions.length }, (_, i) => 4));
+              }
+            }
+            setLoadStatus(true);
+          }
         }
-      }
-      if (!isUploading) {
-        setDisabled(false);
-      }
-    })();
+        if (!isUploading) {
+          setDisabled(false);
+        }
+      })();
+    }
 
   }, [session, me]);
 

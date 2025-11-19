@@ -115,10 +115,12 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
     }, 3000);
   }, [])
 
-  if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
+  // if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
   if (error) return <div className={"w-full h-full flex items-center justify-center text-gray-700 text-2xl"}>Daily Snippet 서버에 접속할 수 없어요.</div>
 
-  return <div className={"w-full h-full bg-gray-100"}>
+  return error ? <div className={"w-full h-full flex items-center justify-center text-gray-700 text-2xl"}>Daily Snippet 서버에 접속할 수 없어요.</div>
+    :
+    <div className={"w-full h-full bg-gray-100"}>
     <div className={"flex flex-col p-10 h-full space-y-10"}>
       <div className={"flex h-12"}>
         <div className={"flex space-x-2.5"}>
@@ -143,11 +145,11 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
                 className={`text-sm flex items-center space-x-2.5 rounded-lg p-3 border-[1px] cursor-pointer ${!loadStatus ? "bg-gray-200 text-gray-500" : selectedDate == date ? "bg-white border-gray-200" : "border-transparent text-gray-600"} font-bold`}>
                 <p>{`${dateSplit[0]}년 ${dateSplit[1]}월 ${dateSplit[2]}일`}</p>
                 <div className={"w-4 aspect-square flex items-center justify-center"}>
-                {
-                  isUploading || !loadStatus
-                    ? <div className={"w-4 aspect-square"}><CircularLoader/></div>
-                    : <div className={`w-2 aspect-square rounded-full ${snippet.length == 1 ? "bg-green-500" : "bg-gray-400"}`}></div>
-                }
+                  {
+                    isUploading || !loadStatus
+                      ? <div className={"w-4 aspect-square"}><CircularLoader/></div>
+                      : <div className={`w-2 aspect-square rounded-full ${snippet.length == 1 ? "bg-green-500" : "bg-gray-400"}`}></div>
+                  }
                 </div>
 
               </button>

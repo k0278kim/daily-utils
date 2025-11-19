@@ -83,7 +83,7 @@ const VacationPage = () => {
         <p>사용한 휴가</p>
         <IconTextButton src={"/plus.svg"} text={"일정 추가"} onClick={() => {}} />
       </div>
-      <div className={"w-full flex space-x-2.5 space-y-2.5 border-[1px] border-gray-200 rounded-xl"}>
+      <div className={"w-full flex space-x-2.5 space-y-2.5 divide-y border-[1px] border-gray-200 rounded-xl flex-col"}>
         {vacationUsage.map((vu) => <VacationUsageBlock key={vu.id} vacationUsage={vu} vacationNameMap={vacationNameMap} />)}
       </div>
     </div>
