@@ -47,7 +47,7 @@ export default function CompleteSignupPage() {
   }, [supabase, router]);
 
   useEffect(() => {
-    if (user && !defaultAvatars) {
+    if (user && defaultAvatars.length == 0) {
       (async () => {
         const { data, error } = await supabase.from("default_avatar_image")
           .select("url");
@@ -213,7 +213,7 @@ export default function CompleteSignupPage() {
           {/* 팀 이름 입력 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              팀 이름
+              팀 ID
             </label>
             <input
               type="text"
@@ -223,7 +223,7 @@ export default function CompleteSignupPage() {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none transition"
             />
             <p className="text-xs text-gray-400 mt-1 ml-1">
-              * 등록된 팀 이름을 정확하게 입력해야 합니다.
+              * 등록된 팀 ID를 정확하게 입력해야 합니다.
             </p>
           </div>
 
