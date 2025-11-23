@@ -1,14 +1,12 @@
 import { getToken } from "next-auth/jwt";
 import {NextRequest, NextResponse} from "next/server";
 import {supabase} from "@/lib/supabaseClient";
+import {requireAuth} from "@/utils/supabase/auth";
 
 export async function POST(req: NextRequest) {
 
   try {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    if (!token?.accessToken) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
+    const { supabase, user } = await requireAuth();
 
     const body = await req.json();
     body.api_id = process.env.NEXT_PUBLIC_SNIPPET_API_ID as string;

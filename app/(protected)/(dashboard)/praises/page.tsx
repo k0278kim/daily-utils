@@ -18,7 +18,7 @@ import {roundTransition} from "@/app/transition/round_transition";
 import {easeInOutTranstion} from "@/app/transition/ease_transition";
 import _ from "lodash";
 import LoadOrLogin from "@/components/LoadOrLogin";
-import {useUser} from "@/context/SupabaseProvider";
+import {useSupabaseClient, useUser} from "@/context/SupabaseProvider";
 
 const PraisesPage = () => {
 
@@ -65,23 +65,23 @@ const PraisesPage = () => {
     }
   }, [selectedUser, praises]);
 
-  return <div className={"w-full h-full flex relative bg-gray-900"}>
+  return <div className={"w-full h-full flex relative bg-gray-100"}>
     <AnimatePresence>
     {
-      addPraiseOverlay && <motion.div className={`fixed flex w-full h-full items-center justify-center bg-black/20 z-20 duration-1000 ${addPraiseOverlay ? "backdrop-blur-xl" : ""}`} transition={roundTransition} exit={{ opacity: 0 }}>
+      addPraiseOverlay && <motion.div className={`fixed flex w-full h-full items-center justify-center bg-white/20 z-20 duration-1000 ${addPraiseOverlay ? "backdrop-blur-xl" : ""}`} transition={roundTransition} exit={{ opacity: 0 }}>
         <AddPraiseOverlay setPraises={setPraises} praiseFromEmail={user?.email} setAddPraiseOverlay={setAddPraiseOverlay} me={me} setMe={setMe} />
       </motion.div>
     }
     </AnimatePresence>
     <motion.div className={`z-0 w-full h-full flex relative duration-500 ${addPraiseOverlay ? "scale-90" : ""}`}>
-      <div className={`z-50 w-72 h-full border-r-[1px] border-r-gray-800 p-3 flex flex-col space-y-5 text-white bg-gray-800 sticky left-0 duration-1000 ${addPraiseOverlay ? "rounded-l-4xl" : ""}`}>
+      <div className={`z-50 w-72 h-full border-r-[1px] border-r-gray-200 p-3 flex flex-col space-y-5 text-white bg-white sticky left-0 duration-1000 ${addPraiseOverlay ? "rounded-l-4xl" : ""}`}>
         <div className={"mt-5 mb-5 mx-3"}>
-          <IconTextButton src={"/plus.svg"} className={"text-gray-300"} text={"칭찬하기"} onClick={() => setAddPraiseOverlay(true)} darkmode={true} />
+          <IconTextButton src={"/plus.svg"} className={"text-black"} text={"칭찬하기"} onClick={() => setAddPraiseOverlay(true)} darkmode={false} />
         </div>
         <div className={"flex flex-col"}>{
           users.map((user: User) =>
             <div key={user.email} className={"relative active:scale-90 duration-100"} onMouseOver={() => setHoverUser(user)} onMouseLeave={() => setHoverUser(null)}>
-              { hoverUser == user && <motion.div onClick={() => setSelectedUser(user)} transition={roundTransition} layoutId={"hover-user-bg"} className={"cursor-pointer w-full h-full absolute bg-gray-200/20 rounded-lg"}></motion.div>}
+              { hoverUser == user && <motion.div onClick={() => setSelectedUser(user)} transition={roundTransition} layoutId={"hover-user-bg"} className={"cursor-pointer w-full h-full absolute bg-gray-800/20 rounded-lg"}></motion.div>}
               <UserBlock user={user} selectedUser={selectedUser ? selectedUser : me} setSelectedUser={setSelectedUser} praisesNumber={praises.filter((praise) => praise.praise_to.email == user.email).length} />
             </div>)
         }</div>
@@ -93,11 +93,11 @@ const PraisesPage = () => {
             animate={{ opacity: 1, translateX: "0%" }}
             exit={{ opacity: 0, translateX: "-100%" }}
             transition={easeInOutTranstion}
-            className={"w-72 bg-gray-800/50 overflow-y-scroll scrollbar-hide"}>
+            className={"w-72 bg-gray-200 overflow-y-scroll scrollbar-hide"}>
             <div className={""}>
-              <div className={"font-semibold text-gray-300 text-lg px-5 pt-10 pb-3"}>모아보기</div>
+              <div className={"font-semibold text-gray-700 text-lg px-5 pt-10 pb-3"}>모아보기</div>
               {
-                myPraises.map((praise: Praise, index) => <div key={"praise_summary_" + praise.id} className={"cursor-pointer p-5 text-gray-300 hover:bg-gray-800/70 flex space-x-2.5"}
+                myPraises.map((praise: Praise, index) => <div key={"praise_summary_" + praise.id} className={"cursor-pointer p-5 text-gray-700 hover:bg-gray-200/70 flex space-x-2.5"}
                   onClick={() => {
                     window.location.hash = `#praise_block_${praise.id}`;
                     const hash = window.location.hash;
@@ -109,8 +109,8 @@ const PraisesPage = () => {
                     }
                   }}
                 >
-                  <div className={"w-7 text-xl font-semibold text-gray-300"}>{myPraises.length - index}</div>
-                  <div className={"flex flex-col space-y-2.5 flex-1"}>
+                  <div className={"w-7 text-xl font-semibold text-gray-500"}>{myPraises.length - index}</div>
+                  <div className={"flex flex-col space-y-1 flex-1"}>
                     <p className={""}>{praise.title}</p>
                     <p className={"text-sm text-gray-500"}>{praise.praise_from.name} · {formatDate(new Date(praise.created_at))}</p>
                   </div>
@@ -121,7 +121,7 @@ const PraisesPage = () => {
         }
       </AnimatePresence>
 
-      <div className={`flex-1 w-full h-full bg-gray-900 flex justify-center overflow-y-scroll duration-500 scrollbar-hide ${addPraiseOverlay ? "rounded-r-4xl" : ""}`}>{
+      <div className={`flex-1 w-full h-full bg-gray-100 flex justify-center overflow-y-scroll duration-500 scrollbar-hide ${addPraiseOverlay ? "rounded-r-4xl" : ""}`}>{
         selectedUser != undefined
           ? myPraises.length > 0
             ? <div className={"w-[60%] min-w-[300px] py-20 space-y-12"}>
@@ -155,12 +155,12 @@ const UserBlock = ({ user, selectedUser, setSelectedUser, praisesNumber }: userB
     initial={{ opacity: 0, translateX: -10 }}
     animate={{ opacity: 1, translateX: 0 }}
     layoutId={"user_"+user.name}
-    className={`active:scale-90 duration-100 flex items-center justify-between cursor-pointer w-full h-fit px-5 py-3 rounded-lg ${selectedUser?.id === user.id ? "bg-gray-900" : ""}`} onClick={() => setSelectedUser(user)}>
+    className={`active:scale-90 duration-100 flex items-center justify-between cursor-pointer w-full h-fit px-5 py-3 rounded-lg ${selectedUser?.id === user.id ? "bg-gray-100" : ""}`} onClick={() => setSelectedUser(user)}>
     <div className={"flex flex-col"}>
-      <p className={"font-semibold text-gray-300"}>{user.name}</p>
-      <p className={"text-gray-400 text-sm"}>{user.nickname}</p>
+      <p className={"font-semibold text-black"}>{user.name}</p>
+      <p className={"text-gray-700 text-sm"}>{user.nickname}</p>
     </div>
-    <div className={`duration-100 w-7 h-7 flex items-center justify-center text-white opacity-70 font-bold rounded-full ${selectedUser?.id == user.id ? "bg-gray-800" : "bg-gray-700"}`}>{praisesNumber}</div>
+    <div className={`duration-100 w-7 h-7 flex items-center justify-center text-black opacity-70 font-bold rounded-full ${selectedUser?.id == user.id ? "bg-gray-300" : "bg-gray-700"}`}>{praisesNumber}</div>
   </motion.div>
 }
 
@@ -174,27 +174,49 @@ type praiseBlockType = {
 }
 
 const PraiseBlock = ({ praise_id, praise_from, praise_to, title, content, created_at }: praiseBlockType) => {
+  const supabase = useSupabaseClient();
+  const [praiseFromAvatar, setPraiseFromAvatar] = useState<string|null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.from('profiles')
+        .select("avatar_url")
+        .eq("id", praise_from.id)
+        .single();
+      if (data) {
+        setPraiseFromAvatar(data.avatar_url);
+      }
+      if (error) throw new Error(error.message);
+    })();
+  }, []);
+
   return <motion.div
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
     transition={roundTransition}
-    className={"flex flex-col space-y-5 text-white"} layoutId={"praise_block_"+praise_id}>
+    className={"flex flex-col space-y-5 text-black"} layoutId={"praise_block_"+praise_id}>
     <div className={"flex justify-between items-center"} id={"praise_block_"+praise_id}>
       <div className={"flex space-x-5 items-center"}>
-        <div className={"rounded-lg bg-gray-600 w-10 aspect-square flex items-center justify-center"}>
-          <Image src={"/user.svg"} width={20} height={20} alt={""} />
-        </div>
+        {
+          praiseFromAvatar
+          ? <div className={"rounded-lg bg-gray-400 w-10 aspect-square flex items-center justify-center relative"}>
+              <Image src={praiseFromAvatar} fill alt={""} className={"object-cover rounded-lg"} />
+            </div>
+          : <div className={"rounded-lg bg-gray-400 w-10 aspect-square flex items-center justify-center"}>
+              <Image src={"/user.svg"} width={20} height={20} alt={""} />
+            </div>
+        }
         <div className={"flex flex-col"}>
-          <p className={"font-bold text-lg text-gray-300"}>{praise_from.name}</p>
+          <p className={"font-bold text-lg text-black"}>{praise_from.name}</p>
           <p className={"opacity-60"}>{praise_from.nickname}</p>
         </div>
       </div>
       <p className={"text-gray-400"}>{formatDate(created_at)}</p>
     </div>
-    <div className={"w-full p-7 flex flex-col bg-gray-800 rounded-3xl"}>
-      <div className={"flex flex-col space-y-2.5"}>
-        <p className={"font-bold text-lg break-keep text-gray-300"}>{title}</p>
-        <p className={"text-gray-300 break-keep"}>{content}</p>
+    <div className={"w-full p-7 flex flex-col bg-white border border-gray-200 rounded-xl"}>
+      <div className={"flex flex-col space-y-1.5"}>
+        <p className={"font-bold text-lg break-keep"}>{title}</p>
+        <p className={"break-keep"}>{content}</p>
       </div>
     </div>
   </motion.div>

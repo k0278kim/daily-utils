@@ -1,0 +1,60 @@
+'use client'
+// app/(protected)/layout.tsx
+
+import { createClient } from "@/utils/supabase/server";
+import {redirect, usePathname} from "next/navigation";
+import {Profile} from "@/model/Profile";
+import {useUser} from "@/context/SupabaseProvider";
+import {useEffect, useState} from "react";
+import fetchTeamUsers from "@/app/api/fetch_team_users";
+import TextButton from "@/components/TextButton";
+import TopBar from "@/components/TopBar";
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user } = useUser();
+
+  const pathname = usePathname();
+  const index = pathname === "/snippets" ? 0 : pathname === "/healthchecks" ? 1 : pathname === "/praises" ? 2 : pathname === "/japdories" ? 3 : -1;
+
+  const [selectedArea, setSelectedArea] = useState(index);
+  const [overlay, setOverlay] = useState(true);
+
+  const VERSION = "2.1.2";
+  const UPDATE_MEMOS = ["1. Daily Snippet 입력 시 Enter로 어제 Snippet 가져오기.", "2. 프로필 조회 (베타)", "3. Daily Snippet 및 Health Check 입력 가능일이 여러 개라면, 입력 가능일 중 제일 첫 번째 날짜가 초기 선택됩니다.", "Health Check 점수 스펙트럼 색을 유저 니즈에 따라 변경했습니다."];
+
+  useEffect(() => {
+    if (user) {
+      fetch("/api/drive/1ez6X_PnNC2Jaa-VcN6wEo_OikZQ-WbXC")
+        .then((res) => res.json())
+        .then((data) => {
+          console.log(data)
+        });
+    }
+    (async() => {
+      await fetchTeamUsers("도다리도 뚜뚜려보고 건너는 양털");
+    })();
+
+  }, [user]);
+  return <div className={"w-screen h-screen flex flex-col items-center justify-center overflow-y-hidden"}>
+    {
+      <div className={"flex flex-col items-center w-full h-full relative"}>
+        { overlay && window.localStorage.getItem("update_checked_version") != VERSION && <div className={"flex items-center justify-center w-full h-full bg-black/20 absolute top-0 z-50"}>
+          <div className={"bg-white w-[60%] h-fit rounded-2xl p-10 items-center flex flex-col"}>
+            <p className={"text-2xl font-bold mb-10"}>Daily Utils가 업데이트 되었습니다.</p>
+            { UPDATE_MEMOS.map((memo) => <p key={memo}>{memo}</p>) }
+            <div className={"mb-10"}></div>
+            <TextButton text={"확인했어요"} onClick={() => {
+              window.localStorage.setItem("update_checked_version", VERSION);
+              setOverlay(false);
+            }}/>
+          </div>
+        </div>
+        }
+        <TopBar darkmode={selectedArea == 3} routes={[]} routeDestinations={["/snippets", "/healthchecks", "/praises", "/japdories"]} titles={["Snippet 조회", "Health Check 조회", "칭찬 챌린지", "잡도리 챌린지"]} selectedArea={selectedArea} setSelectedArea={setSelectedArea} />
+        <div className={"flex-1 w-full h-full overflow-y-scroll scrollbar-hide"}>
+          {children}
+        </div>
+      </div>
+    }
+  </div>;
+}
