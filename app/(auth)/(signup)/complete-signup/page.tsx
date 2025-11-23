@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/supabaseClient";
+import Image from "next/image";
+import {useUser} from "@/context/SupabaseProvider";
 
 export interface AppError {
   status?: number;
@@ -15,6 +17,9 @@ export default function CompleteSignupPage() {
   const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarType, setAvatarType] = useState<"PHOTO"|"URL">("URL");
+  const [avatarOverlay, setAvatarOverlay] = useState(false);
+  const [defaultAvatars, setDefaultAvatars] = useState<string[]>([]);
 
   // 사용자가 입력하는 것은 '팀 이름'이므로 변수명 명확화
   const [teamName, setTeamName] = useState("");
@@ -23,6 +28,7 @@ export default function CompleteSignupPage() {
   const [error, setError] = useState("");
 
   const supabase = createClient();
+  const { user } = useUser();
 
   useEffect(() => {
     const initUser = async () => {
@@ -40,6 +46,19 @@ export default function CompleteSignupPage() {
     initUser();
   }, [supabase, router]);
 
+  useEffect(() => {
+    if (user && !defaultAvatars) {
+      (async () => {
+        const { data, error } = await supabase.from("default_avatar_image")
+          .select("url");
+        if (data) {
+          const urls: string[] = data.map((item) => item.url);
+          setDefaultAvatars(urls);
+        }
+      })();
+    }
+  }, [user]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -56,10 +75,11 @@ export default function CompleteSignupPage() {
 
       // 2. [추가된 로직] 입력한 '팀 이름'으로 진짜 '팀 ID(UUID)' 찾기
       // (DB의 profiles.team_id가 UUID라면 이 과정이 필수입니다)
+      console.log(teamName)
       const { data: teamData, error: teamError } = await supabase
         .from("team") // 테이블 이름 확인 (teams 인지 team 인지)
         .select("id")
-        .eq("name", teamName) // 사용자가 입력한 이름과 일치하는 팀 찾기
+        .eq("id", teamName) // 사용자가 입력한 이름과 일치하는 팀 찾기
         .maybeSingle();
 
       if (teamError) {
@@ -107,7 +127,40 @@ export default function CompleteSignupPage() {
 
   return (
     <div className="flex flex-col justify-center items-center min-h-screen bg-white px-6">
+      {
+        avatarOverlay && <div className={"w-full h-full bg-black/20 z-50 fixed flex items-center justify-center"}>
+          <div className={"w-[60%] h-fit p-10 rounded-2xl bg-white"}>
+            <p className={"text-xl font-bold mb-5"}>라이브러리에서 사진 선택</p>
+            <div className={"flex gap-2"}>
+              <div className={"w-32 aspect-square relative"} onClick={() => {
+                setAvatarUrl(user?.user_metadata.avatar_url);
+                setAvatarType("URL");
+                setAvatarOverlay(false);
+              }}>
+                <Image src={user?.user_metadata.avatar_url} alt={""} fill className={"object-cover"} />
+              </div>
+              {
+                defaultAvatars.map((url, index) => <div key={index} className={"w-32 aspect-square relative"} onClick={() => {
+                  setAvatarUrl(url);
+                  setAvatarType("URL");
+                  setAvatarOverlay(false);
+                }}>
+                  <Image src={url} alt={""} fill className={"object-cover"} />
+                </div>)
+              }
+            </div>
+          </div>
+        </div>
+      }
       <div className="w-full max-w-sm">
+        <div className={"w-full flex flex-col items-center mb-10"}>
+          <div className={'w-32 aspect-square bg-gray-100 rounded-full relative'}>
+            <Image src={avatarUrl} alt={""} fill className={"object-cover rounded-full"} />
+          </div>
+          <button onClick={() => {
+            setAvatarOverlay(true);
+          }} className={"p-2 text-sm rounded-sm border border-gray-300 mt-5"}>프로필 사진 변경</button>
+        </div>
         <h1 className="text-2xl font-bold text-gray-900 text-center mb-3">
           추가 정보 입력
         </h1>

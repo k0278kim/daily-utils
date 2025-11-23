@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'cidvmndhyobkxulbgztr.supabase.co', // 에러에 뜬 호스트네임
+        port: '',
+        pathname: '/storage/v1/object/public/**', // 스토리지 경로 허용
+      },
     ],
   },
 };

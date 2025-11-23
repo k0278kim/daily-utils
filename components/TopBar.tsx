@@ -1,10 +1,11 @@
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import {motion} from "framer-motion";
 import Image from "next/image";
 import {roundTransition} from "@/app/transition/round_transition";
 import {signOut, useSession} from "next-auth/react";
-import {useUser} from "@/context/SupabaseProvider";
+import {useSupabaseClient, useUser} from "@/context/SupabaseProvider";
 import {useRouter} from "next/navigation";
+import {User} from "@/model/user";
 
 type topBarProps = {
   darkmode: boolean;
@@ -20,6 +21,24 @@ const TopBar = ({ darkmode, routes, titles, selectedArea, setSelectedArea, route
   const [hover, setHover] = useState(-1);
   const { user } = useUser();
   const router = useRouter();
+  const [profile, setProfile] = useState<User | null>(null);
+  const supabase = useSupabaseClient();
+
+  useEffect(() => {
+    if (user && !profile) {
+      (async () => {
+        const { data, error } = await supabase.from("profiles")
+          .select("*")
+          .eq("email", user?.email)
+          .single();
+        if (data) {
+          setProfile(data);
+        }
+      })();
+    }
+  }, [user]);
+
+
   return <div className={`duration-200 h-fit w-full border-b-[1px] flex flex-col ${darkmode ? "bg-gray-950 border-b-gray-900" : "bg-white border-b-gray-200"}`}>
     <div className={"p-3 h-fit flex text-gray-400 items-center text-sm justify-between"}>
       <div className={"flex space-x-2.5 items-center"}>
@@ -41,12 +60,12 @@ const TopBar = ({ darkmode, routes, titles, selectedArea, setSelectedArea, route
         }
       </div>
       <div className={""}>
-        { user &&
+        { (user && profile) &&
           <div className={"flex space-x-2.5"}>
             <button className={`flex items-center px-3 rounded-sm text-sm font-semibold ${darkmode ? "bg-gray-800 text-gray-200" : "bg-gray-200 text-gray-700"}`} onClick={() => {
               window.location.href = "/daily_edit"
             }}>오늘 기록</button>
-            <Image src={user?.user_metadata.avatar_url as string} alt={""} width={30} height={30} className={"rounded-sm active:scale-90 duration-100 cursor-pointer"} onClick={() => {
+            <Image src={profile.avatar_url} alt={""} width={30} height={30} className={"rounded-sm active:scale-90 duration-100 cursor-pointer"} onClick={() => {
               setSelectedArea(-2);
               router.replace("/profile");
             }}/>

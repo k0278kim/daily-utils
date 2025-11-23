@@ -62,6 +62,7 @@ const HealthchecksPage = () => {
     (async() => {
       if (date_from != null && date_to != null) {
         const driveFiles:DriveFolder[] = await driveGetFolder(healthcheckDriveId);
+        console.log("driveFiles", driveFiles);
         setDocs(driveFiles);
       }
     })();

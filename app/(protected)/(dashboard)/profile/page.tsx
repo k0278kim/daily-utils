@@ -3,31 +3,45 @@
 import Image from "next/image";
 import {signOut, useSession} from "next-auth/react";
 import LoadOrLogin from "@/components/LoadOrLogin";
-import {MouseEventHandler, useState} from "react";
+import {MouseEventHandler, useEffect, useState} from "react";
 import VacationPage from "@/app/(protected)/(dashboard)/profile/vacation/page";
 import JigakPage from "@/app/(protected)/(dashboard)/profile/jigak/page";
 import { motion } from "framer-motion";
 import {roundTransition} from "@/app/transition/round_transition";
 import {useSupabaseClient, useUser} from "@/context/SupabaseProvider";
 import {useRouter} from "next/navigation";
+import {User} from "@/model/user";
 
 const ProfilePage = () => {
   const { user } = useUser();
   const [page, setPage] = useState<"VACATION" | "PROFILE" | "JIGAK">("PROFILE");
-  const [loadOverflow, setLoadOverflow] = useState(false);
   const supabase = useSupabaseClient();
   const router = useRouter();
+  const [profile, setProfile] = useState<User|null>(null);
 
-  if (!user) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
+  useEffect(() => {
+    if (user && !profile) {
+      (async () => {
+        const { data, error } = await supabase.from("profiles")
+          .select("*")
+          .eq("email", user?.email)
+          .single();
+
+        if (data) {
+          setProfile(data);
+        }
+      })();
+    }
+  }, [user]);
 
   return <div className={"w-full h-full flex justify-center px-20"}>
     <div className={"flex flex-col w-96 space-y-10 justify-center border-r-[1px] border-r-gray-200"}>
       <div className={"w-52 aspect-square rounded-full relative mb-12"}>
-        <Image src={user?.user_metadata.avatar_url ? user?.user_metadata.avatar_url.replace(/=s\d+-c/, '=s1024-c') : ""} alt={""} fill className={"object-cover rounded-full"} />
+        <Image src={profile?.avatar_url ? profile.avatar_url.replace(/=s\d+-c/, '=s1024-c') : ""} alt={""} fill className={"object-cover rounded-full"} />
       </div>
       <div className={"flex flex-col space-y-2.5"}>
-        <p className={"text-2xl font-bold"}>{user.user_metadata.full_name}</p>
-        <p className={"text-lg text-gray-500"}>{user.email}</p>
+        <p className={"text-2xl font-bold"}>{profile?.name}({profile?.nickname})</p>
+        <p className={"text-lg text-gray-500"}>{user?.email}</p>
       </div>
       <div className={"flex flex-col"}>
         <LeftbarButton icon={"/profile/calendar.svg"} title={"휴가/지각 관리"} onClick={() => setPage("VACATION")} />
