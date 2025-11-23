@@ -1,7 +1,13 @@
 import { google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedGoogleClient } from "@/utils/googleAuth";
-import {requireAuth} from "@/utils/supabase/auth"; // 방금 만든 유틸 import
+import { requireAuth } from "@/utils/supabase/auth";
+
+// 에러 객체의 생김새를 정의합니다 (status가 있을 수도, 없을 수도 있음)
+interface AppError {
+  status?: number;
+  message?: string;
+}
 
 export async function GET(
   req: NextRequest,
@@ -9,16 +15,13 @@ export async function GET(
 ) {
   try {
     const { supabase, user } = await requireAuth();
-    // ✅ [핵심] 그 길었던 인증/토큰갱신 로직이 단 한 줄로 끝납니다!
     const oauth2Client = await getAuthenticatedGoogleClient();
 
-    // 1. Drive 클라이언트 생성 시 auth에 넣어주기만 하면 됨
     const drive = google.drive({ version: "v3", auth: oauth2Client });
 
     const { folderId } = await params;
     console.log(`📂 폴더 ID(${folderId}) 조회 시도...`);
 
-    // 2. API 호출
     const res = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
       fields: "files(id, name, mimeType, webViewLink, thumbnailLink)",
@@ -28,7 +31,11 @@ export async function GET(
 
     return NextResponse.json(res.data.files);
 
-  } catch (err: any) {
+  } catch (error: unknown) { // 1. 여기서 any 대신 unknown을 씁니다.
+
+    // 2. error를 우리가 정의한 AppError 타입으로 간주(Assertion)합니다.
+    const err = error as AppError;
+
     // 유틸리티 함수에서 던진 에러 처리
     if (err.status === 401) {
       return NextResponse.json({ error: err.message }, { status: 401 });

@@ -129,7 +129,6 @@ const HealthchecksPage = () => {
     }, 3000);
   }, []);
 
-  if (!user || docs.length == 0) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
   return <div className={"w-screen min-h-full h-fit bg-gray-100 flex flex-col relative"}>
     <motion.div
       initial={{ opacity: 0, translateY: "-100%" }}

@@ -15,7 +15,7 @@ const DailyEdit = () => {
   const [loadOverflow, setLoadOverflow] = useState(false);
 
   return <div className={"w-screen h-screen flex flex-col"}>
-    <TopBar darkmode={false} routes={["Daily Edit"]} titles={["1. Snippet 작성", "2. Health Check 작성"]} selectedArea={selectedArea} setSelectedArea={setSelectedArea} />
+    <TopBar darkmode={false} routes={["Daily Edit"]} routeDestinations={[]} titles={["1. Snippet 작성", "2. Health Check 작성"]} selectedArea={selectedArea} setSelectedArea={setSelectedArea} />
     <div className={"flex-1 bg-gray-100 overflow-y-scroll scrollbar-hide"}>
       { selectedArea == 0
         ? <DailySnippetEdit setSelectedArea={setSelectedArea} />
