@@ -40,6 +40,8 @@ const HealthchecksPage = () => {
   const latestRequestId = useRef(0);
   const [me, setMe] = useState<User | null>(null);
 
+  const [teamUsers, setTeamUsers] = useState<User[]>([]);
+
   const supabase = useSupabaseClient();
 
   const weekDates = (date: string) => {
@@ -53,6 +55,19 @@ const HealthchecksPage = () => {
       date_to: formatDate(lastDay)
     }
   }
+
+  useEffect(() => {
+    if (me && teamUsers.length == 0) {
+      (async() => {
+        const { data, error } = await supabase.from("profiles")
+          .select("*")
+          .eq("team_id", me?.team_id)
+        if (data) {
+          setTeamUsers(data);
+        }
+      })();
+    }
+  }, [me]);
 
   useEffect(() => {
 
@@ -156,7 +171,7 @@ const HealthchecksPage = () => {
         ? docs.filter((f) => f.name.split("_")[0] == selectedDate).length != 0
           ? selectedDateDocs.map((doc, i) => {
             return <div key={i} className={"p-2 md:p-0 h-fit"}>
-              <HealthchecksBlock myEmail={user?.email as string} email={doc.email} date={doc.date} doc={doc.content} id={doc.id} setRemovedId={setRemovedId} me={me}/>
+              <HealthchecksBlock avatarUrl={teamUsers.filter((user) => user.email == doc.email)[0].avatar_url} myEmail={user?.email as string} email={doc.email} date={doc.date} doc={doc.content} id={doc.id} setRemovedId={setRemovedId} me={me}/>
             </div>
           })
           : <motion.div
@@ -222,9 +237,10 @@ type healthcheckBlockType = {
   id: string;
   setRemovedId: Dispatch<SetStateAction<string[]>>;
   me: User | null;
+  avatarUrl: string;
 }
 
-const HealthchecksBlock = ({ myEmail, email, date, doc, id, setRemovedId, me }: healthcheckBlockType) => {
+const HealthchecksBlock = ({ myEmail, email, date, doc, id, setRemovedId, me, avatarUrl }: healthcheckBlockType) => {
 
   const [name, setName] = useState("");
   const [removeHover, setRemoveHover] = useState(false);
@@ -240,6 +256,9 @@ const HealthchecksBlock = ({ myEmail, email, date, doc, id, setRemovedId, me }: 
     animate={{ opacity: 1, translateY: 0 }}
     transition={roundTransition}
     className={"w-full md:w-[30vw] h-fit md:max-h-full border-[1px] bg-white border-gray-200 rounded-2xl flex flex-col p-10"}>
+    <div className={"w-16 aspect-square rounded-lg relative mb-5"}>
+      <Image src={avatarUrl} alt={""} fill className={"object-cover rounded-lg"} />
+    </div>
     <div className={"flex justify-between"}>
       <div className={"flex-1"}>
         {

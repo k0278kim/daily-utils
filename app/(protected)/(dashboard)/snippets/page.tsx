@@ -12,7 +12,9 @@ import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import {roundTransition} from "@/app/transition/round_transition";
-import {useUser} from "@/context/SupabaseProvider";
+import {useSupabaseClient, useUser} from "@/context/SupabaseProvider";
+import {User} from "@/model/user";
+import fetchUserByEmail from "@/app/api/team/user/get_user_by_email/fetch_user_by_email";
 
 const SnippetsPage = () => {
 
@@ -23,6 +25,9 @@ const SnippetsPage = () => {
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [teamUsers, setTeamUsers] = useState<User[]>([]);
+  const [me, setMe] = useState<User | null>(null);
+  const supabase = useSupabaseClient();
 
   const weekDates = (date: string) => {
     const today = new Date(date);
@@ -35,6 +40,28 @@ const SnippetsPage = () => {
       date_to: formatDate(lastDay)
     }
   }
+
+  useEffect(() => {
+    (async () => {
+      if (user) {
+        const meRes: User[] = await fetchUserByEmail(user?.email as string);
+        setMe(meRes[0]);
+      }
+    })();
+  }, [user]);
+
+  useEffect(() => {
+    if (me && teamUsers.length == 0) {
+      (async() => {
+        const { data, error } = await supabase.from("profiles")
+          .select("*")
+          .eq("team_id", me?.team_id)
+        if (data) {
+          setTeamUsers(data);
+        }
+      })();
+    }
+  }, [me]);
 
   useEffect(() => {
 
@@ -99,7 +126,7 @@ const SnippetsPage = () => {
         !loading
         ? snippets.filter((f) => f.snippet_date == selectedDate).length != 0
           ? snippets.filter((f) => f.snippet_date == selectedDate).map((snippet: Snippet, i) => <div key={i} className={"h-fit"}>
-            <SnippetBlock snippet={snippet}/>
+            <SnippetBlock snippet={snippet} avatarUrl={teamUsers.filter((user) => user.email == snippet.user_email)[0].avatar_url}/>
           </div>)
           : <motion.div
             initial={{ opacity: 0, translateY: 20 }}
@@ -157,11 +184,15 @@ export default SnippetsPage;
 
 type snippetBlockType = {
   snippet: Snippet;
+  avatarUrl: string;
 }
 
-const SnippetBlock = ({ snippet }: snippetBlockType) => {
+const SnippetBlock = ({ snippet, avatarUrl }: snippetBlockType) => {
 
   return <div className={"w-full md:w-[30vw] h-fit md:max-h-full border-[1px] bg-white border-gray-200 rounded-2xl flex flex-col p-10"}>
+    <div className={"w-16 aspect-square rounded-lg relative mb-5"}>
+      <Image src={avatarUrl} alt={""} fill className={"object-cover rounded-lg"} />
+    </div>
     <p className={"font-bold text-xl"}>{snippet.full_name}</p>
     <p>{snippet.user_email}</p>
     <div className={"text-sm mt-5 p-3 rounded-lg bg-gray-100 text-gray-700"}>
