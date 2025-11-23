@@ -92,7 +92,7 @@ const SnippetsPage = () => {
 
   if (error) return <div className={"w-full h-full flex items-center justify-center text-gray-700 text-2xl"}>Daily Snippet 서버에 접속할 수 없어요.</div>
   return <div className={"w-full h-fit min-h-screen bg-gray-100 flex flex-col"}>
-    <div className={"sticky top-0 w-full flex justify-center bg-gray-100 p-5 space-x-5"}>
+    <div className={"sticky top-0 w-full flex justify-center bg-gray-100 p-5 space-x-5 z-50"}>
       <Image src={"/chevron-left.svg"} alt={""} width={30} height={30} className={"cursor-pointer"} onClick={async () => {
         setLoading(true);
         const newDate = new Date(dateFrom);

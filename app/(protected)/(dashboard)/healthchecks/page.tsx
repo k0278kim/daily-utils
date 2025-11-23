@@ -32,7 +32,6 @@ const HealthchecksPage = () => {
   const [docs, setDocs] = useState<DriveFolder[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [selectedDateDocs, setSelectedDateDocs] = useState<{email: string, date: string, content: string, id:string}[]>([]);
-  const [loadOverflow, setLoadOverflow] = useState(false);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
   const [removedId, setRemovedId] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,6 +70,7 @@ const HealthchecksPage = () => {
 
   useEffect(() => {
 
+    setLoading(true);
     const {date_from, date_to} = weekDates(formatDate(new Date)!);
     setDateFrom(date_from!);
 
@@ -79,6 +79,7 @@ const HealthchecksPage = () => {
         const driveFiles:DriveFolder[] = await driveGetFolder(healthcheckDriveId);
         console.log("driveFiles", driveFiles);
         setDocs(driveFiles);
+        setLoading(false)
       }
     })();
 
@@ -89,12 +90,12 @@ const HealthchecksPage = () => {
   }, [removedId]);
 
   useEffect(() => {
-    (async () => {
-      if (user) {
+    if (user && !me) {
+      (async () => {
         const meRes: User[] = await fetchUserByEmail(user?.email as string);
         setMe(meRes[0]);
-      }
-    })();
+      })();
+    }
   }, [user]);
 
   async function updateSelectedDateDocs (date: string) {
@@ -132,18 +133,12 @@ const HealthchecksPage = () => {
   }
 
   useEffect(() => {
-    if (user) {
+    if (user && selectedDateDocs.length == 0) {
       (async() => {
         await updateSelectedDateDocs(selectedDate!);
       })();
     }
   }, [user, selectedDate, docs]);
-
-  useEffect(() => {
-    setTimeout(() => {
-      setLoadOverflow(true);
-    }, 3000);
-  }, []);
 
   return <div className={"w-screen min-h-full h-fit bg-gray-100 flex flex-col relative"}>
     <motion.div
@@ -156,16 +151,18 @@ const HealthchecksPage = () => {
         newDate.setDate(newDate.getDate() - 7);
         setDateFrom(formatDate(newDate)!);
         setSelectedDate(formatDate(newDate)!);
+        setSelectedDateDocs([]);
       }} />
-      <WeekCalendar date_from={dateFrom} docs={docs} selectedDate={selectedDate!} setSelectedDate={setSelectedDate} loading={loading} />
+      <WeekCalendar date_from={dateFrom} docs={docs} selectedDate={selectedDate!} setSelectedDate={setSelectedDate} loading={loading} setSelectedDateDocs={setSelectedDateDocs}/>
       <Image src={"/chevron-right.svg"} alt={""} width={30} height={30} className={"active:scale-90 duration-100 cursor-pointer hover:bg-gray-400/20 rounded-lg"} onClick={async () => {
         const newDate = new Date(dateFrom);
         newDate.setDate(newDate.getDate() + 7);
         setDateFrom(formatDate(newDate)!);
         setSelectedDate(formatDate(newDate)!);
+        setSelectedDateDocs([]);
       }} />
     </motion.div>
-    <div className={"flex flex-col space-y-2.5 md:flex-row md:space-x-5 justify-center items-center md:items-start w-full py-5 flex-1"}>
+    <div className={"flex flex-col space-y-2.5 md:flex-row md:space-x-5 justify-center items-center w-full py-5 flex-1 " + ((!loading && !fileLoading && docs.filter((f) => f.name.split("_")[0] == selectedDate).length != 0) && "md:items-start")}>
       {
         !loading && !fileLoading
         ? docs.filter((f) => f.name.split("_")[0] == selectedDate).length != 0
@@ -193,9 +190,15 @@ type weekCalendarType = {
   selectedDate: string;
   setSelectedDate: (date: string) => void;
   loading: boolean;
+  setSelectedDateDocs: React.Dispatch<React.SetStateAction<{
+    email: string
+    date: string
+    content: string
+    id: string
+  }[]>>;
 }
 
-const WeekCalendar = ({ date_from, docs, selectedDate, setSelectedDate, loading }: weekCalendarType) => {
+const WeekCalendar = ({ date_from, docs, selectedDate, setSelectedDate, setSelectedDateDocs, loading }: weekCalendarType) => {
   const [hoverIndex, setHoverIndex] = useState(-1);
 
   return <div className={"max-w-[700px] md:max-w-[1000px] w-full h-fit grid grid-cols-7"} onMouseLeave={() => setHoverIndex(-1)}>
@@ -204,7 +207,10 @@ const WeekCalendar = ({ date_from, docs, selectedDate, setSelectedDate, loading 
         const date = new Date(date_from);
         date.setDate(date.getDate() + i);
         const dayDocs = docs.filter((f)=>f.name.split("_")[0] == formatDate(date));
-        return <div key={i} onMouseOver={() => setHoverIndex(i)} className={"p-2.5 relative active:scale-90 duration-100 cursor-pointer flex flex-col space-y-2.5 items-center md:justify-center"} onClick={() => setSelectedDate(formatDate(date)!)}>
+        return <div key={i} onMouseOver={() => setHoverIndex(i)} className={"p-2.5 relative active:scale-90 duration-100 cursor-pointer flex flex-col space-y-2.5 items-center md:justify-center"} onClick={() => {
+          setSelectedDate(formatDate(date)!);
+          setSelectedDateDocs([]);
+        }}>
           { hoverIndex == i && <motion.div transition={roundTransition} layoutId={"hover-bg"} className={"absolute w-full h-full bg-gray-400/10 z-10 rounded-xl"}></motion.div> }
           <motion.div className={`relative duration-100 flex w-7 h-7 md:w-full md:h-10 rounded-lg font-semibold text-lg md:space-x-2.5 items-center justify-center ${formatDate(date) == selectedDate ? dayDocs.length == 0 ? "bg-gray-400" : dayDocs.length == 3 ? "bg-green-500" : "bg-yellow-500" : dayDocs.length == 0 ? "bg-gray-200" : dayDocs.length == 3 ? "bg-green-500/20" : "bg-yellow-500/20"}`}>
             <div className={"md:opacity-0 absolute text-sm flex items-center justify-center"}><p>{dayDocs.length}</p></div>
