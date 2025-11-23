@@ -1,16 +1,15 @@
 import { getToken } from "next-auth/jwt";
 import {NextRequest, NextResponse} from "next/server";
 import {supabase} from "@/lib/supabaseClient";
+import {createClient} from "@/utils/supabase/server";
+import {requireAuth} from "@/utils/supabase/auth";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const teamName = searchParams.get("team_name");
 
   try {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    if (!token?.accessToken) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
+    const { supabase, user } = await requireAuth();
 
     const teamRes = await supabase.from("team").select("*").eq("name", teamName);
     const teamData = teamRes.data;

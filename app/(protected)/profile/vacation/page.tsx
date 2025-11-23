@@ -13,10 +13,11 @@ import fetchVacationUsage from "@/app/api/vacation/fetch_vacation_usage/fetch_va
 import LoadOrLogin from "@/components/LoadOrLogin";
 import {VacationRemained} from "@/model/vacationRemained";
 import IconTextButton from "@/components/IconTextButton";
+import {useUser} from "@/context/SupabaseProvider";
 
 const VacationPage = () => {
 
-  const { data: session } = useSession();
+  // const { data: session } = useSession();
 
   const [me, setMe] = useState<User | null>(null);
   const meRef = useRef<string | null>(null);
@@ -24,26 +25,27 @@ const VacationPage = () => {
   const [vacationId, setVacationId] = useState<VacationId[]>([]);
   const [vacationUsage, setVacationUsage] = useState<VacationUsage[]>([]);
   const [vacationAdded, setVacationAdded] = useState<VacationAdded[]>([]);
+  const { user } = useUser();
 
   const [vacationRemained, setVacationRemained] = useState<VacationRemained[]>([]);
 
   useEffect(() => {
     (async() => {
-      if (session?.user?.email) {
-        if (meRef.current != session.user.email) {
-          setMe((await fetchUserByEmail(session.user.email))[0]);
-          meRef.current = session.user.email;
+      if (user?.email) {
+        if (meRef.current != user.email) {
+          setMe((await fetchUserByEmail(user.email))[0]);
+          meRef.current = user.email;
         }
       }
     })();
-  }, [session]);
+  }, [user]);
 
   useEffect(() => {
     (async() => {
-      if (me?.uuid) {
+      if (me?.id) {
         const fetchedId: VacationId[] = await fetchVacationId("도다리도 뚜뚜려보고 건너는 양털");
-        const fetchedAdded: VacationAdded[] = await fetchVacationAdded(me.uuid);
-        const fetchedUsage: VacationUsage[] = await fetchVacationUsage(me.uuid);
+        const fetchedAdded: VacationAdded[] = await fetchVacationAdded(me.id);
+        const fetchedUsage: VacationUsage[] = await fetchVacationUsage(me.id);
         setVacationId(fetchedId);
         setVacationAdded(fetchedAdded);
         setVacationUsage(fetchedUsage);
@@ -69,7 +71,7 @@ const VacationPage = () => {
     return vacationId.filter((v) => v.id === id)[0] ?? null;
   }
 
-  if (!session || vacationRemained.length == 0) return <div className={"w-full h-full"}><LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} /></div>
+  if (!user || vacationRemained.length == 0) return <div className={"w-full h-full"}><LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} /></div>
 
   return <div className={"w-full h-full"}>
     <div className={"flex flex-col space-y-5 p-10"}>

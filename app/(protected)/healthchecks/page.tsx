@@ -21,10 +21,14 @@ import {easeInOutTranstion} from "@/app/transition/ease_transition";
 import {driveDeleteFile} from "@/app/api/drive_delete_file";
 import {User} from "@/model/user";
 import {deleteUserHealthcheck} from "@/app/actions/deleteUserHealthcheck";
+import {useSupabaseClient, useUser} from "@/context/SupabaseProvider";
+import Interceptors from "undici-types/interceptors";
+import retry = Interceptors.retry;
+import {executeGoogleApi} from "@/utils/googleApiExecutor";
 
 const HealthchecksPage = () => {
 
-  const {data: session} = useSession();
+  const { user } = useUser();
   const [docs, setDocs] = useState<DriveFolder[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [selectedDateDocs, setSelectedDateDocs] = useState<{email: string, date: string, content: string, id:string}[]>([]);
@@ -35,6 +39,8 @@ const HealthchecksPage = () => {
   const [fileLoading, setFileLoading] = useState(false);
   const latestRequestId = useRef(0);
   const [me, setMe] = useState<User | null>(null);
+
+  const supabase = useSupabaseClient();
 
   const weekDates = (date: string) => {
     const today = new Date(date);
@@ -68,26 +74,40 @@ const HealthchecksPage = () => {
 
   useEffect(() => {
     (async () => {
-      if (session) {
-        const meRes: User[] = await fetchUserByEmail(session.user?.email as string);
+      if (user) {
+        const meRes: User[] = await fetchUserByEmail(user?.email as string);
         setMe(meRes[0]);
       }
     })();
-  }, [session]);
+  }, [user]);
 
   async function updateSelectedDateDocs (date: string) {
+    const { data: { session }} = await supabase.auth.getSession();
+    if (!session) throw new Error("Session not found");
+    let currentAccessToken = session.provider_token;
     setFileLoading(true);
     const requestId = ++latestRequestId.current;
     const docsResult = [];
     const filteredDocs = docs.filter((doc) => doc.name.split("_")[0] == date);
     for await (const doc of filteredDocs) {
-      const content = await driveGetFile(session?.accessToken, doc.id);
-      docsResult.push({
-        email: doc.name.split("_")[1],
-        date: doc.name.split("_")[0],
-        content: content,
-        id: doc.id
-      });
+      try {
+        const content = await executeGoogleApi(
+          currentAccessToken!,
+          (token) => driveGetFile(token, doc.id), // 실행할 작업
+          (newToken) => {
+            // [선택] 토큰이 갱신됐다면 변수에 업데이트 (다음 루프를 위해)
+            currentAccessToken = newToken;
+          }
+        );
+        docsResult.push({
+          email: doc.name.split("_")[1],
+          date: doc.name.split("_")[0],
+          content: content,
+          id: doc.id
+        });
+      } catch (e) {
+        console.error(e);
+      }
     }
     if (requestId === latestRequestId.current) {
       setSelectedDateDocs(docsResult);
@@ -96,12 +116,12 @@ const HealthchecksPage = () => {
   }
 
   useEffect(() => {
-    if (session) {
+    if (user) {
       (async() => {
         await updateSelectedDateDocs(selectedDate!);
       })();
     }
-  }, [session, selectedDate, docs]);
+  }, [user, selectedDate, docs]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -109,7 +129,7 @@ const HealthchecksPage = () => {
     }, 3000);
   }, []);
 
-  if (!session || docs.length == 0) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
+  if (!user || docs.length == 0) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
   return <div className={"w-screen min-h-full h-fit bg-gray-100 flex flex-col relative"}>
     <motion.div
       initial={{ opacity: 0, translateY: "-100%" }}
@@ -136,7 +156,7 @@ const HealthchecksPage = () => {
         ? docs.filter((f) => f.name.split("_")[0] == selectedDate).length != 0
           ? selectedDateDocs.map((doc, i) => {
             return <div key={i} className={"p-2 md:p-0 h-fit"}>
-              <HealthchecksBlock myEmail={session.user?.email as string} email={doc.email} date={doc.date} doc={doc.content} id={doc.id} setRemovedId={setRemovedId} me={me}/>
+              <HealthchecksBlock myEmail={user?.email as string} email={doc.email} date={doc.date} doc={doc.content} id={doc.id} setRemovedId={setRemovedId} me={me}/>
             </div>
           })
           : <motion.div
@@ -240,7 +260,7 @@ const HealthchecksBlock = ({ myEmail, email, date, doc, id, setRemovedId, me }: 
         const answer = window.confirm("작성한 Health Check를 삭제하시겠습니까?");
         if (answer) {
           await driveDeleteFile(id);
-          await deleteUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me!.uuid, date);
+          await deleteUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me!.id, date);
           setRemovedId((tempId) => [...tempId, id]);
         }
       }}>

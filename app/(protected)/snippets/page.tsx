@@ -12,10 +12,11 @@ import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import {roundTransition} from "@/app/transition/round_transition";
+import {useUser} from "@/context/SupabaseProvider";
 
 const SnippetsPage = () => {
 
-  const {data: session} = useSession();
+  const { user } = useUser();
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [loadOverflow, setLoadOverflow] = useState(false);
@@ -62,7 +63,6 @@ const SnippetsPage = () => {
     }, 3000);
   }, []);
 
-  if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
   if (error) return <div className={"w-full h-full flex items-center justify-center text-gray-700 text-2xl"}>Daily Snippet 서버에 접속할 수 없어요.</div>
   return <div className={"w-full h-fit min-h-screen bg-gray-100 flex flex-col"}>
     {/*<div className={"fixed w-full bottom-10 flex justify-center"}>*/}

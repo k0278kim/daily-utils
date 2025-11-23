@@ -21,9 +21,11 @@ import {User} from "@/model/user";
 import {Healthcheck, HealthcheckResponse} from "@/model/healthcheck";
 import {addUserHealthcheck} from "@/app/actions/addUserHealthcheck";
 import {updateUserHealthcheck} from "@/app/actions/updateUserHealthcheck";
+import {useSupabaseClient, useUser} from "@/context/SupabaseProvider";
+import {executeGoogleApi} from "@/utils/googleApiExecutor";
 
 const DailyHealthcheckEdit = () => {
-  const { data: session } = useSession();
+  const { user } = useUser();
   const [submitText, setSubmitText] = useState<string>("발행하기");
   const [selectedDate, setSelectedDate] = useState("");
   const [healthchecks, setHealthchecks] = useState<DriveFolder[] | []>([]);
@@ -40,10 +42,10 @@ const DailyHealthcheckEdit = () => {
   const [init, setInit] = useState<boolean>(true);
   const [retouched, setRetouched] = useState<boolean>(false);
 
+  const supabase = useSupabaseClient();
+
   const onCommentChange = (str: string, index: number) => {
-    console.log(str, index);
     setWriteComment(prev => prev.map((v, i) => (i === index ? str : v)));
-    console.log(writeComment);
     setRetouched(true);
   }
 
@@ -68,17 +70,17 @@ const DailyHealthcheckEdit = () => {
       setLoadStatus(false);
       setDisabled(true);
       (async() => {
-        if (session) {
+        if (user) {
           const questions: HealthcheckQuestions = await fetchHealthcheckQuestions("도다리도 뚜뚜려보고 건너는 양털");
           setQuestions(questions.questions);
           if (!me) {
             console.log("not me", me);
-            const meRes: User[] = await fetchUserByEmail(session.user?.email as string);
+            const meRes: User[] = await fetchUserByEmail(user?.email as string);
             console.log("setme", meRes[0]);
             setMe(meRes[0]);
           }
           if (me) {
-            const todayAnswer: Healthcheck[] = await fetchUserHealthchecks(me!.uuid, selectedDate!, selectedDate!);
+            const todayAnswer: Healthcheck[] = await fetchUserHealthchecks(me!.id, selectedDate!, selectedDate!);
             if (todayAnswer.length == 1) {
               setMyHealthcheck(todayAnswer[0]);
               if (init) {
@@ -103,13 +105,13 @@ const DailyHealthcheckEdit = () => {
       })();
     }
 
-  }, [session, me]);
+  }, [user, me]);
 
   useEffect(() => {
     setLoadStatus(false);
     (async () => {
-      if (session && me) {
-        const todayAnswer: Healthcheck[] = await fetchUserHealthchecks(me!.uuid, selectedDate!, selectedDate!);
+      if (user && me) {
+        const todayAnswer: Healthcheck[] = await fetchUserHealthchecks(me!.id, selectedDate!, selectedDate!);
         if (todayAnswer.length == 1) {
           setMyHealthcheck(todayAnswer[0]);
           setWriteScore(todayAnswer[0].responses.map((res) => res.score))
@@ -133,8 +135,6 @@ const DailyHealthcheckEdit = () => {
     }, 3000);
   }, [])
 
-  if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
-
   return <div className={"w-full h-full bg-gray-100"}>
     <div className={"flex flex-col px-10 h-full space-y-10"}>
       <div className={"sticky top-0 py-5 bg-gray-100 z-20 flex h-fit space-x-2.5 md:space-x-0"}>
@@ -142,7 +142,7 @@ const DailyHealthcheckEdit = () => {
           {
             dailySnippetAvailableDate().map((date) => {
               const dateSplit = date!.split("-");
-              const fold: DriveFolder[] = healthchecks.filter((df: DriveFolder) => `${df.name.split("_")[0]}_${df.name.split("_")[1]}` == `${date}_${session?.user?.email}`);
+              const fold: DriveFolder[] = healthchecks.filter((df: DriveFolder) => `${df.name.split("_")[0]}_${df.name.split("_")[1]}` == `${date}_${user?.email}`);
               return <button
                 key={date}
                 onClick={async () => {
@@ -151,8 +151,21 @@ const DailyHealthcheckEdit = () => {
                     setDisabled(true);
                     dateRef.current = date;
                     if (fold.length == 1) {
-                      const getFile = await driveGetFile(session?.accessToken, fold[0].id);
-
+                      const { data: { session }} = await supabase.auth.getSession();
+                      if (!session) throw new Error("Session not found");
+                      let currentAccessToken = session.provider_token;
+                      try {
+                        const content = await executeGoogleApi(
+                          currentAccessToken!,
+                          (token) => driveGetFile(token, fold[0].id), // 실행할 작업
+                          (newToken) => {
+                            // [선택] 토큰이 갱신됐다면 변수에 업데이트 (다음 루프를 위해)
+                            currentAccessToken = newToken;
+                          }
+                        );
+                      } catch (e) {
+                        console.error(e);
+                      }
                     } else {
                     }
                     setDisabled(false);
@@ -203,9 +216,9 @@ const DailyHealthcheckEdit = () => {
             }
           }} />
           <button className={`text-sm rounded-lg font-semibold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
-            if (!isUploading && session?.user?.email != "") {
+            if (!isUploading && user?.email != "") {
               setDisabled(true);
-              const email = session?.user?.email as string;
+              const email = user?.email as string;
               setIsUploading(true);
               console.log(myHealthcheck, me);
               const body: HealthcheckResponse[] = [];
@@ -218,11 +231,11 @@ const DailyHealthcheckEdit = () => {
               }
               console.log(body);
               if (me) {
-                const todayAnswer: Healthcheck[] = await fetchUserHealthchecks(me!.uuid, selectedDate!, selectedDate!);
+                const todayAnswer: Healthcheck[] = await fetchUserHealthchecks(me!.id, selectedDate!, selectedDate!);
                 if (todayAnswer.length == 0) {
                   console.log("add healthcheck");
                   try {
-                    await addUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me?.uuid, selectedDate!, body);
+                    await addUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me?.id, selectedDate!, body);
                   } catch (e) {
                     const confirm = window.confirm("계정 세션에 문제가 발생했습니다. 지금 상태로 헬스체크를 임시저장할까요?");
                     if (confirm) {
@@ -232,7 +245,7 @@ const DailyHealthcheckEdit = () => {
                   }
                 } else {
                   console.log("update healthcheck", body);
-                  await updateUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me?.uuid, selectedDate!, body);
+                  await updateUserHealthcheck("도다리도 뚜뚜려보고 건너는 양털", me?.id, selectedDate!, body);
                 }
               }
               const myDriveList = (await driveGetFolder(healthcheckDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${email}`);

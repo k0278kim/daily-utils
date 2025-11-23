@@ -4,31 +4,38 @@ import Image from "next/image";
 import {signOut, useSession} from "next-auth/react";
 import LoadOrLogin from "@/components/LoadOrLogin";
 import {MouseEventHandler, useState} from "react";
-import VacationPage from "@/app/(routes)/profile/vacation/page";
-import JigakPage from "@/app/(routes)/profile/jigak/page";
+import VacationPage from "@/app/(protected)/profile/vacation/page";
+import JigakPage from "@/app/(protected)/profile/jigak/page";
 import { motion } from "framer-motion";
 import {roundTransition} from "@/app/transition/round_transition";
+import {useSupabaseClient, useUser} from "@/context/SupabaseProvider";
+import {useRouter} from "next/navigation";
 
 const ProfilePage = () => {
-  const { data: session } = useSession();
+  const { user } = useUser();
   const [page, setPage] = useState<"VACATION" | "PROFILE" | "JIGAK">("PROFILE");
   const [loadOverflow, setLoadOverflow] = useState(false);
+  const supabase = useSupabaseClient();
+  const router = useRouter();
 
-  if (!session?.user) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
+  if (!user) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
 
   return <div className={"w-full h-full flex justify-center px-20"}>
     <div className={"flex flex-col w-96 space-y-10 justify-center border-r-[1px] border-r-gray-200"}>
       <div className={"w-52 aspect-square rounded-full relative mb-12"}>
-        <Image src={session.user?.image ? session?.user?.image.replace(/=s\d+-c/, '=s1024-c') : ""} alt={""} fill className={"object-cover rounded-full"} />
+        <Image src={user?.user_metadata.avatar_url ? user?.user_metadata.avatar_url.replace(/=s\d+-c/, '=s1024-c') : ""} alt={""} fill className={"object-cover rounded-full"} />
       </div>
       <div className={"flex flex-col space-y-2.5"}>
-        <p className={"text-2xl font-bold"}>{session.user.name}</p>
-        <p className={"text-lg text-gray-500"}>{session.user.email}</p>
+        <p className={"text-2xl font-bold"}>{user.user_metadata.full_name}</p>
+        <p className={"text-lg text-gray-500"}>{user.email}</p>
       </div>
       <div className={"flex flex-col"}>
         <LeftbarButton icon={"/profile/calendar.svg"} title={"휴가/지각 관리"} onClick={() => setPage("VACATION")} />
-        <LeftbarButton icon={"/profile/logout.svg"} title={"로그아웃"} onClick={() => {
-          if (window.confirm("로그아웃할까요?")) signOut();
+        <LeftbarButton icon={"/profile/logout.svg"} title={"로그아웃"} onClick={async () => {
+          if (window.confirm("로그아웃할까요?")) {
+            await supabase.auth.signOut();
+            router.refresh();
+          }
         }}/>
       </div>
     </div>

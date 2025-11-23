@@ -1,6 +1,8 @@
 import { getToken } from "next-auth/jwt";
 import {NextRequest, NextResponse} from "next/server";
 import {supabase} from "@/lib/supabaseClient";
+import {createClient} from "@/utils/supabase/server";
+import {requireAuth} from "@/utils/supabase/auth";
 
 export async function GET(req: NextRequest) {
 
@@ -8,10 +10,7 @@ export async function GET(req: NextRequest) {
   const userId = searchParams.get("user_id");
 
   try {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    if (!token?.accessToken) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
+    const { supabase, user } = await requireAuth();
 
     const { data, error } = await supabase.from("vacation_usage")
       .select("*, team (*)")

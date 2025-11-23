@@ -14,6 +14,7 @@ import {driveDeleteFile} from "@/app/api/drive_delete_file";
 import LoadOrLogin from "@/components/LoadOrLogin";
 import {useRouter} from "next/navigation";
 import {snippetDriveId} from "@/app/data/drive_id";
+import {useUser} from "@/context/SupabaseProvider";
 
 type dailySnippetEditProps = {
   setSelectedArea: (area: number) => void;
@@ -21,7 +22,7 @@ type dailySnippetEditProps = {
 
 export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) => {
   const template = ``;
-  const { data: session } = useSession();
+  // const { data: session } = useSession();
   const [submitText, setSubmitText] = useState<string>("발행하기");
   const [snippetContent, setSnippetContent] = useState(template);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
@@ -33,6 +34,7 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
   const [initCompleted, setInitCompleted] = useState(false);
   const [error, setError] = useState("");
   const [tempContent, setTempContent] = useState("");
+  const { user } = useUser();
 
   const router = useRouter();
 
@@ -66,10 +68,10 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
 
   useEffect(() => {
     (async() => {
-      if (session && !initCompleted) {
+      if (user && !initCompleted) {
         setLoadStatus(false);
         try {
-          await getMySnippets(session?.user?.email as string).then((res) => {
+          await getMySnippets(user?.email as string).then((res) => {
             console.log(res);
             setSnippets(res);
             const snip: Snippet[] = res.filter((sn: Snippet) => sn.snippet_date == selectedDate);
@@ -94,7 +96,7 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
       }
     })();
 
-  }, [session]);
+  }, [user]);
 
   useEffect(() => {
     console.log(snippets);
@@ -183,21 +185,21 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
             }
           }} />
           <button className={`text-sm rounded-lg font-semibold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
-            if (!isUploading && session?.user?.email != "") {
+            if (!isUploading && user?.email != "") {
               setEditorDisabled(true);
-              const email = session?.user?.email as string;
+              const email = user?.email as string;
               setIsUploading(true);
               setSubmitText("Daily Snippet 채널에 업로드가 가능한지 확인 중")
               const result = (await addSnippet(email, selectedDate!, snippetContent)).received;
-              const myDriveList = (await driveGetFolder(snippetDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${session?.user?.name}`);
+              const myDriveList = (await driveGetFolder(snippetDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${user?.user_metadata.full_name}`);
               if (result.length == 1) {
-                setSnippets(await getMySnippets(session?.user?.email as string));
+                setSnippets(await getMySnippets(user?.email as string));
                 setSubmitText("Google Drive에서 파일 정리 중")
                 for await (const file of myDriveList) {
                   await driveDeleteFile(file.id);
                 }
                 setSubmitText("Google Drive에 파일 업로드 중")
-                await driveUploadFile(snippetDriveId, `${selectedDate!}_${session?.user?.name}`, snippetContent);
+                await driveUploadFile(snippetDriveId, `${selectedDate!}_${user?.user_metadata.full_name}`, snippetContent);
                 setSubmitText("업로드 완료");
                 window.localStorage.removeItem(`snippet__tempsave__${selectedDate!}`);
                 setTimeout(() => {
@@ -213,12 +215,12 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
               }
               if (myDriveList.length == 0) {
                 setSubmitText("Google Drive에 파일이 업로드되어 있지 않아서 업로드하고 있어요")
-                await getMySnippets(session?.user?.email as string).then(async (res) => {
+                await getMySnippets(user?.email as string).then(async (res) => {
                   setSnippets(res);
                   const snip: Snippet[] = res.filter((sn: Snippet) => sn.snippet_date == selectedDate);
                   if (snip.length == 1) {
                     setSnippetContent(snip[0].content);
-                    await driveUploadFile(snippetDriveId, `${selectedDate!}_${session?.user?.name}`, snip[0].content);
+                    await driveUploadFile(snippetDriveId, `${selectedDate!}_${user?.user_metadata.full_name}`, snip[0].content);
                   }
                 });
                 setSubmitText("업로드 완료");

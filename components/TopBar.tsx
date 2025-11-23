@@ -3,6 +3,7 @@ import {motion} from "framer-motion";
 import Image from "next/image";
 import {roundTransition} from "@/app/transition/round_transition";
 import {signOut, useSession} from "next-auth/react";
+import {useUser} from "@/context/SupabaseProvider";
 
 type topBarProps = {
   darkmode: boolean;
@@ -13,8 +14,9 @@ type topBarProps = {
 }
 
 const TopBar = ({ darkmode, routes, titles, selectedArea, setSelectedArea }: topBarProps) => {
-  const { data: session } = useSession();
+  // const { data: session } = useSession();
   const [hover, setHover] = useState(-1);
+  const { user } = useUser();
   return <div className={`duration-200 h-fit w-full border-b-[1px] flex flex-col ${darkmode ? "bg-gray-950 border-b-gray-900" : "bg-white border-b-gray-200"}`}>
     <div className={"p-3 h-fit flex text-gray-400 items-center text-sm justify-between"}>
       <div className={"flex space-x-2.5 items-center"}>
@@ -36,12 +38,12 @@ const TopBar = ({ darkmode, routes, titles, selectedArea, setSelectedArea }: top
         }
       </div>
       <div className={""}>
-        { session &&
+        { user &&
           <div className={"flex space-x-2.5"}>
             <button className={`flex items-center px-3 rounded-sm text-sm font-semibold ${darkmode ? "bg-gray-800 text-gray-200" : "bg-gray-200 text-gray-700"}`} onClick={() => {
               window.location.href = "/daily_edit"
             }}>오늘 기록</button>
-            <Image src={session.user?.image as string} alt={""} width={30} height={30} className={"rounded-sm active:scale-90 duration-100 cursor-pointer"} onClick={() => setSelectedArea(-2)}/>
+            <Image src={user?.user_metadata.avatar_url as string} alt={""} width={30} height={30} className={"rounded-sm active:scale-90 duration-100 cursor-pointer"} onClick={() => setSelectedArea(-2)}/>
           </div>
         }
       </div>

@@ -3,6 +3,8 @@ import {NextRequest, NextResponse} from "next/server";
 import {User} from "@/model/user";
 import fetchTeamUsers from "@/app/api/team/user/get_team_users/fetch_team_users";
 import {supabase} from "@/lib/supabaseClient";
+import {createClient} from "@/utils/supabase/server";
+import {requireAuth} from "@/utils/supabase/auth";
 
 export async function GET(req: NextRequest) {
 
@@ -10,15 +12,12 @@ export async function GET(req: NextRequest) {
   const userName = searchParams.get("user_name");
   const teamName = searchParams.get("team_name");
   try {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    if (!token?.accessToken) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
+    const { supabase, user } = await requireAuth();
 
     if (teamName && userName) {
       const teamRes = await supabase.from("team").select("*").eq("name", teamName);
       const teamData = teamRes.data;
-      const { data: teamUsers, error } = await supabase.from("user").select("*").eq("team_id", teamData![0].id);
+      const { data: teamUsers, error } = await supabase.from("profiles").select("*").eq("team_id", teamData![0].id);
       return NextResponse.json({ users: teamUsers!.filter((user: User) => user.name === userName) });
     } else {
       return NextResponse.json({ error: "Invalid team_name or user_name" });

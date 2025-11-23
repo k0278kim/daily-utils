@@ -1,18 +1,18 @@
 'use client'
 import {useSession} from "next-auth/react";
-import {DailySnippetEdit} from "@/app/(routes)/daily_edit/DailySnippetEdit";
+import {DailySnippetEdit} from "@/app/(protected)/daily_edit/DailySnippetEdit";
 import React, {useState} from "react";
 import LoadOrLogin from "@/components/LoadOrLogin";
-import DailyHealthcheckEdit from "@/app/(routes)/healthcheck_edit/page";
+import DailyHealthcheckEdit from "@/app/(protected)/healthcheck_edit/page";
 import TopBar from "@/components/TopBar";
+import {useUser} from "@/context/SupabaseProvider";
 
 const DailyEdit = () => {
 
-  const { data: session } = useSession();
+
+  const { user } = useUser();
   const [selectedArea, setSelectedArea] = useState<number>(0);
   const [loadOverflow, setLoadOverflow] = useState(false);
-
-  if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
 
   return <div className={"w-screen h-screen flex flex-col"}>
     <TopBar darkmode={false} routes={["Daily Edit"]} titles={["1. Snippet 작성", "2. Health Check 작성"]} selectedArea={selectedArea} setSelectedArea={setSelectedArea} />

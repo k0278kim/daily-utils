@@ -1,21 +1,19 @@
 import { getToken } from "next-auth/jwt";
 import { google } from "googleapis";
 import {NextRequest, NextResponse} from "next/server";
+import {getAuthenticatedGoogleClient} from "@/utils/googleAuth";
+import {requireAuth} from "@/utils/supabase/auth";
 
 export async function POST(req: NextRequest) {
   try {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    if (!token?.accessToken) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
+    const { supabase, user } = await requireAuth();
 
     // 요청에서 JSON 파라미터 받기
     const body = await req.json();
     const { folderId, name, content } = body;
     // 예: { folderId: "abc123", name: "hello.txt", content: "안녕하세요" }
 
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: token.accessToken as string });
+    const oauth2Client = await getAuthenticatedGoogleClient();
 
     const drive = google.drive({ version: "v3", auth: oauth2Client });
 
