@@ -11,6 +11,7 @@ import {roundTransition} from "@/app/transition/round_transition";
 import {useSupabaseClient, useUser} from "@/context/SupabaseProvider";
 import {useRouter} from "next/navigation";
 import {User} from "@/model/user";
+import AvatarOverlay from "@/app/(protected)/(dashboard)/profile/components/AvatarOverlay";
 
 const ProfilePage = () => {
   const { user } = useUser();
@@ -18,6 +19,8 @@ const ProfilePage = () => {
   const supabase = useSupabaseClient();
   const router = useRouter();
   const [profile, setProfile] = useState<User|null>(null);
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarOverlay, setAvatarOverlay] = useState(false);
 
   useEffect(() => {
     if (user && !profile) {
@@ -35,9 +38,15 @@ const ProfilePage = () => {
   }, [user]);
 
   return <div className={"w-full h-full flex justify-center px-20"}>
+    {
+      avatarOverlay && <AvatarOverlay setAvatarUrl={setAvatarUrl} />
+    }
     <div className={"flex flex-col w-96 space-y-10 justify-center border-r-[1px] border-r-gray-200"}>
-      <div className={"w-52 aspect-square rounded-full relative mb-12"}>
+      <div className={"w-52 aspect-square rounded-full relative mb-12"} onClick={() => setAvatarOverlay(true)}>
         <Image src={profile?.avatar_url ? profile.avatar_url.replace(/=s\d+-c/, '=s1024-c') : ""} alt={""} fill className={"object-cover rounded-full"} />
+        <div className={"w-12 aspect-square bg-white border border-gray-300 rounded-full flex items-center justify-center absolute bottom-2 right-2"}>
+          <Image src={"/profile/pencil.svg"} alt={""} width={20} height={20} />
+        </div>
       </div>
       <div className={"flex flex-col space-y-2.5"}>
         <p className={"text-2xl font-bold"}>{profile?.name}({profile?.nickname})</p>
