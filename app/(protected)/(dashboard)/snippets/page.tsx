@@ -126,7 +126,7 @@ const SnippetsPage = () => {
         !loading
         ? snippets.filter((f) => f.snippet_date == selectedDate).length != 0
           ? snippets.filter((f) => f.snippet_date == selectedDate).map((snippet: Snippet, i) => <div key={i} className={"h-fit"}>
-            <SnippetBlock snippet={snippet} avatarUrl={teamUsers.filter((user) => user.email == snippet.user_email)[0].avatar_url}/>
+            <SnippetBlock snippet={snippet} avatarUrl={teamUsers.length > 0 ? teamUsers.filter((user) => user.email == snippet.user_email)[0].avatar_url : ""}/>
           </div>)
           : <motion.div
             initial={{ opacity: 0, translateY: 20 }}
