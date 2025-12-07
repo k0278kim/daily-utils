@@ -1,8 +1,8 @@
 "use client"
 
-import React, {useEffect, useState} from "react";
-import {Snippet} from "@/model/snippet";
-import {useSession} from "next-auth/react";
+import React, { useEffect, useState } from "react";
+import { Snippet } from "@/model/snippet";
+import { useSession } from "next-auth/react";
 import LoadOrLogin from "@/components/LoadOrLogin";
 import fetchSnippet from "@/app/api/fetch_snippet";
 import formatDate from "@/lib/utils/format_date";
@@ -11,9 +11,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import {roundTransition} from "@/app/transition/round_transition";
-import {useSupabaseClient, useUser} from "@/context/SupabaseProvider";
-import {User} from "@/model/user";
+import { roundTransition } from "@/app/transition/round_transition";
+import { useSupabaseClient, useUser } from "@/context/SupabaseProvider";
+import { User } from "@/model/user";
 import fetchUserByEmail from "@/app/api/team/user/get_user_by_email/fetch_user_by_email";
 
 const SnippetsPage = () => {
@@ -52,7 +52,7 @@ const SnippetsPage = () => {
 
   useEffect(() => {
     if (me && teamUsers.length == 0) {
-      (async() => {
+      (async () => {
         const { data, error } = await supabase.from("profiles")
           .select("*")
           .eq("team_id", me?.team_id)
@@ -65,11 +65,11 @@ const SnippetsPage = () => {
 
   useEffect(() => {
 
-    const {date_from, date_to} = weekDates(formatDate(new Date)!);
+    const { date_from, date_to } = weekDates(formatDate(new Date)!);
     setDateFrom(date_from!);
     console.log(date_from, date_to);
 
-    (async() => {
+    (async () => {
       if (date_from != null && date_to != null) {
         try {
           setLoading(true);
@@ -98,7 +98,7 @@ const SnippetsPage = () => {
         const newDate = new Date(dateFrom);
         newDate.setDate(newDate.getDate() - 7);
         setDateFrom(formatDate(newDate)!);
-        const {date_from, date_to} = weekDates(formatDate(newDate)!);
+        const { date_from, date_to } = weekDates(formatDate(newDate)!);
         if (date_from != null && date_to != null) {
           const snippetResult = await fetchSnippet(date_from, date_to);
           setSnippets(snippetResult);
@@ -112,7 +112,7 @@ const SnippetsPage = () => {
         const newDate = new Date(dateFrom);
         newDate.setDate(newDate.getDate() + 7);
         setDateFrom(formatDate(newDate)!);
-        const {date_from, date_to} = weekDates(formatDate(newDate)!);
+        const { date_from, date_to } = weekDates(formatDate(newDate)!);
         if (date_from != null && date_to != null) {
           const snippetResult = await fetchSnippet(date_from, date_to);
           setSnippets(snippetResult);
@@ -121,18 +121,18 @@ const SnippetsPage = () => {
         }
       }} />
     </div>
-    <div className={"flex flex-col space-y-2.5 px-2.5 md:p-0 md:flex-row md:space-x-5 justify-center w-full scrollbar-hide"}>
+    <div className={"flex flex-col space-y-2.5 px-2.5 md:p-0 md:flex-row md:space-x-5 justify-center w-full scrollbar-hide overflow-x-scroll"}>
       {
         !loading
-        ? snippets.filter((f) => f.snippet_date == selectedDate).length != 0
-          ? snippets.filter((f) => f.snippet_date == selectedDate).map((snippet: Snippet, i) => <div key={i} className={"h-fit"}>
-            <SnippetBlock snippet={snippet} avatarUrl={teamUsers.length > 0 ? teamUsers.filter((user) => user.email == snippet.user_email)[0].avatar_url : ""}/>
-          </div>)
-          : <motion.div
-            initial={{ opacity: 0, translateY: 20 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            className={"text-gray-500 font-semibold text-2xl mt-32"}>아직 스니펫을 올리지 않았어요.</motion.div>
-        : <motion.div className={"w-10 aspect-square"} layoutId={"circular"}>
+          ? snippets.filter((f) => f.snippet_date == selectedDate).length != 0
+            ? snippets.filter((f) => f.snippet_date == selectedDate).map((snippet: Snippet, i) => <div key={i} className={"h-fit"}>
+              <SnippetBlock snippet={snippet} avatarUrl={teamUsers.length > 0 ? teamUsers.filter((user) => user.email == snippet.user_email)[0].avatar_url : ""} />
+            </div>)
+            : <motion.div
+              initial={{ opacity: 0, translateY: 20 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              className={"text-gray-500 font-semibold text-2xl mt-32"}>아직 스니펫을 올리지 않았어요.</motion.div>
+          : <motion.div className={"w-10 aspect-square"} layoutId={"circular"}>
             <CircularLoader />
           </motion.div>
       }
@@ -156,21 +156,21 @@ const WeekCalendar = ({ date_from, snippets, selectedDate, setSelectedDate, load
       Array.from({ length: 7 }, (_, i) => i).map((_, i) => {
         const date = new Date(date_from);
         date.setDate(date.getDate() + i);
-        const dayDocs = snippets.filter((f)=>f.snippet_date == formatDate(date));
+        const dayDocs = snippets.filter((f) => f.snippet_date == formatDate(date));
         return <div key={i} onMouseOver={() => setHoverIndex(i)} className={"p-2.5 relative active:scale-90 duration-100 cursor-pointer flex flex-col space-y-2.5 items-center md:justify-center"} onClick={() => setSelectedDate(formatDate(date)!)}>
-          { hoverIndex == i && <motion.div transition={roundTransition} layoutId={"hover-bg"} className={"absolute w-full h-full bg-gray-400/10 z-10 rounded-xl"}></motion.div> }
-          <motion.div className={`relative duration-100 flex w-7 h-7 md:w-full md:h-10 rounded-lg font-semibold text-lg md:space-x-2.5 items-center justify-center ${formatDate(date) == selectedDate ? dayDocs.length == 0 ? "bg-gray-400" : dayDocs.length == 3 ? "bg-green-500" : "bg-yellow-500" : dayDocs.length == 0 ? "bg-gray-200" : dayDocs.length == 3 ? "bg-green-500/20" : "bg-yellow-500/20"}`}>
+          {hoverIndex == i && <motion.div transition={roundTransition} layoutId={"hover-bg"} className={"absolute w-full h-full bg-gray-400/10 z-10 rounded-xl"}></motion.div>}
+          <motion.div className={`relative duration-100 flex w-7 h-7 md:w-full md:h-10 rounded-lg font-semibold text-lg md:space-x-2.5 items-center justify-center ${formatDate(date) == selectedDate ? dayDocs.length == 0 ? "bg-gray-400" : dayDocs.length == 4 ? "bg-green-500" : "bg-yellow-500" : dayDocs.length == 0 ? "bg-gray-200" : dayDocs.length == 4 ? "bg-green-500/20" : "bg-yellow-500/20"}`}>
             <div className={"md:opacity-0 absolute text-sm flex items-center justify-center"}><p>{dayDocs.length}</p></div>
             {
               !loading
                 ? dayDocs.map((snippet, i) => {
-                  return <motion.div key={i} className={`duration-100 md:w-3 md:aspect-square rounded-full ${formatDate(date) == selectedDate ? "bg-white" : dayDocs.length == 3 ? "bg-green-500" : "bg-yellow-500"}`}>
+                  return <motion.div key={i} className={`duration-100 md:w-3 md:aspect-square rounded-full ${formatDate(date) == selectedDate ? "bg-white" : dayDocs.length == 4 ? "bg-green-500" : "bg-yellow-500"}`}>
                   </motion.div>
                 })
-                : <div className={"w-4 aspect-square"}><CircularLoader/></div>
+                : <div className={"w-4 aspect-square"}><CircularLoader /></div>
             }
           </motion.div>
-          { formatDate(new Date()) == formatDate(date)
+          {formatDate(new Date()) == formatDate(date)
             ? <p className={`text-sm ${formatDate(date) == selectedDate ? "font-semibold" : ""}`}>오늘</p>
             : <p className={`text-sm ${formatDate(date) == selectedDate ? "font-semibold" : ""}`}>{Number(date.getMonth() + 1)}.{date.getDate()} ({["일", "월", "화", "수", "목", "금", "토"][date.getDay()]})</p>
           }
@@ -197,7 +197,7 @@ const SnippetBlock = ({ snippet, avatarUrl }: snippetBlockType) => {
     <p>{snippet.user_email}</p>
     <div className={"text-sm mt-5 p-3 rounded-lg bg-gray-100 text-gray-700"}>
       <p className={"font-semibold"}>마지막 업데이트</p>
-      <p>{snippet.updated_at}</p>
+      <p>{snippet.updated_at}</p>d
     </div>
     <article className="prose mt-10">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>
