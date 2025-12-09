@@ -9,7 +9,7 @@ import formatDate from "@/lib/utils/format_date";
 import CircularLoader from "@/components/CircularLoader";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { roundTransition } from "@/app/transition/round_transition";
 import { useSupabaseClient, useUser } from "@/context/SupabaseProvider";
@@ -121,11 +121,11 @@ const SnippetsPage = () => {
         }
       }} />
     </div>
-    <div className={"flex flex-col space-y-2.5 px-2.5 md:p-0 md:flex-row md:space-x-5 justify-center w-full scrollbar-hide overflow-x-scroll"}>
+    <div className={"flex flex-col space-y-4 px-2.5 md:p-0 md:max-w-[800px] w-full items-center mx-auto"}>
       {
         !loading
           ? snippets.filter((f) => f.snippet_date == selectedDate).length != 0
-            ? snippets.filter((f) => f.snippet_date == selectedDate).map((snippet: Snippet, i) => <div key={i} className={"h-fit"}>
+            ? snippets.filter((f) => f.snippet_date == selectedDate).map((snippet: Snippet, i) => <div key={i} className={"w-full"}>
               <SnippetBlock snippet={snippet} avatarUrl={teamUsers.length > 0 ? teamUsers.filter((user) => user.email == snippet.user_email)[0].avatar_url : ""} />
             </div>)
             : <motion.div
@@ -189,20 +189,56 @@ type snippetBlockType = {
 
 const SnippetBlock = ({ snippet, avatarUrl }: snippetBlockType) => {
 
-  return <div className={"w-full md:w-[30vw] h-fit md:max-h-full border-[1px] bg-white border-gray-200 rounded-2xl flex flex-col p-10"}>
-    <div className={"w-16 aspect-square rounded-lg relative mb-5"}>
-      <Image src={avatarUrl} alt={""} fill className={"object-cover rounded-lg"} />
+  const [isOpen, setIsOpen] = useState(false);
+
+  return <motion.div layout className={"w-full h-fit border-[1px] bg-white border-gray-200 rounded-2xl flex flex-col overflow-hidden"}>
+    <div onClick={() => setIsOpen(!isOpen)} className={"px-10 py-6 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"}>
+      <div className="flex items-center space-x-4">
+        <div className={"w-12 h-12 rounded-full relative overflow-hidden bg-gray-200"}>
+          {avatarUrl && <Image src={avatarUrl} alt={snippet.full_name} fill className={"object-cover"} />}
+        </div>
+        <div className="flex flex-col">
+          <p className={"font-bold text-lg text-gray-900"}>{snippet.full_name}</p>
+          <p className="text-sm text-gray-500">{snippet.user_email}</p>
+        </div>
+      </div>
+      <div className="flex items-center space-x-4">
+        <p className="text-xs text-gray-400 hidden md:block">
+          {snippet.updated_at}
+        </p>
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 9L12 15L18 9" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </motion.div>
+      </div>
     </div>
-    <p className={"font-bold text-xl"}>{snippet.full_name}</p>
-    <p>{snippet.user_email}</p>
-    <div className={"text-sm mt-5 p-3 rounded-lg bg-gray-100 text-gray-700"}>
-      <p className={"font-semibold"}>마지막 업데이트</p>
-      <p>{snippet.updated_at}</p>d
-    </div>
-    <article className="prose mt-10">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-        {snippet.content}
-      </ReactMarkdown>
-    </article>
-  </div>
+
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="overflow-hidden"
+        >
+          <div className="p-10 border-t border-gray-100">
+            <div className={"text-sm mb-5 p-3 rounded-lg bg-gray-50 text-gray-600 block md:hidden"}>
+              <p className={"font-semibold"}>마지막 업데이트</p>
+              <p>{snippet.updated_at}</p>
+            </div>
+            <article className="prose max-w-none">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {snippet.content}
+              </ReactMarkdown>
+            </article>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </motion.div>
 }
