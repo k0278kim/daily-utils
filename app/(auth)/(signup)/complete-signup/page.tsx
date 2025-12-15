@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/supabaseClient";
 import Image from "next/image";
-import {useUser} from "@/context/SupabaseProvider";
+import { useUser } from "@/context/SupabaseProvider";
 
 export interface AppError {
   status?: number;
@@ -17,7 +17,7 @@ export default function CompleteSignupPage() {
   const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [avatarType, setAvatarType] = useState<"PHOTO"|"URL">("URL");
+  const [avatarType, setAvatarType] = useState<"PHOTO" | "URL">("URL");
   const [avatarOverlay, setAvatarOverlay] = useState(false);
   const [defaultAvatars, setDefaultAvatars] = useState<string[]>([]);
 
@@ -237,11 +237,10 @@ export default function CompleteSignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-3 rounded-lg text-white font-semibold transition-all ${
-              loading
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-black hover:bg-gray-800"
-            }`}
+            className={`w-full py-3 rounded-lg text-white font-semibold transition-all ${loading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-black hover:bg-gray-800"
+              }`}
           >
             {loading ? "저장 중..." : "가입 완료"}
           </button>
@@ -250,6 +249,13 @@ export default function CompleteSignupPage() {
         <p className="text-sm text-center text-gray-400 mt-8">
           Google 계정으로 로그인 중입니다.
         </p>
+        <button
+          className={"w-full text-sm text-center underline"}
+          onClick={() => {
+            router.replace("/login");
+          }}>
+          다른 계정으로 로그인
+        </button>
       </div>
     </div>
   );
