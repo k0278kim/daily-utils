@@ -116,6 +116,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
         return todo.assignees.some(a => a.id === currentUserId);
     }, [todo.assignees, currentUserId]);
 
+    // Tooltip State for Completion Check
+    const [showCompletionTooltip, setShowCompletionTooltip] = React.useState(false);
+    const [completionTooltipCoords, setCompletionTooltipCoords] = React.useState({ top: 0, left: 0 });
+
     // Debug logging
     console.log(`TaskCard Render: ${todo.id}`, {
         hasOnDelete: !!onDeleteTodo,
@@ -170,7 +174,20 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                         >
                             <div className="flex items-center justify-between gap-3">
                                 {onToggleStatus && (
-                                    <div className="relative group/check">
+                                    <div
+                                        className="relative group/check"
+                                        onMouseEnter={(e) => {
+                                            if (!canComplete) {
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                setCompletionTooltipCoords({
+                                                    top: rect.top - 8,
+                                                    left: rect.left + (rect.width / 2)
+                                                });
+                                                setShowCompletionTooltip(true);
+                                            }
+                                        }}
+                                        onMouseLeave={() => setShowCompletionTooltip(false)}
+                                    >
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -190,10 +207,24 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                                 <Circle size={20} />
                                             )}
                                         </button>
-                                        {!canComplete && (
-                                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 hidden group-hover/check:block whitespace-nowrap bg-gray-900 text-white text-[10px] py-1 px-2 rounded shadow-lg z-50">
-                                                담당자만 완료 가능
-                                            </div>
+
+                                        {/* Portal Tooltip for Completion Restriction */}
+                                        {showCompletionTooltip && !canComplete && typeof window !== 'undefined' && createPortal(
+                                            <div
+                                                className="fixed z-[9999] pointer-events-none fade-in zoom-in-95 duration-200"
+                                                style={{
+                                                    top: completionTooltipCoords.top,
+                                                    left: completionTooltipCoords.left,
+                                                    transform: 'translate(-50%, -100%)'
+                                                }}
+                                            >
+                                                <div className="bg-gray-900 text-white text-[10px] py-1 px-2 rounded shadow-lg whitespace-nowrap">
+                                                    담당자만 완료 가능
+                                                    {/* Arrow */}
+                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900"></div>
+                                                </div>
+                                            </div>,
+                                            document.body
                                         )}
                                     </div>
                                 )}
@@ -270,9 +301,17 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                onClick();
+                                                const hasAssignees = todo.assignees && todo.assignees.length > 0;
+                                                const isAssignedToMe = hasAssignees && currentUserId && todo.assignees.some(a => a.id === currentUserId);
+
+                                                if (!hasAssignees || isAssignedToMe) {
+                                                    onClick();
+                                                } else {
+                                                    alert('담당자가 지정된 할 일은 담당자만 수정할 수 있습니다.');
+                                                }
                                             }}
                                             className="p-1.5 text-gray-300 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                                            title="Edit Task"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M12 20h9" />
@@ -298,10 +337,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                 </div>
                             }
                         </motion.div>
-                    </div>
+                    </div >
                 );
             }}
-        </Draggable>
+        </Draggable >
     );
 };
 
