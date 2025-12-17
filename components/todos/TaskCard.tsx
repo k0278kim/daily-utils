@@ -172,8 +172,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                         }}
                     >
                         <motion.div
-                            layoutId={snapshot.isDragging ? undefined : todo.id}
-                            layout={!snapshot.isDragging}
+                            // layoutId={snapshot.isDragging ? undefined : todo.id}
+                            // layout={!snapshot.isDragging}
                             onClick={() => {
                                 if (isOverflowing) {
                                     setIsExpanded(!isExpanded);
