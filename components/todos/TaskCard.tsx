@@ -55,9 +55,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
         return todo.assignees.some(a => a.id === currentUserId);
     }, [todo.assignees, currentUserId, todo.status]);
 
+    const isAssignedToMe = React.useMemo(() => {
+        if (!currentUserId) return false;
+        if (!todo.assignees || todo.assignees.length === 0) return false;
+        return todo.assignees.some(a => a.id === currentUserId);
+    }, [todo.assignees, currentUserId]);
 
     return (
-        <Draggable draggableId={todo.id} index={index}>
+        <Draggable draggableId={todo.id} index={index} isDragDisabled={!isAssignedToMe}>
             {(provided, snapshot) => (
                 <div
                     ref={provided.innerRef}
