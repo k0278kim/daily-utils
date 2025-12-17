@@ -13,38 +13,92 @@ interface TaskCardProps {
     onDeleteTodo?: (id: string) => void;
 }
 
+import { createPortal } from 'react-dom';
+
 const UserAvatar = ({ assignee, index, total }: { assignee: any, index: number, total: number }) => {
     const [imageError, setImageError] = React.useState(false);
+    const [showTooltip, setShowTooltip] = React.useState(false);
+    const [coords, setCoords] = React.useState({ top: 0, left: 0 });
+    const avatarRef = React.useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
         setImageError(false);
     }, [assignee.avatar_url]);
 
-    if (assignee.avatar_url && !imageError) {
-        return (
+    const handleMouseEnter = () => {
+        if (avatarRef.current) {
+            const rect = avatarRef.current.getBoundingClientRect();
+            // Position above the avatar, centered
+            setCoords({
+                top: rect.top - 8, // 8px spacer
+                left: rect.left + (rect.width / 2)
+            });
+            setShowTooltip(true);
+        }
+    };
+
+    const handleMouseLeave = () => {
+        setShowTooltip(false);
+    };
+
+    const Tooltip = () => {
+        if (!showTooltip) return null;
+
+        // Ensure we're in the browser
+        if (typeof window === 'undefined') return null;
+
+        return createPortal(
             <div
-                className="w-6 h-6 rounded-full overflow-hidden border border-white ring-1 ring-gray-100 relative bg-gray-200"
-                title={assignee.name}
-                style={{ zIndex: total - index }}
+                className="fixed z-[9999] pointer-events-none fade-in zoom-in-95 duration-200"
+                style={{
+                    top: coords.top,
+                    left: coords.left,
+                    transform: 'translate(-50%, -100%)' // Center horizontally, Move above
+                }}
             >
-                <img
-                    src={assignee.avatar_url}
-                    alt={assignee.name}
-                    className="w-full h-full object-cover"
-                    onError={() => setImageError(true)}
-                />
-            </div>
+                <div className="bg-gray-900 text-white text-xs rounded-lg py-1.5 px-3 shadow-xl whitespace-nowrap min-w-[max-content] flex flex-col items-center">
+                    <div className="font-semibold">{assignee.nickname || 'Unknown'}({assignee.name || "Unknown"})</div>
+                    {assignee.email && <div className="text-[10px] text-gray-400">{assignee.email}</div>}
+
+                    {/* Arrow (Visual only) */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900"></div>
+                </div>
+            </div>,
+            document.body
         );
-    }
+    };
+
+    const content = assignee.avatar_url && !imageError ? (
+        <div className="w-full h-full rounded-full overflow-hidden">
+            <img
+                src={assignee.avatar_url}
+                alt={assignee.name}
+                className="w-full h-full object-cover"
+                onError={() => setImageError(true)}
+            />
+        </div>
+    ) : (
+        <React.Fragment>
+            {assignee.name ? assignee.name.charAt(0).toUpperCase() : '?'}
+        </React.Fragment>
+    );
+
+    const baseClasses = "relative w-6 h-6 rounded-full border border-white ring-1 ring-gray-100 flex items-center justify-center cursor-help transition-transform hover:scale-110 hover:z-50";
+    const bgClass = assignee.avatar_url && !imageError ? "bg-gray-200" : "bg-indigo-100 text-indigo-700 text-[10px] font-bold";
 
     return (
-        <div
-            className="w-6 h-6 rounded-full overflow-hidden border border-white ring-1 ring-gray-100 relative flex items-center justify-center bg-indigo-100 text-indigo-700 text-[10px] font-bold"
-            title={assignee.name}
-            style={{ zIndex: total - index }}
-        >
-            {assignee.name ? assignee.name.charAt(0).toUpperCase() : '?'}
-        </div>
+        <>
+            <div
+                ref={avatarRef}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                className={`${baseClasses} ${bgClass}`}
+                style={{ zIndex: showTooltip ? 9999 : (total - index) }}
+            >
+                {content}
+            </div>
+            <Tooltip />
+        </>
     );
 };
 
@@ -231,7 +285,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
 
                             {
                                 (todo.assignees && todo.assignees.length > 0) && <div className="mt-3 flex items-end justify-between border-t border-gray-100 pt-3">
-                                    <div className="flex -space-x-2 overflow-hidden py-1 pl-1">
+                                    <div className="flex -space-x-2 py-1 pl-1 isolate">
                                         {todo.assignees && todo.assignees.map((assignee, i) => (
                                             <UserAvatar
                                                 key={assignee.id || i}
