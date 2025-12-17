@@ -124,6 +124,15 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
 
     // Expand State for Description
     const [isExpanded, setIsExpanded] = React.useState(false);
+    const [isOverflowing, setIsOverflowing] = React.useState(false);
+    const textRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        if (textRef.current) {
+            // Check if content overflows: scrollHeight > clientHeight
+            setIsOverflowing(textRef.current.scrollHeight > textRef.current.clientHeight);
+        }
+    }, [todo.description]);
 
     // Debug logging
     console.log(`TaskCard Render: ${todo.id}`, {
@@ -165,17 +174,22 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                         <motion.div
                             layoutId={snapshot.isDragging ? undefined : todo.id}
                             layout={!snapshot.isDragging}
-                            onClick={() => setIsExpanded(!isExpanded)}
+                            onClick={() => {
+                                if (isOverflowing) {
+                                    setIsExpanded(!isExpanded);
+                                }
+                            }}
                             initial={{ opacity: 0, scale: 0.95, y: -10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.2 }}
                             className={`
-                            group relative rounded-xl border border-gray-100 p-4 cursor-pointer
+                            group relative rounded-xl border border-gray-100 p-4 
                             transition-colors duration-200 ease-in-out
                             hover:shadow-md hover:border-gray-100
                             ${snapshot.isDragging ? 'rotate-2 scale-[1.02] shadow-xl ring-1 ring-black/5 !border-transparent' : ''}
                             ${todo.status === 'done' ? 'opacity-75 bg-gray-50/50 bg-gradient-to-r from-blue-50 to-gray-100' : 'bg-white'}
+                            ${isOverflowing ? 'cursor-pointer' : 'cursor-default'}
                         `}
                         >
                             <div className="flex items-center justify-between gap-3">
@@ -246,11 +260,29 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
 
 
                                     {todo.description != "" && (
-                                        <div className={`mt-1 mb-3 text-xs text-gray-500 prose prose-xs prose-p:my-0 prose-ul:my-0 prose-ol:my-0 prose-headings:my-0 ${todo.status === 'done' ? 'text-gray-300' : ''} ${isExpanded ? '' : 'line-clamp-3'}`}>
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {todo.description}
-                                            </ReactMarkdown>
-                                        </div>
+                                        <motion.div
+                                            initial={false}
+                                            animate={{ height: isExpanded || !isOverflowing ? 'auto' : '4.5rem' }}
+                                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                            className={`mt-1 mb-3 text-xs text-gray-500 prose prose-xs prose-p:my-0 prose-ul:my-0 prose-ol:my-0 prose-headings:my-0 relative overflow-hidden ${todo.status === 'done' ? 'text-gray-300' : ''}`}
+                                        >
+                                            <div ref={textRef} className={isExpanded ? '' : 'line-clamp-3'}>
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                    {todo.description}
+                                                </ReactMarkdown>
+                                            </div>
+
+                                            {/* Blur Gradient Overlay */}
+                                            {isOverflowing && (
+                                                <motion.div
+                                                    initial={{ opacity: 1 }}
+                                                    animate={{ opacity: isExpanded ? 0 : 1 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className={`absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t ${todo.status === 'done' ? 'from-gray-100' : 'from-white'} to-transparent`}
+                                                    style={{ pointerEvents: 'none' }}
+                                                />
+                                            )}
+                                        </motion.div>
                                     )}
 
                                     <div className="flex flex-wrap items-center gap-2">
