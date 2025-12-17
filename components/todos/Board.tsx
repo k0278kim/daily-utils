@@ -593,6 +593,22 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
         }
     };
 
+    const deleteTodo = async (todoId: string) => {
+        if (!confirm('정말 삭제하시겠습니까?')) return;
+
+        const { error } = await supabase
+            .from('todos')
+            .delete()
+            .eq('id', todoId);
+
+        if (error) {
+            console.error('Error deleting todo:', error);
+            alert('삭제 중 오류가 발생했습니다.');
+        } else {
+            fetchTodos();
+        }
+    };
+
     return (
         <>
             <DragDropContext onDragEnd={onDragEnd}>
@@ -607,6 +623,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             enableDateFilter={true}
                             projectId={projectId}
                             onToggleStatus={handleToggleStatus}
+                            onDeleteTodo={deleteTodo}
                             currentUserId={currentUser?.id}
                         />
                     </div>
@@ -619,6 +636,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             enableStatusFilter={true}
                             projectId={projectId}
                             onToggleStatus={handleToggleStatus}
+                            onDeleteTodo={deleteTodo}
                             currentUserId={currentUser?.id}
                         />
                     </div>
@@ -630,6 +648,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             onEditTodo={setEditingTodo}
                             projectId={projectId}
                             onToggleStatus={handleToggleStatus}
+                            onDeleteTodo={deleteTodo}
                             currentUserId={currentUser?.id}
                         />
                     </div>

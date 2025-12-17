@@ -16,9 +16,10 @@ interface ColumnProps {
     enableDateFilter?: boolean;
     enableStatusFilter?: boolean;
     currentUserId?: string;
+    onDeleteTodo?: (id: string) => void;
 }
 
-const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, onEditTodo, onToggleStatus, projectId, enableDateFilter, enableStatusFilter, currentUserId }) => {
+const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, onEditTodo, onToggleStatus, projectId, enableDateFilter, enableStatusFilter, currentUserId, onDeleteTodo }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newTodoTitle, setNewTodoTitle] = useState('');
     const [newTodoDueDate, setNewTodoDueDate] = useState('');
@@ -213,6 +214,7 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
                                     onClick={() => onEditTodo(todo)}
                                     onToggleStatus={onToggleStatus}
                                     currentUserId={currentUserId}
+                                    onDeleteTodo={onDeleteTodo}
                                 />
                             ))}
                         </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Todo } from '@/model/Todo';
-import { CheckCircle2, Circle } from 'lucide-react';
+import { CheckCircle2, Circle, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface TaskCardProps {
@@ -10,6 +10,7 @@ interface TaskCardProps {
     onClick?: () => void;
     onToggleStatus?: (todo: Todo) => void;
     currentUserId?: string;
+    onDeleteTodo?: (id: string) => void;
 }
 
 const UserAvatar = ({ assignee, index, total }: { assignee: any, index: number, total: number }) => {
@@ -47,7 +48,7 @@ const UserAvatar = ({ assignee, index, total }: { assignee: any, index: number, 
     );
 };
 
-const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatus, currentUserId }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatus, currentUserId, onDeleteTodo }) => {
 
     const canComplete = React.useMemo(() => {
         if (!currentUserId) return false;
@@ -60,6 +61,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
         if (!todo.assignees || todo.assignees.length === 0) return false;
         return todo.assignees.some(a => a.id === currentUserId);
     }, [todo.assignees, currentUserId]);
+
+    // Debug logging
+    console.log(`TaskCard Render: ${todo.id}`, {
+        hasOnDelete: !!onDeleteTodo,
+        currentUserId,
+        assignees: todo.assignees?.length
+    });
 
     return (
         <Draggable draggableId={todo.id} index={index}>
@@ -181,20 +189,44 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                     </div>
                                 </div>
 
-                                {onClick && (
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onClick();
-                                        }}
-                                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 -mr-2 -mt-2 p-2 text-gray-400 hover:text-gray-600"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M12 20h9" />
-                                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                                        </svg>
-                                    </button>
-                                )}
+                                {/* Delete/Edit Actions: Always visible, top right */}
+                                <div className="flex items-center gap-1 absolute top-2 right-2">
+                                    {onDeleteTodo && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const hasAssignees = todo.assignees && todo.assignees.length > 0;
+                                                const isAssignedToMe = hasAssignees && currentUserId && todo.assignees.some(a => a.id === currentUserId);
+
+                                                console.log('Delete Check:', { id: todo.id, hasAssignees, isAssignedToMe, currentUserId });
+
+                                                if (!hasAssignees || isAssignedToMe) {
+                                                    onDeleteTodo(todo.id);
+                                                } else {
+                                                    alert('담당자가 지정된 할 일은 담당자만 삭제할 수 있습니다.');
+                                                }
+                                            }}
+                                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                            title="Delete Task"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    )}
+                                    {onClick && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onClick();
+                                            }}
+                                            className="p-1.5 text-gray-300 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M12 20h9" />
+                                                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                                            </svg>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {
