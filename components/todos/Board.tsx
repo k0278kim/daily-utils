@@ -39,7 +39,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                         event: '*',
                         schema: 'public',
                         table: 'todos',
-                        filter: `project_id=eq.${projectId}`,
+                        // Filter removed to ensure UPDATE events are received even if project_id is not in user payload (Replica Identity issue)
                     },
                     (payload) => {
                         console.log('Realtime change (todos):', payload);
