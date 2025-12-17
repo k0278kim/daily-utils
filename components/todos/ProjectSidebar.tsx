@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Plus, Folder, FolderOpen, Pencil, Trash2, X, Check } from 'lucide-react';
+import { Plus, Folder, FolderOpen, Pencil, Trash2, X, Check, MoreHorizontal } from 'lucide-react';
 import { createClient } from "@/utils/supabase/supabaseClient";
 import { Project } from '@/model/Project';
 
@@ -105,25 +105,26 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ selectedProjectId, onSe
     };
 
     return (
-        <div className="w-64 bg-gray-50 border-r border-gray-200 h-full flex flex-col">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="font-bold text-gray-700">Projects</h2>
+        <div className="w-[260px] bg-white h-full flex flex-col pt-6 pb-4 px-3 border-r border-gray-100">
+            <div className="px-2 mb-2 flex justify-between items-center group">
+                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider pl-1">프로젝트</h2>
                 <button
                     onClick={() => setIsCreating(true)}
-                    className="p-1 hover:bg-gray-200 rounded transition-colors"
+                    className="p-1 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-all opacity-0 group-hover:opacity-100"
+                    title="새 프로젝트 생성"
                 >
-                    <Plus size={18} />
+                    <Plus size={14} />
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <div className="flex-1 overflow-y-auto space-y-0.5 scrollbar-hide">
                 {isCreating && (
-                    <form onSubmit={handleCreateProject} className="mb-2 px-2">
+                    <form onSubmit={handleCreateProject} className="mb-2 px-1">
                         <input
                             autoFocus
                             type="text"
-                            placeholder="New Project Name"
-                            className="w-full text-sm border border-gray-300 rounded px-2 py-1 mb-1"
+                            placeholder="새 프로젝트 이름"
+                            className="w-full text-sm font-medium bg-gray-50 border-none rounded-md px-3 py-2 outline-none focus:ring-1 focus:ring-black/5 placeholder:text-gray-400"
                             value={newProjectName}
                             onChange={(e) => setNewProjectName(e.target.value)}
                             onBlur={() => {
@@ -137,40 +138,42 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ selectedProjectId, onSe
                     <div
                         key={project.id}
                         onClick={() => !editingProjectId && onSelectProject(project.id)}
-                        className={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${selectedProjectId === project.id
-                                ? 'bg-black text-white'
-                                : 'text-gray-600 hover:bg-gray-100'
+                        className={`group relative flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-sm transition-all duration-200
+                            ${selectedProjectId === project.id
+                                ? 'bg-gray-100/80 text-gray-900 font-semibold shadow-sm'
+                                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                             }`}
                     >
                         {editingProjectId === project.id ? (
-                            <form onSubmit={handleRenameSubmit} className="flex-1 flex gap-1" onClick={e => e.stopPropagation()}>
+                            <form onSubmit={handleRenameSubmit} className="flex-1 flex gap-1 items-center" onClick={e => e.stopPropagation()}>
                                 <input
                                     autoFocus
                                     type="text"
-                                    className="flex-1 text-sm border border-gray-300 rounded px-1 text-black bg-white"
+                                    className="flex-1 text-sm bg-white border border-gray-200 rounded px-2 py-0.5 outline-none focus:border-gray-400"
                                     value={editProjectName}
                                     onChange={(e) => setEditProjectName(e.target.value)}
-                                // Remove onBlur/KeyDown specifics to avoid complexity, rely on buttons
                                 />
-                                <button type="submit" className="text-green-600 hover:text-green-800"><Check size={14} /></button>
-                                <button type="button" onClick={() => setEditingProjectId(null)} className="text-red-500 hover:text-red-700"><X size={14} /></button>
+                                <button type="submit" className="p-1 hover:bg-green-50 text-green-600 rounded"><Check size={14} /></button>
+                                <button type="button" onClick={() => setEditingProjectId(null)} className="p-1 hover:bg-red-50 text-red-500 rounded"><X size={14} /></button>
                             </form>
                         ) : (
                             <>
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    {selectedProjectId === project.id ? <FolderOpen size={16} /> : <Folder size={16} />}
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <span className={`transition-colors ${selectedProjectId === project.id ? 'text-gray-800' : 'text-gray-400 group-hover:text-gray-500'}`}>
+                                        {selectedProjectId === project.id ? <FolderOpen size={16} strokeWidth={2.5} /> : <Folder size={16} />}
+                                    </span>
                                     <span className="truncate">{project.name}</span>
                                 </div>
-                                <div className={`flex gap-1 ${selectedProjectId === project.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                                <div className="flex items-center absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-transparent">
                                     <button
                                         onClick={(e) => handleStartRename(project, e)}
-                                        className={`p-1 rounded hover:bg-white/20 ${selectedProjectId === project.id ? 'text-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'}`}
+                                        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/50 rounded-md transition-colors"
                                     >
                                         <Pencil size={12} />
                                     </button>
                                     <button
                                         onClick={(e) => handleDeleteProject(project.id, e)}
-                                        className={`p-1 rounded hover:bg-white/20 ${selectedProjectId === project.id ? 'text-white' : 'text-red-400 hover:text-red-600 hover:bg-gray-200'}`}
+                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
                                     >
                                         <Trash2 size={12} />
                                     </button>
@@ -181,10 +184,22 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ selectedProjectId, onSe
                 ))}
 
                 {projects.length === 0 && !isCreating && (
-                    <div className="text-xs text-gray-400 text-center py-4">
-                        No projects yet. <br /> Click + to create one.
-                    </div>
+                    <button
+                        onClick={() => setIsCreating(true)}
+                        className="w-full mt-4 py-8 border-2 border-dashed border-gray-100 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:text-gray-600 hover:border-gray-200 hover:bg-gray-50/50 transition-all gap-2 group"
+                    >
+                        <div className="p-2 bg-gray-50 rounded-full group-hover:bg-white transition-colors">
+                            <Plus size={20} />
+                        </div>
+                        <span className="text-xs font-medium">첫 프로젝트 만들기</span>
+                    </button>
                 )}
+            </div>
+
+            <div className="mt-auto px-2 pt-4 border-t border-gray-50">
+                <div className="flex items-center gap-2 px-2 py-2 text-xs font-medium text-gray-400">
+                    <span>© Daily Utils</span>
+                </div>
             </div>
         </div>
     );

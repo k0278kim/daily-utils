@@ -144,7 +144,7 @@ export function ManageCategoriesModal({ projectId, isOpen, onClose, onCategories
                                             />
                                             {editingState?.id === category.id && createPortal(
                                                 <div
-                                                    className="color-picker-popover fixed p-3 bg-white rounded-xl shadow-xl border border-gray-100 ring-1 ring-black/5 z-[9999] grid grid-cols-5 gap-2 w-[160px] animate-in fade-in zoom-in-95 duration-100"
+                                                    className="color-picker-popover fixed p-3 bg-white rounded-xl shadow-xl border border-gray-100 ring-1 ring-black/5 z-[200000] grid grid-cols-5 gap-2 w-[160px] animate-in fade-in zoom-in-95 duration-100"
                                                     style={{
                                                         top: editingState.top,
                                                         left: editingState.left

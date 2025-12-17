@@ -1,5 +1,5 @@
 export const CATEGORY_COLORS = [
-    '#64748b', // slate
+    '#2f363f', // slate
     '#ef4444', // red
     '#f97316', // orange
     '#eab308', // yellow

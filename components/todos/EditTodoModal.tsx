@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { Todo } from '@/model/Todo';
 import { X, Calendar, Tag } from 'lucide-react';
 import { CategoryCombobox } from './CategoryCombobox';
+import { motion } from 'framer-motion';
+import { roundTransition } from '@/app/transition/round_transition';
 
 interface EditTodoModalProps {
     todo: Todo | null;
@@ -55,7 +57,11 @@ const EditTodoModal: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose, on
 
     return createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 animate-in fade-in zoom-in duration-200 overflow-hidden flex flex-col max-h-[90vh]">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.9, backdropFilter: "blur(10px)" }}
+                animate={{ opacity: 1, scale: 1, backdropFilter: "blur(0px)" }}
+                transition={roundTransition}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="flex justify-between items-center px-6 py-4 border-b border-gray-50 shrink-0">
                     <h2 className="text-sm font-semibold text-gray-500">할 일 수정</h2>
                     <button
@@ -138,8 +144,8 @@ const EditTodoModal: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose, on
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>,
+            </motion.div>
+        </div >,
         document.body
     );
 };

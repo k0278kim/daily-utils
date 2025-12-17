@@ -72,10 +72,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                             transition-colors duration-200 ease-in-out
                             hover:shadow-md hover:border-gray-100
                             ${snapshot.isDragging ? 'rotate-2 scale-[1.02] shadow-xl ring-1 ring-black/5 !border-transparent' : ''}
-                            ${todo.status === 'done' ? 'opacity-75 bg-gray-50/50 bg-gray-100' : 'bg-white'}
+                            ${todo.status === 'done' ? 'opacity-75 bg-gray-50/50 bg-gradient-to-r from-blue-50 to-gray-100' : 'bg-white'}
                         `}
                     >
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center justify-between gap-3">
                             {onToggleStatus && (
                                 <button
                                     onClick={(e) => {
@@ -84,7 +84,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                     }}
                                     className={`
                                         mt-0.5 flex-shrink-0 transition-colors duration-200
-                                        ${todo.status === 'done' ? 'text-blue-500' : 'text-gray-300 hover:text-green-500'}
+                                        ${todo.status === 'done' ? 'text-blue-500' : 'text-gray-300 hover:text-blue-500'}
                                     `}
                                 >
                                     {todo.status === 'done' ? (
@@ -104,12 +104,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                 </h3>
 
                                 {todo.description != "" && (
-                                    <p className={`mt-1 line-clamp-2 text-xs text-gray-500 ${todo.status === 'done' ? 'text-gray-300' : ''}`}>
+                                    <p className={`mt-1 mb-3 line-clamp-2 text-xs text-gray-500 ${todo.status === 'done' ? 'text-gray-300' : ''}`}>
                                         {todo.description}
                                     </p>
                                 )}
 
-                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     {todo.categories && (
                                         <span
                                             className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium border"
