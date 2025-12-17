@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 import TaskCard from './TaskCard';
 import { Todo } from '@/model/Todo';
-import { Plus, X, Calendar, Tag } from 'lucide-react';
+import { Plus, Calendar, Tag } from 'lucide-react';
 import { CategoryCombobox } from './CategoryCombobox';
 
 interface ColumnProps {
@@ -15,9 +15,10 @@ interface ColumnProps {
     projectId?: string;
     enableDateFilter?: boolean;
     enableStatusFilter?: boolean;
+    currentUserId?: string;
 }
 
-const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, onEditTodo, onToggleStatus, projectId, enableDateFilter, enableStatusFilter }) => {
+const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, onEditTodo, onToggleStatus, projectId, enableDateFilter, enableStatusFilter, currentUserId }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newTodoTitle, setNewTodoTitle] = useState('');
     const [newTodoDueDate, setNewTodoDueDate] = useState('');
@@ -211,6 +212,7 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
                                     index={index}
                                     onClick={() => onEditTodo(todo)}
                                     onToggleStatus={onToggleStatus}
+                                    currentUserId={currentUserId}
                                 />
                             ))}
                         </div>

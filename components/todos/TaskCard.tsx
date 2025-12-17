@@ -9,6 +9,7 @@ interface TaskCardProps {
     index: number;
     onClick?: () => void;
     onToggleStatus?: (todo: Todo) => void;
+    currentUserId?: string;
 }
 
 const UserAvatar = ({ assignee, index, total }: { assignee: any, index: number, total: number }) => {
@@ -46,7 +47,15 @@ const UserAvatar = ({ assignee, index, total }: { assignee: any, index: number, 
     );
 };
 
-const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatus }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatus, currentUserId }) => {
+
+    const canComplete = React.useMemo(() => {
+        if (!currentUserId) return false;
+        if (!todo.assignees || todo.assignees.length === 0) return false; // Strict: Must be assigned
+        return todo.assignees.some(a => a.id === currentUserId);
+    }, [todo.assignees, currentUserId, todo.status]);
+
+
     return (
         <Draggable draggableId={todo.id} index={index}>
             {(provided, snapshot) => (
@@ -77,22 +86,32 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                     >
                         <div className="flex items-center justify-between gap-3">
                             {onToggleStatus && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onToggleStatus(todo);
-                                    }}
-                                    className={`
-                                        mt-0.5 flex-shrink-0 transition-colors duration-200
-                                        ${todo.status === 'done' ? 'text-blue-500' : 'text-gray-300 hover:text-blue-500'}
-                                    `}
-                                >
-                                    {todo.status === 'done' ? (
-                                        <CheckCircle2 size={20} className="" />
-                                    ) : (
-                                        <Circle size={20} />
+                                <div className="relative group/check">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (canComplete) {
+                                                onToggleStatus(todo);
+                                            }
+                                        }}
+                                        disabled={!canComplete}
+                                        className={`
+                                            mt-0.5 flex-shrink-0 transition-colors duration-200
+                                            ${todo.status === 'done' ? 'text-blue-500' : canComplete ? 'text-gray-300 hover:text-blue-500' : 'text-gray-100 cursor-not-allowed'}
+                                        `}
+                                    >
+                                        {todo.status === 'done' ? (
+                                            <CheckCircle2 size={20} className="" />
+                                        ) : (
+                                            <Circle size={20} />
+                                        )}
+                                    </button>
+                                    {!canComplete && (
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 hidden group-hover/check:block whitespace-nowrap bg-gray-900 text-white text-[10px] py-1 px-2 rounded shadow-lg z-50">
+                                            담당자만 완료 가능
+                                        </div>
                                     )}
-                                </button>
+                                </div>
                             )}
 
                             <div className="flex-1 min-w-0">

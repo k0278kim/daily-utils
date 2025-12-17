@@ -358,6 +358,16 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
         let targetCompletedAt: string | undefined = movedItem.completed_at;
 
         if (source.droppableId !== destination.droppableId) {
+
+            // Strict check: Cannot move FROM done if not assigned (Un-complete restriction)
+            if (source.droppableId === 'done') {
+                const isAssignedToMe = movedItem.assignees && movedItem.assignees.some(a => a.id === user?.id);
+                if (!isAssignedToMe) {
+                    alert('완료된 작업을 취소하려면 담당자여야 합니다.');
+                    return;
+                }
+            }
+
             if (destination.droppableId === 'my-tasks') {
                 targetStatus = 'in-progress';
                 targetCompletedAt = undefined; // Unset completion
@@ -376,6 +386,23 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                     }
                 }
             } else if (destination.droppableId === 'done') {
+                // Strict check: Cannot drag to done if not assigned
+                // Since this runs before we optimistically update 'assignees', we must check original item or current user.
+                const isAssignedToMe = movedItem.assignees && movedItem.assignees.some(a => a.id === user?.id);
+
+                // If moving to Done, and not assigned to me, BLOCK it.
+                // Exception: Logic below was auto-assigning me. 
+                // BUT user requested STRICT blocking. "Must be assigned to complete".
+                // If I am not assigned, I cannot complete it. Even if I want to claim it, I should claim it (move to My Tasks) first?
+                // Or does dragging to done count as "Claim & Complete"?
+                // The prompt says "drag and drop event needs to be blocked" for unassigned things.
+                // So strict block.
+
+                if (!isAssignedToMe) {
+                    alert('이 작업을 완료하려면 담당자로 지정되어야 합니다. 먼저 내 할 일로 가져오세요.');
+                    return;
+                }
+
                 targetStatus = 'done';
                 targetCompletedAt = new Date().toISOString(); // Set completion
                 if (user) {
@@ -538,6 +565,13 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
     };
 
     const handleToggleStatus = async (todo: Todo) => {
+        // Enforce completion permission (Strict)
+        const isAssignedToMe = currentUser && todo.assignees && todo.assignees.some(a => a.id === currentUser.id);
+        if (!isAssignedToMe) {
+            alert('이 작업을 변경하려면 담당자로 지정되어야 합니다.');
+            return;
+        }
+
         let newStatus = todo.status === 'done' ? 'in-progress' : 'done';
         let newCompletedAt = todo.status === 'done' ? null : new Date().toISOString();
 
@@ -574,6 +608,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             enableDateFilter={true}
                             projectId={projectId}
                             onToggleStatus={handleToggleStatus}
+                            currentUserId={currentUser?.id}
                         />
                     </div>
                     <div className="flex-1 h-full min-w-[300px]">
@@ -585,6 +620,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             enableStatusFilter={true}
                             projectId={projectId}
                             onToggleStatus={handleToggleStatus}
+                            currentUserId={currentUser?.id}
                         />
                     </div>
                     <div className="flex-1 h-full min-w-[300px]">
@@ -595,6 +631,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             onEditTodo={setEditingTodo}
                             projectId={projectId}
                             onToggleStatus={handleToggleStatus}
+                            currentUserId={currentUser?.id}
                         />
                     </div>
                 </div>
