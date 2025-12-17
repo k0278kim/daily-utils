@@ -123,13 +123,19 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                         </span>
                                     )}
 
-                                    {todo.due_date && (
-                                        <span className={`
-                                            inline-flex items-center text-[10px] font-medium
-                                            ${new Date(todo.due_date) < new Date() && todo.status !== 'done' ? 'text-red-500' : 'text-gray-400'}
-                                        `}>
-                                            {new Date(todo.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    {todo.status === 'done' && todo.completed_at ? (
+                                        <span className="inline-flex items-center text-[10px] font-medium text-gray-400">
+                                            완료: {new Date(todo.completed_at).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })} {new Date(todo.completed_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                                         </span>
+                                    ) : (
+                                        todo.due_date && (
+                                            <span className={`
+                                                inline-flex items-center text-[10px] font-medium
+                                                ${new Date(todo.due_date) < new Date() && todo.status !== 'done' ? 'text-red-500' : 'text-gray-400'}
+                                            `}>
+                                                {new Date(todo.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                            </span>
+                                        )
                                     )}
                                 </div>
                             </div>

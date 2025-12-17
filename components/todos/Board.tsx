@@ -101,6 +101,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
             description: t.description,
             status: t.status,
             created_at: t.created_at,
+            completed_at: t.completed_at,
             due_date: t.due_date,
             project_id: t.project_id,
             category_id: t.category_id,
@@ -256,6 +257,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                 description: t.description,
                 status: t.status,
                 created_at: t.created_at,
+                completed_at: t.completed_at,
                 due_date: t.due_date,
                 project_id: t.project_id,
                 category_id: t.category_id,
@@ -353,10 +355,12 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
 
         let targetAssignees = [...(movedItem.assignees || [])];
         let targetStatus = movedItem.status;
+        let targetCompletedAt: string | undefined = movedItem.completed_at;
 
         if (source.droppableId !== destination.droppableId) {
             if (destination.droppableId === 'my-tasks') {
                 targetStatus = 'in-progress';
+                targetCompletedAt = undefined; // Unset completion
                 if (user) {
                     // Optimistic update: Add me if not there
                     if (!isOriginallyAssignedToMe) {
@@ -373,6 +377,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                 }
             } else if (destination.droppableId === 'done') {
                 targetStatus = 'done';
+                targetCompletedAt = new Date().toISOString(); // Set completion
                 if (user) {
                     // When moving to Done, usually implies "I finished it", so assign me if not assigned?
                     // Or just leave it. Let's add me to track contribution.
@@ -415,6 +420,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                         // It will appear in Backlog column because filter catches it.
                         targetStatus = 'in-progress';
                     }
+                    targetCompletedAt = undefined; // Unset completion
                 }
             }
         }
@@ -425,6 +431,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
         if (itemInDest) {
             itemInDest.status = targetStatus;
             itemInDest.assignees = targetAssignees;
+            itemInDest.completed_at = targetCompletedAt;
         }
 
         setColumns(newColumns);
@@ -467,7 +474,10 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                 }
             }
 
-            const updates: any = { status: targetStatus };
+            const updates: any = {
+                status: targetStatus,
+                completed_at: targetCompletedAt || null
+            };
             const { error } = await supabase
                 .from('todos')
                 .update(updates)
@@ -529,13 +539,18 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
 
     const handleToggleStatus = async (todo: Todo) => {
         let newStatus = todo.status === 'done' ? 'in-progress' : 'done';
+        let newCompletedAt = todo.status === 'done' ? null : new Date().toISOString();
+
         if (newStatus === 'in-progress' && (!todo.assignees || todo.assignees.length === 0)) {
             newStatus = 'backlog';
         }
 
         const { error } = await supabase
             .from('todos')
-            .update({ status: newStatus })
+            .update({
+                status: newStatus,
+                completed_at: newCompletedAt
+            })
             .eq('id', todo.id);
 
         if (error) {

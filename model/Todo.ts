@@ -8,6 +8,7 @@ export interface Todo {
     status: 'backlog' | 'in-progress' | 'done';
     assignees: Profile[];
     created_at?: string;
+    completed_at?: string;
     due_date?: string;
     project_id?: string;
     category_id?: string;
