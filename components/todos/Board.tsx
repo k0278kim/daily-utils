@@ -19,6 +19,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
     const supabase = createClient();
 
     const [currentUser, setCurrentUser] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const getUser = async () => {
@@ -298,6 +299,9 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                 ),
                 done: sortedTodos.filter(t => t.status === 'done')
             });
+            setIsLoading(false);
+        } else {
+            setIsLoading(false);
         }
     };
 
@@ -625,6 +629,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             onToggleStatus={handleToggleStatus}
                             onDeleteTodo={deleteTodo}
                             currentUserId={currentUser?.id}
+                            isLoading={isLoading}
                         />
                     </div>
                     <div className="flex-1 h-full min-w-[300px]">
@@ -638,6 +643,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             onToggleStatus={handleToggleStatus}
                             onDeleteTodo={deleteTodo}
                             currentUserId={currentUser?.id}
+                            isLoading={isLoading}
                         />
                     </div>
                     <div className="flex-1 h-full min-w-[300px]">
@@ -650,6 +656,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             onToggleStatus={handleToggleStatus}
                             onDeleteTodo={deleteTodo}
                             currentUserId={currentUser?.id}
+                            isLoading={isLoading}
                         />
                     </div>
                 </div>

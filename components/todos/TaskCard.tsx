@@ -3,6 +3,8 @@ import { Draggable } from '@hello-pangea/dnd';
 import { Todo } from '@/model/Todo';
 import { CheckCircle2, Circle, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface TaskCardProps {
     todo: Todo;
@@ -120,6 +122,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
     const [showCompletionTooltip, setShowCompletionTooltip] = React.useState(false);
     const [completionTooltipCoords, setCompletionTooltipCoords] = React.useState({ top: 0, left: 0 });
 
+    // Expand State for Description
+    const [isExpanded, setIsExpanded] = React.useState(false);
+
     // Debug logging
     console.log(`TaskCard Render: ${todo.id}`, {
         hasOnDelete: !!onDeleteTodo,
@@ -160,12 +165,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                         <motion.div
                             layoutId={snapshot.isDragging ? undefined : todo.id}
                             layout={!snapshot.isDragging}
+                            onClick={() => setIsExpanded(!isExpanded)}
                             initial={{ opacity: 0, scale: 0.95, y: -10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.2 }}
                             className={`
-                            group relative rounded-xl border border-gray-100 p-4 
+                            group relative rounded-xl border border-gray-100 p-4 cursor-pointer
                             transition-colors duration-200 ease-in-out
                             hover:shadow-md hover:border-gray-100
                             ${snapshot.isDragging ? 'rotate-2 scale-[1.02] shadow-xl ring-1 ring-black/5 !border-transparent' : ''}
@@ -187,6 +193,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                             }
                                         }}
                                         onMouseLeave={() => setShowCompletionTooltip(false)}
+                                        onClick={(e) => e.stopPropagation()} // Prevent card expansion when hovering/clicking check
                                     >
                                         <button
                                             onClick={(e) => {
@@ -237,10 +244,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                         {todo.title}
                                     </h3>
 
+
                                     {todo.description != "" && (
-                                        <p className={`mt-1 mb-3 line-clamp-2 text-xs text-gray-500 ${todo.status === 'done' ? 'text-gray-300' : ''}`}>
-                                            {todo.description}
-                                        </p>
+                                        <div className={`mt-1 mb-3 text-xs text-gray-500 prose prose-xs prose-p:my-0 prose-ul:my-0 prose-ol:my-0 prose-headings:my-0 ${todo.status === 'done' ? 'text-gray-300' : ''} ${isExpanded ? '' : 'line-clamp-3'}`}>
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {todo.description}
+                                            </ReactMarkdown>
+                                        </div>
                                     )}
 
                                     <div className="flex flex-wrap items-center gap-2">

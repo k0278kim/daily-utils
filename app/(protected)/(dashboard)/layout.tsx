@@ -15,7 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user } = useUser();
 
   const pathname = usePathname();
-  const index = pathname === "/snippets" ? 0 : pathname === "/healthchecks" ? 1 : pathname === "/praises" ? 2 : pathname === "/japdories" ? 3 : -1;
+  const index = pathname === "/snippets" ? 0 : pathname === "/healthchecks" ? 1 : pathname === "/praises" ? 2 : pathname === "/japdories" ? 3 : pathname === "/todos" ? 4 : -1;
 
   const [selectedArea, setSelectedArea] = useState(index);
   const [overlay, setOverlay] = useState(true);

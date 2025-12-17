@@ -4,6 +4,7 @@ import TaskCard from './TaskCard';
 import { Todo } from '@/model/Todo';
 import { Plus, Calendar, Tag } from 'lucide-react';
 import { CategoryCombobox } from './CategoryCombobox';
+import SkeletonTaskCard from './SkeletonTaskCard';
 
 interface ColumnProps {
     droppableId: string;
@@ -17,9 +18,10 @@ interface ColumnProps {
     enableStatusFilter?: boolean;
     currentUserId?: string;
     onDeleteTodo?: (id: string) => void;
+    isLoading?: boolean;
 }
 
-const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, onEditTodo, onToggleStatus, projectId, enableDateFilter, enableStatusFilter, currentUserId, onDeleteTodo }) => {
+const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, onEditTodo, onToggleStatus, projectId, enableDateFilter, enableStatusFilter, currentUserId, onDeleteTodo, isLoading }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newTodoTitle, setNewTodoTitle] = useState('');
     const [newTodoDueDate, setNewTodoDueDate] = useState('');
@@ -206,17 +208,23 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
                         )}
 
                         <div className="space-y-0.5">
-                            {filteredTodos.map((todo, index) => (
-                                <TaskCard
-                                    key={todo.id}
-                                    todo={todo}
-                                    index={index}
-                                    onClick={() => onEditTodo(todo)}
-                                    onToggleStatus={onToggleStatus}
-                                    currentUserId={currentUserId}
-                                    onDeleteTodo={onDeleteTodo}
-                                />
-                            ))}
+                            {isLoading ? (
+                                Array.from({ length: 3 }).map((_, i) => (
+                                    <SkeletonTaskCard key={i} />
+                                ))
+                            ) : (
+                                filteredTodos.map((todo, index) => (
+                                    <TaskCard
+                                        key={todo.id}
+                                        todo={todo}
+                                        index={index}
+                                        onClick={() => onEditTodo(todo)}
+                                        onToggleStatus={onToggleStatus}
+                                        currentUserId={currentUserId}
+                                        onDeleteTodo={onDeleteTodo}
+                                    />
+                                ))
+                            )}
                         </div>
                         {provided.placeholder}
                     </div>
