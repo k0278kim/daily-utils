@@ -62,6 +62,31 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
         setIsLoading(false);
     };
 
+    useEffect(() => {
+        if (!projectId) return;
+
+        const channel = supabase
+            .channel('realtime categories')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'categories',
+                    filter: `project_id=eq.${projectId}`
+                },
+                (payload) => {
+                    // console.log('Realtime category change:', payload);
+                    fetchCategories();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [projectId]);
+
     const handleCreateCategory = async () => {
         if (!searchTerm.trim() || !projectId) return;
 
