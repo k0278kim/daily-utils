@@ -14,6 +14,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
     const [columns, setColumns] = useState<Columns>({
         backlog: [],
         'my-tasks': [],
+        done: []
     });
     const supabase = createClient();
 
@@ -289,8 +290,9 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                     (t.status === 'in-progress' && !t.assignees.some(a => a.id === user.id))
                 ),
                 'my-tasks': sortedTodos.filter(t =>
-                    t.status !== 'backlog' && t.assignees.some(a => a.id === user.id)
+                    t.status === 'in-progress' && t.assignees.some(a => a.id === user.id)
                 ),
+                done: sortedTodos.filter(t => t.status === 'done')
             });
         }
     };
@@ -320,7 +322,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
             newColumns[source.droppableId] = sourceItems;
             movedItem = reorderedItem;
         } else {
-            const destItems = Array.from(newColumns[destination.droppableId]);
+            const destItems = Array.from(newColumns[destination.droppableId] || []);
             const [removed] = sourceItems.splice(source.index, 1);
             movedItem = { ...removed };
 
@@ -352,9 +354,26 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
 
         if (source.droppableId !== destination.droppableId) {
             if (destination.droppableId === 'my-tasks') {
-                if (targetStatus === 'backlog') targetStatus = 'in-progress';
+                targetStatus = 'in-progress';
                 if (user) {
                     // Optimistic update: Add me if not there
+                    if (!isOriginallyAssignedToMe) {
+                        const me = {
+                            id: user.id,
+                            name: user.user_metadata.full_name || user.email || 'Me',
+                            avatar_url: user.user_metadata.avatar_url || '',
+                            email: user.email || '',
+                            nickname: user.user_metadata.nickname || '',
+                            team_id: ''
+                        };
+                        targetAssignees.push(me);
+                    }
+                }
+            } else if (destination.droppableId === 'done') {
+                targetStatus = 'done';
+                if (user) {
+                    // When moving to Done, usually implies "I finished it", so assign me if not assigned?
+                    // Or just leave it. Let's add me to track contribution.
                     if (!isOriginallyAssignedToMe) {
                         const me = {
                             id: user.id,
@@ -374,14 +393,31 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                     if (targetAssignees.length === 0) {
                         targetStatus = 'backlog';
                     } else {
-                        // Stays in-progress (shared task)
+                        // Stays in-progress (shared task) or backlog if explicitly moved there?
+                        // If moved to backlog, it implies "Backlog" status usually.
+                        // But if others are working on it, it shouldn't be 'backlog'.
+                        // However, user dragged it to "Backlog" UI.
+                        // If we set 'backlog', it might disrupt others.
+                        // But for now, let's reset to 'backlog' if no one else is assigned.
+                        // If others are assigned, it stays 'in-progress' but unassigned from me.
+                        // This matches "Backlog" column filter logic: (in-progress && !assignedToMe).
+                    }
+                    // Explicitly set to backlog if moving to backlog column and logic permits?
+                    // Actually, if I move to backlog, I want it to be 'backlog' status usually.
+                    // But if Assignee exists, 'backlog' status might be weird.
+                    // Let's stick to: Unassign Me. If no assignees -> Backlog.
+                    if (targetAssignees.length === 0) {
+                        targetStatus = 'backlog';
+                    } else {
+                        // It stays in-progress but I am removed.
+                        // It will appear in Backlog column because filter catches it.
+                        targetStatus = 'in-progress';
                     }
                 }
             }
         }
 
         // Update the item in the columns with new status and assignees
-        // We need to find the moved item in the new columns structure (it might have moved due to sort)
         const destList = newColumns[destination.droppableId];
         const itemInDest = destList.find(t => t.id === draggableId);
         if (itemInDest) {
@@ -399,8 +435,8 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
 
         if (source.droppableId !== destination.droppableId) {
 
-            // Auto-assign if moving to My Tasks
-            if (destination.droppableId === 'my-tasks') {
+            // Auto-assign if moving to My Tasks or Done
+            if (destination.droppableId === 'my-tasks' || destination.droppableId === 'done') {
                 if (user) {
                     // Use the captured original state, NOT the mutated item
                     if (!isOriginallyAssignedToMe) {
@@ -410,7 +446,6 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
 
                         if (assignError) {
                             console.error('Error assigning user:', assignError);
-                            // Abort and revert
                             fetchTodos();
                             return;
                         }
@@ -426,8 +461,6 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
 
                     if (unassignError) {
                         console.error('Error unassigning user:', unassignError);
-                        // Optional: revert or continue?
-                        // If we fail to unassign, we probably shouldn't set status to backlog if it depends on it.
                     }
                 }
             }
@@ -493,20 +526,10 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
     };
 
     const handleToggleStatus = async (todo: Todo) => {
-        // Toggle logic:
-        // if done -> backlog (or we could store previous status, but backlog/in-progress logic is simpler if we just default to backlog or infer)
-        // Actually, if it's done, let's move it to 'backlog'.
-        // If it's NOT done, move it to 'done'.
-
-        const newStatus = todo.status === 'done' ? 'backlog' : 'done';
-
-        // Optimistic update could be complex with columns state. 
-        // For now, let's just do the DB update and refetch, or simple optimistic.
-
-        // Optimistic:
-        // Remove from current col, add to new col.
-
-        // Let's just update DB for reliability first as UI is fast enough usually.
+        let newStatus = todo.status === 'done' ? 'in-progress' : 'done';
+        if (newStatus === 'in-progress' && (!todo.assignees || todo.assignees.length === 0)) {
+            newStatus = 'backlog';
+        }
 
         const { error } = await supabase
             .from('todos')
@@ -543,6 +566,16 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             todos={columns['my-tasks']}
                             onEditTodo={setEditingTodo}
                             enableStatusFilter={true}
+                            projectId={projectId}
+                            onToggleStatus={handleToggleStatus}
+                        />
+                    </div>
+                    <div className="flex-1 h-full min-w-[300px]">
+                        <Column
+                            droppableId="done"
+                            title="완료한 일"
+                            todos={columns['done']}
+                            onEditTodo={setEditingTodo}
                             projectId={projectId}
                             onToggleStatus={handleToggleStatus}
                         />
