@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronsUpDown, Plus, Settings } from 'lucide-react';
 import { createClient } from '@/utils/supabase/supabaseClient';
 import { Category } from '@/model/Category';
 import { searchHangul } from '@/utils/hangul';
 import { ManageCategoriesModal } from './ManageCategoriesModal';
+import { CATEGORY_COLORS } from '@/constants/colors';
 
 interface CategoryComboboxProps {
     projectId: string;
@@ -12,20 +14,51 @@ interface CategoryComboboxProps {
     className?: string;
 }
 
-import { CATEGORY_COLORS } from '@/constants/colors';
-
 export function CategoryCombobox({ projectId, value, onChange, className }: CategoryComboboxProps) {
-
     const supabase = createClient();
     const [open, setOpen] = useState(false);
     const [categories, setCategories] = useState<Category[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [activeIndex, setActiveIndex] = useState(0); // For keyboard navigation
+    const [activeIndex, setActiveIndex] = useState(0);
     const [isManageModalOpen, setIsManageModalOpen] = useState(false);
     const [selectedColor, setSelectedColor] = useState(CATEGORY_COLORS[0]);
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const listRef = useRef<HTMLDivElement>(null);
+    const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+
+    useEffect(() => {
+        if (open && dropdownRef.current) {
+            const rect = dropdownRef.current.getBoundingClientRect();
+            setDropdownPosition({
+                top: rect.bottom + window.scrollY,
+                left: rect.left + window.scrollX,
+                width: rect.width
+            });
+        }
+    }, [open]);
+
+    // Update position on scroll/resize
+    useEffect(() => {
+        if (!open) return;
+        const handleScrollOrResize = () => {
+            if (dropdownRef.current) {
+                const rect = dropdownRef.current.getBoundingClientRect();
+                setDropdownPosition({
+                    top: rect.bottom + window.scrollY,
+                    left: rect.left + window.scrollX,
+                    width: rect.width
+                });
+            } else {
+                setOpen(false);
+            }
+        };
+        window.addEventListener('scroll', handleScrollOrResize, true);
+        window.addEventListener('resize', handleScrollOrResize);
+        return () => {
+            window.removeEventListener('scroll', handleScrollOrResize, true);
+            window.removeEventListener('resize', handleScrollOrResize);
+        };
+    }, [open]);
 
     useEffect(() => {
         if (projectId) {
@@ -37,7 +70,11 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target as Node) &&
+                !(event.target as Element).closest('.category-combobox-portal')
+            ) {
                 setOpen(false);
             }
         };
@@ -82,7 +119,6 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
                     filter: `project_id=eq.${projectId}`
                 },
                 (payload) => {
-                    // console.log('Realtime category change:', payload);
                     fetchCategories();
                 }
             )
@@ -133,8 +169,6 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
         fetchCategories();
     };
 
-    // Filter categories using Chosung search + substring
-    // Import searchHangul inside the filter or assume it's imported
     const filteredCategories = categories.filter(c =>
         searchHangul(c.name, searchTerm)
     );
@@ -148,9 +182,9 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
             return;
         }
 
-        const totalOptions = (searchTerm.trim() && filteredCategories.length === 0 ? 1 : 0) + // Create option
-            1 + // "선택 없음" option
-            filteredCategories.length + // Actual categories
+        const totalOptions = (searchTerm.trim() && filteredCategories.length === 0 ? 1 : 0) +
+            1 + // "선택 없음"
+            filteredCategories.length +
             1; // Manage Categories
 
         switch (e.key) {
@@ -163,15 +197,12 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
                 setActiveIndex(prev => (prev > 0 ? prev - 1 : 0));
                 break;
             case 'Enter':
-                e.preventDefault(); // Prevent form submission
-                e.stopPropagation(); // Stop propagation just in case
-
-                // Determine what 'activeIndex' points to
-                // Order: (Create if no filtered and searchTerm), "선택 없음", filteredCategories, "Manage Categories"
+                e.preventDefault();
+                e.stopPropagation();
 
                 let currentOptionIndex = 0;
 
-                // 1. Check for "Create" option
+                // 1. Create option
                 if (searchTerm.trim() && filteredCategories.length === 0) {
                     if (activeIndex === currentOptionIndex) {
                         handleCreateCategory();
@@ -180,7 +211,7 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
                     currentOptionIndex++;
                 }
 
-                // 2. Check for "선택 없음" option
+                // 2. "선택 없음"
                 if (activeIndex === currentOptionIndex) {
                     onChange(null);
                     setOpen(false);
@@ -188,7 +219,7 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
                 }
                 currentOptionIndex++;
 
-                // 3. Check for filtered categories
+                // 3. Filtered categories
                 if (activeIndex >= currentOptionIndex && activeIndex < currentOptionIndex + filteredCategories.length) {
                     const categoryIndex = activeIndex - currentOptionIndex;
                     onChange(filteredCategories[categoryIndex].id);
@@ -197,12 +228,11 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
                 }
                 currentOptionIndex += filteredCategories.length;
 
-                // 4. Check for Manage Categories
+                // 4. Manage Categories
                 if (activeIndex === currentOptionIndex) {
                     handleManageCategories();
                     return;
                 }
-
                 break;
             case 'Escape':
                 setOpen(false);
@@ -212,23 +242,19 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
 
     const selectedCategory = categories.find(c => c.id === value);
 
-    // Calculate the index for "선택 없음" and category items for activeIndex highlighting
+    // Calculate indices for highlighting
     let createOptionIndex = -1;
     let noSelectionOptionIndex = -1;
     let categoryStartIndex = -1;
     let manageOptionIndex = -1;
-
     let currentIndex = 0;
 
     if (searchTerm.trim() && filteredCategories.length === 0) {
         createOptionIndex = currentIndex++;
     }
-
     noSelectionOptionIndex = currentIndex++;
-
     categoryStartIndex = currentIndex;
     currentIndex += filteredCategories.length;
-
     manageOptionIndex = currentIndex++;
 
     return (
@@ -250,8 +276,15 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
                 <ChevronsUpDown className="h-4 w-4 text-gray-400" />
             </button>
 
-            {open && (
-                <div className="absolute z-10 mt-1 max-h-80 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm" ref={listRef}>
+            {open && dropdownPosition && createPortal(
+                <div
+                    className="category-combobox-portal absolute z-[9999] mt-1 max-h-80 overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
+                    style={{
+                        top: dropdownPosition.top,
+                        left: dropdownPosition.left,
+                        width: dropdownPosition.width
+                    }}
+                >
                     <div className="px-2 py-1 sticky top-0 bg-white border-b flex items-center gap-2 z-20">
                         <input
                             type="text"
@@ -345,7 +378,8 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
                             </div>
                         </>
                     )}
-                </div>
+                </div>,
+                document.body
             )}
 
             <ManageCategoriesModal
