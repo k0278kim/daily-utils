@@ -363,7 +363,6 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
             if (source.droppableId === 'done') {
                 const isAssignedToMe = movedItem.assignees && movedItem.assignees.some(a => a.id === user?.id);
                 if (!isAssignedToMe) {
-                    alert('완료된 작업을 취소하려면 담당자여야 합니다.');
                     return;
                 }
             }
