@@ -54,89 +54,109 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                     ref={provided.innerRef}
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
-                    className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-3 transition-shadow group relative ${snapshot.isDragging ? 'shadow-lg ring-2 ring-black ring-opacity-10' : 'hover:shadow-md'
-                        } ${todo.status === 'done' ? 'opacity-60 bg-gray-50' : ''}`}
+                    className={`
+                        group relative mb-3 rounded-xl border border-gray-100 bg-white p-4 
+                        transition-all duration-200 ease-in-out
+                        hover:-translate-y-0.5 hover:shadow-md hover:border-gray-100
+                        ${snapshot.isDragging ? 'rotate-2 scale-[1.02] shadow-xl ring-1 ring-black/5 !border-transparent z-50' : ''}
+                        ${todo.status === 'done' ? 'opacity-75 bg-gray-50/50' : ''}
+                    `}
                     style={{ ...provided.draggableProps.style }}
                 >
-                    <div className="flex justify-between items-start gap-2">
+                    <div className="flex items-start justify-between gap-3">
                         {onToggleStatus && (
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onToggleStatus(todo);
                                 }}
-                                className={`mt-0.5 text-gray-400 hover:text-green-600 transition-colors ${todo.status === 'done' ? 'text-green-600' : ''}`}
+                                className={`
+                                    mt-0.5 flex-shrink-0 transition-colors duration-200
+                                    ${todo.status === 'done' ? 'text-green-500' : 'text-gray-300 hover:text-green-500'}
+                                `}
                             >
                                 {todo.status === 'done' ? (
-                                    <CheckCircle2 size={18} />
+                                    <CheckCircle2 size={20} className="drop-shadow-sm" />
                                 ) : (
-                                    <Circle size={18} />
+                                    <Circle size={20} />
                                 )}
                             </button>
                         )}
-                        <h3 className={`text-sm font-semibold text-gray-800 flex-1 ${todo.status === 'done' ? 'line-through text-gray-500' : ''}`}>
-                            {todo.title}
-                        </h3>
+
+                        <div className="flex-1 min-w-0">
+                            <h3 className={`
+                                truncate text-sm font-semibold leading-tight text-gray-900 
+                                ${todo.status === 'done' ? 'line-through text-gray-400' : ''}
+                            `}>
+                                {todo.title}
+                            </h3>
+
+                            {todo.description && (
+                                <p className={`mt-1 line-clamp-2 text-xs text-gray-500 ${todo.status === 'done' ? 'text-gray-300' : ''}`}>
+                                    {todo.description}
+                                </p>
+                            )}
+
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                {todo.categories && (
+                                    <span
+                                        className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium border"
+                                        style={{
+                                            backgroundColor: todo.categories.color ? `${todo.categories.color}15` : '#f3f4f6',
+                                            color: todo.categories.color || '#4b5563',
+                                            borderColor: todo.categories.color ? `${todo.categories.color}30` : '#e5e7eb'
+                                        }}
+                                    >
+                                        {todo.categories.name}
+                                    </span>
+                                )}
+
+                                {todo.due_date && (
+                                    <span className={`
+                                        inline-flex items-center text-[10px] font-medium
+                                        ${new Date(todo.due_date) < new Date() && todo.status !== 'done' ? 'text-red-500' : 'text-gray-400'}
+                                    `}>
+                                        {new Date(todo.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
                         {onClick && (
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onClick();
                                 }}
-                                className="text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 -mr-2 -mt-2 p-2 text-gray-400 hover:text-gray-600"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                                    <path d="m15 5 4 4" />
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 20h9" />
+                                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                                 </svg>
                             </button>
                         )}
                     </div>
-                    <div className="flex gap-2 mb-2">
-                        {todo.categories && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-medium">
-                                {todo.categories.name}
-                            </span>
-                        )}
-                    </div>
-                    {todo.description && (
-                        <p className="text-xs text-gray-500 mt-2 line-clamp-2">
-                            {todo.description}
-                        </p>
-                    )}
 
-                    <div className="mt-3 flex items-center gap-3 text-[10px] text-gray-400">
-                        {todo.created_at && (
-                            <div>
-                                Created: {new Date(todo.created_at).toLocaleDateString()}
+                    {
+                        (todo.assignees && todo.assignees.length > 0) && <div className="mt-3 flex items-end justify-between border-t border-gray-100 pt-3">
+                            <div className="flex -space-x-2 overflow-hidden py-1 pl-1">
+                                {todo.assignees && todo.assignees.map((assignee, i) => (
+                                    <UserAvatar
+                                        key={assignee.id || i}
+                                        assignee={assignee}
+                                        index={i}
+                                        total={todo.assignees?.length || 0}
+                                    />
+                                ))}
                             </div>
-                        )}
-                        {todo.due_date && (
-                            <div className="text-red-400 font-medium">
-                                Due: {new Date(todo.due_date).toLocaleDateString()}
-                            </div>
-                        )}
-                    </div>
 
-                    <div className="mt-3 flex items-center justify-between">
-                        <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${todo.status === 'done' ? 'bg-green-100 text-green-700' :
-                            todo.status === 'in-progress' ? 'bg-blue-100 text-blue-700' :
-                                'bg-gray-100 text-gray-600'
-                            }`}>
-                            {todo.status === 'backlog' ? 'Backlog' :
-                                todo.status === 'in-progress' ? 'In Progress' : 'Done'}
-                        </span>
-                        <div className="flex -space-x-1 ml-2">
-                            {todo.assignees && todo.assignees.map((assignee, i) => (
-                                <UserAvatar
-                                    key={assignee.id || i}
-                                    assignee={assignee}
-                                    index={i}
-                                    total={todo.assignees?.length || 0}
-                                />
-                            ))}
+                            {/* Status Badge (Optional, mostly clean without it, but requested in plan) -- Let's keep it minimal or remove if redundant */}
+                            {/* Actually, the column defines status. Maybe remove to clean up? Or keep very subtle? */}
+                            {/* Let's remove specific status text badge to keep it cleaner, relying on column context. 
+                            However, if needed, we can re-add. User requested 'clean'. */}
                         </div>
-                    </div>
+                    }
                 </div>
             )}
         </Draggable>

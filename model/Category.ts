@@ -1,7 +1,8 @@
 export interface Category {
     id: string;
+    created_at?: string;
     name: string;
-    user_id: string;
-    project_id?: string;
-    created_at: string;
+    project_id: string;
+    user_id?: string;
+    color?: string; // Hex color code
 }

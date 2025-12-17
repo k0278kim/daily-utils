@@ -12,7 +12,10 @@ interface CategoryComboboxProps {
     className?: string;
 }
 
+import { CATEGORY_COLORS } from '@/constants/colors';
+
 export function CategoryCombobox({ projectId, value, onChange, className }: CategoryComboboxProps) {
+
     const supabase = createClient();
     const [open, setOpen] = useState(false);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -20,6 +23,7 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
     const [isLoading, setIsLoading] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0); // For keyboard navigation
     const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+    const [selectedColor, setSelectedColor] = useState(CATEGORY_COLORS[0]);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
@@ -44,6 +48,8 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
     // Reset active index when search or categories change
     useEffect(() => {
         setActiveIndex(0);
+        // Reset color when starting new search
+        if (!searchTerm) setSelectedColor(CATEGORY_COLORS[0]);
     }, [searchTerm, categories]);
 
     const fetchCategories = async () => {
@@ -96,7 +102,8 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
         const newCategory = {
             name: searchTerm.trim(),
             project_id: projectId,
-            user_id: user.id
+            user_id: user.id,
+            color: selectedColor
         };
 
         const { data, error } = await supabase
@@ -113,6 +120,7 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
             onChange(data.id);
             setOpen(false);
             setSearchTerm('');
+            setSelectedColor(CATEGORY_COLORS[0]);
         }
     };
 
@@ -123,11 +131,6 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
 
     const handleCategoriesChanged = () => {
         fetchCategories();
-        // If the currently selected category was deleted, we should probably clear value?
-        // But value is a prop. Parent should handle it? 
-        // If value is ID, and it's deleted, looking it up will return undefined. 
-        // Display will fall back to "Select category...". 
-        // So it mimics "No selection". That's fine.
     };
 
     // Filter categories using Chosung search + substring
@@ -235,15 +238,21 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
                 onClick={() => setOpen(!open)}
                 className="w-full flex items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-green-500"
             >
-                <span className="truncate">
+                <span className="truncate flex items-center gap-2">
+                    {selectedCategory && (
+                        <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: selectedCategory.color || '#9ca3af' }}
+                        />
+                    )}
                     {selectedCategory ? selectedCategory.name : '카테고리 선택...'}
                 </span>
                 <ChevronsUpDown className="h-4 w-4 text-gray-400" />
             </button>
 
             {open && (
-                <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm" ref={listRef}>
-                    <div className="px-2 py-1 sticky top-0 bg-white border-b flex items-center gap-2">
+                <div className="absolute z-10 mt-1 max-h-80 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm" ref={listRef}>
+                    <div className="px-2 py-1 sticky top-0 bg-white border-b flex items-center gap-2 z-20">
                         <input
                             type="text"
                             className="w-full rounded-sm border-gray-200 px-2 py-1 text-sm focus:border-green-500 focus:outline-none"
@@ -256,13 +265,27 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
                     </div>
 
                     {searchTerm.trim() && filteredCategories.length === 0 && (
-                        <div
-                            className={`cursor-pointer select-none px-4 py-2 text-green-600 flex items-center gap-2 ${activeIndex === createOptionIndex ? 'bg-green-50' : 'hover:bg-green-50'}`}
-                            onClick={handleCreateCategory}
-                            onMouseEnter={() => setActiveIndex(createOptionIndex)}
-                        >
-                            <Plus size={14} />
-                            <span>"{searchTerm}" 생성</span>
+                        <div className="border-b border-gray-100">
+                            <div className="px-3 pt-2 pb-1 text-xs text-gray-400">색상 선택</div>
+                            <div className="flex flex-wrap gap-2 px-3 pb-2">
+                                {CATEGORY_COLORS.map(color => (
+                                    <div
+                                        key={color}
+                                        className={`w-5 h-5 rounded-full cursor-pointer border-2 ${selectedColor === color ? 'border-gray-900 scale-110' : 'border-transparent hover:scale-110'}`}
+                                        style={{ backgroundColor: color }}
+                                        onClick={() => setSelectedColor(color)}
+                                    />
+                                ))}
+                            </div>
+
+                            <div
+                                className={`cursor-pointer select-none px-4 py-2 text-green-600 flex items-center gap-2 ${activeIndex === createOptionIndex ? 'bg-green-50' : 'hover:bg-green-50'}`}
+                                onClick={handleCreateCategory}
+                                onMouseEnter={() => setActiveIndex(createOptionIndex)}
+                            >
+                                <Plus size={14} />
+                                <span>"{searchTerm}" 생성</span>
+                            </div>
                         </div>
                     )}
 
@@ -294,7 +317,11 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
                                     }}
                                     onMouseEnter={() => setActiveIndex(categoryStartIndex + index)}
                                 >
-                                    <span className="block truncate">
+                                    <span className="truncate flex items-center gap-2">
+                                        <div
+                                            className="w-2 h-2 rounded-full shrink-0"
+                                            style={{ backgroundColor: category.color || '#9ca3af' }}
+                                        />
                                         {category.name}
                                     </span>
                                     {value === category.id && (

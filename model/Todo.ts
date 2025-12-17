@@ -1,4 +1,5 @@
 import { Profile } from "./Profile";
+import { Category } from "./Category";
 
 export interface Todo {
     id: string;
@@ -10,10 +11,7 @@ export interface Todo {
     due_date?: string;
     project_id?: string;
     category_id?: string;
-    categories?: {
-        id: string;
-        name: string;
-    };
+    categories?: Category;
 }
 
 export type ColumnType = 'backlog' | 'in-progress' | 'done';

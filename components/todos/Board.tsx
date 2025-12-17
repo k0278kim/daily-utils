@@ -78,7 +78,8 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                 ),
                 categories (
                     id,
-                    name
+                    name,
+                    color
                 )
             `)
             .eq('id', id)
@@ -235,7 +236,8 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                 ),
                 categories (
                     id,
-                    name
+                    name,
+                    color
                 )
             `)
             .eq('project_id', projectId)
@@ -546,8 +548,8 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
     return (
         <>
             <DragDropContext onDragEnd={onDragEnd}>
-                <div className="flex h-full w-full gap-6 p-6">
-                    <div className="flex-1 h-full min-w-[300px]">
+                <div className="flex h-full w-full gap-8 p-8 bg-white">
+                    <div className="flex-1 h-full min-w-[320px]">
                         <Column
                             droppableId="backlog"
                             title="백로그 (할 일)"

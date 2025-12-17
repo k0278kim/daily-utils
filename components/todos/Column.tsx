@@ -72,34 +72,26 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
     });
 
     return (
-        <div className="flex flex-col bg-gray-50 rounded-xl w-full h-full max-h-full overflow-hidden border border-gray-200">
-            <div className="p-4 border-b border-gray-100 bg-white">
-                <div className="flex justify-between items-center mb-2">
-                    <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+        <div className="flex flex-col h-full max-h-full overflow-hidden rounded-xl bg-gray-50/50 border border-t-0 border-x-0 border-b-0">
+            {/* Header */}
+            <div className="px-3 py-3 flex justify-between items-center bg-transparent">
+                <div className="flex items-center gap-2">
+                    <h2 className="text-[13px] font-semibold text-gray-700">
                         {title}
-                        <span className="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">
-                            {filteredTodos.length}
-                        </span>
                     </h2>
-                    {onAddTodo && (
-                        <button
-                            onClick={() => setIsAdding(true)}
-                            className="p-1 hover:bg-gray-100 rounded-md text-gray-500 transition-colors"
-                            title="Add Task"
-                        >
-                            <Plus size={16} />
-                        </button>
-                    )}
+                    <span className="text-[11px] font-medium text-gray-400">
+                        {filteredTodos.length}
+                    </span>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                     {enableDateFilter && (
                         <select
-                            className="text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none text-gray-600"
+                            className="bg-transparent text-[11px] font-medium text-gray-500 outline-none cursor-pointer hover:text-gray-800 transition-colors"
                             value={dateFilter}
                             onChange={(e) => setDateFilter(e.target.value as any)}
                         >
-                            <option value="all">Every Date</option>
+                            <option value="all">All Dates</option>
                             <option value="today">Today</option>
                             <option value="upcoming">Upcoming</option>
                             <option value="overdue">Overdue</option>
@@ -108,14 +100,23 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
                     )}
                     {enableStatusFilter && (
                         <select
-                            className="text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none text-gray-600"
+                            className="bg-transparent text-[11px] font-medium text-gray-500 outline-none cursor-pointer hover:text-gray-800 transition-colors"
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value as any)}
                         >
-                            <option value="all">All Status</option>
+                            <option value="all">Status</option>
                             <option value="in-progress">In Progress</option>
                             <option value="done">Done</option>
                         </select>
+                    )}
+                    {onAddTodo && (
+                        <button
+                            onClick={() => setIsAdding(true)}
+                            className="text-gray-400 hover:text-gray-800 transition-colors p-1"
+                            title="Add Task"
+                        >
+                            <Plus size={14} />
+                        </button>
                     )}
                 </div>
             </div>
@@ -125,16 +126,15 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
                     <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className={`flex-1 p-3 overflow-y-auto scrollbar-hide transition-colors ${snapshot.isDraggingOver ? 'bg-gray-100/50' : ''
-                            }`}
+                        className={`flex-1 px-3 pb-3 overflow-y-auto scrollbar-hide`}
                     >
                         {isAdding && (
-                            <form onSubmit={handleAddSubmit} className="mb-3 bg-white p-3 rounded-lg shadow-sm border border-black/10">
+                            <form onSubmit={handleAddSubmit} className="mb-3 bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                                 <input
                                     autoFocus
                                     type="text"
-                                    placeholder="할 일을 입력하세요..."
-                                    className="w-full text-sm outline-none mb-2 font-medium"
+                                    placeholder="Task title"
+                                    className="w-full text-[13px] font-medium text-gray-900 placeholder:text-gray-400 outline-none mb-2"
                                     value={newTodoTitle}
                                     onChange={(e) => setNewTodoTitle(e.target.value)}
                                     onKeyDown={(e) => {
@@ -146,59 +146,64 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
                                         }
                                     }}
                                 />
+
                                 <textarea
-                                    placeholder="설명 (선택사항)"
-                                    className="w-full text-xs text-gray-500 outline-none mb-2 resize-none"
+                                    placeholder="Description"
+                                    className="w-full text-xs text-gray-600 placeholder:text-gray-400 outline-none mb-2 resize-none bg-transparent"
                                     rows={2}
                                     value={newTodoDescription}
                                     onChange={(e) => setNewTodoDescription(e.target.value)}
                                 />
-                                <div className="mb-2">
-                                    {projectId ? (
+
+                                <div className="space-y-2 mb-3">
+                                    {projectId && (
                                         <CategoryCombobox
                                             projectId={projectId}
                                             value={newTodoCategoryId || undefined}
                                             onChange={setNewTodoCategoryId}
-                                            className="mb-2"
+                                            className="w-full"
                                         />
-                                    ) : (
-                                        <div className="text-xs text-gray-400 mb-2">카테고리를 추가하려면 프로젝트를 선택하세요.</div>
                                     )}
+
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="date"
+                                            className="text-[11px] bg-transparent border-none outline-none text-gray-500 w-full"
+                                            value={newTodoDueDate}
+                                            onChange={(e) => setNewTodoDueDate(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="mb-2">
-                                    <input
-                                        type="date"
-                                        className="text-xs border border-gray-200 rounded px-2 py-1 outline-none text-gray-500 w-full"
-                                        value={newTodoDueDate}
-                                        onChange={(e) => setNewTodoDueDate(e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex justify-end gap-2">
+
+                                <div className="flex justify-end gap-2 pt-2 border-t border-gray-50">
                                     <button
                                         type="button"
                                         onClick={() => { setIsAdding(false); setNewTodoTitle(''); setNewTodoDueDate(''); setNewTodoDescription(''); setNewTodoCategoryId(null); }}
-                                        className="px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 rounded"
+                                        className="px-2 py-1 text-[11px] text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors"
                                     >
-                                        취소
+                                        Cancel
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-2 py-1 text-xs bg-black text-white rounded hover:bg-gray-800"
+                                        className="px-2 py-1 text-[11px] font-medium bg-gray-900 text-white rounded hover:bg-gray-800 transition-colors shadow-sm"
                                     >
-                                        추가
+                                        Add
                                     </button>
                                 </div>
                             </form>
                         )}
-                        {filteredTodos.map((todo, index) => (
-                            <TaskCard
-                                key={todo.id}
-                                todo={todo}
-                                index={index}
-                                onClick={() => onEditTodo(todo)}
-                                onToggleStatus={onToggleStatus}
-                            />
-                        ))}
+
+                        <div className="space-y-0.5">
+                            {filteredTodos.map((todo, index) => (
+                                <TaskCard
+                                    key={todo.id}
+                                    todo={todo}
+                                    index={index}
+                                    onClick={() => onEditTodo(todo)}
+                                    onToggleStatus={onToggleStatus}
+                                />
+                            ))}
+                        </div>
                         {provided.placeholder}
                     </div>
                 )}
