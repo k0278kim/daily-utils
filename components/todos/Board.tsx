@@ -280,6 +280,13 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
             }));
 
             const sortedTodos = formattedTodos.sort((a, b) => {
+                // Priority: Done status check first
+                if (a.status === 'done' && b.status === 'done') {
+                    // Sort done tasks by completed_at DESC (Newest first)
+                    return new Date(b.completed_at || 0).getTime() - new Date(a.completed_at || 0).getTime();
+                }
+
+                // Existing logic for other statuses
                 if (a.due_date && b.due_date) {
                     return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
                 }
@@ -657,6 +664,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             onDeleteTodo={deleteTodo}
                             currentUserId={currentUser?.id}
                             isLoading={isLoading}
+                            enableDateGrouping={true}
                         />
                     </div>
                 </div>

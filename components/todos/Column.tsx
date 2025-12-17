@@ -19,9 +19,10 @@ interface ColumnProps {
     currentUserId?: string;
     onDeleteTodo?: (id: string) => void;
     isLoading?: boolean;
+    enableDateGrouping?: boolean;
 }
 
-const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, onEditTodo, onToggleStatus, projectId, enableDateFilter, enableStatusFilter, currentUserId, onDeleteTodo, isLoading }) => {
+const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, onEditTodo, onToggleStatus, projectId, enableDateFilter, enableStatusFilter, currentUserId, onDeleteTodo, isLoading, enableDateGrouping }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newTodoTitle, setNewTodoTitle] = useState('');
     const [newTodoDueDate, setNewTodoDueDate] = useState('');
@@ -213,17 +214,60 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
                                     <SkeletonTaskCard key={i} />
                                 ))
                             ) : (
-                                filteredTodos.map((todo, index) => (
-                                    <TaskCard
-                                        key={todo.id}
-                                        todo={todo}
-                                        index={index}
-                                        onClick={() => onEditTodo(todo)}
-                                        onToggleStatus={onToggleStatus}
-                                        currentUserId={currentUserId}
-                                        onDeleteTodo={onDeleteTodo}
-                                    />
-                                ))
+                                filteredTodos.map((todo, index) => {
+                                    // Date Grouping Logic
+                                    let showHeader = false;
+                                    let headerLabel = '';
+
+                                    if (enableDateGrouping && todo.completed_at) {
+                                        const prevTodo = index > 0 ? filteredTodos[index - 1] : null;
+                                        const date = new Date(todo.completed_at);
+                                        const dateStr = date.toLocaleDateString();
+
+                                        let prevDateStr = '';
+                                        if (prevTodo && prevTodo.completed_at) {
+                                            prevDateStr = new Date(prevTodo.completed_at).toLocaleDateString();
+                                        }
+
+                                        if (index === 0 || dateStr !== prevDateStr) {
+                                            showHeader = true;
+                                            const today = new Date();
+                                            const yesterday = new Date();
+                                            yesterday.setDate(yesterday.getDate() - 1);
+
+                                            if (date.toDateString() === today.toDateString()) {
+                                                headerLabel = '오늘 완료';
+                                            } else if (date.toDateString() === yesterday.toDateString()) {
+                                                headerLabel = '어제 완료';
+                                            } else {
+                                                headerLabel = date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', weekday: 'short' });
+                                            }
+                                        }
+                                    }
+
+                                    return (
+                                        <React.Fragment key={todo.id}>
+                                            {showHeader && (
+                                                <div className="px-1 py-2 mt-2 mb-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[11px] font-bold text-gray-600 bg-gray-200/50 px-2 py-0.5 rounded-md">
+                                                            {headerLabel}
+                                                        </span>
+                                                        <div className="h-[1px] flex-1 bg-gray-200"></div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <TaskCard
+                                                todo={todo}
+                                                index={index}
+                                                onClick={() => onEditTodo(todo)}
+                                                onToggleStatus={onToggleStatus}
+                                                currentUserId={currentUserId}
+                                                onDeleteTodo={onDeleteTodo}
+                                            />
+                                        </React.Fragment>
+                                    );
+                                })
                             )}
                         </div>
                         {provided.placeholder}

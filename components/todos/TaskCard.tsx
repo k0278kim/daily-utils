@@ -129,10 +129,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
 
     React.useEffect(() => {
         if (textRef.current) {
-            // Check if content overflows: scrollHeight > clientHeight
-            setIsOverflowing(textRef.current.scrollHeight > textRef.current.clientHeight);
+            // Check if content exceeds 4.5rem (approx 72px)
+            setIsOverflowing(textRef.current.scrollHeight > 72);
         }
     }, [todo.description]);
+    // ... (skipping context)
 
     // Debug logging
     console.log(`TaskCard Render: ${todo.id}`, {
@@ -266,23 +267,25 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                             transition={{ duration: 0.3, ease: 'easeInOut' }}
                                             className={`mt-1 mb-3 text-xs text-gray-500 prose prose-xs prose-p:my-0 prose-ul:my-0 prose-ol:my-0 prose-headings:my-0 relative overflow-hidden ${todo.status === 'done' ? 'text-gray-300' : ''}`}
                                         >
-                                            <div ref={textRef} className={isExpanded ? '' : 'line-clamp-3'}>
+                                            <div ref={textRef}>
                                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                                     {todo.description}
                                                 </ReactMarkdown>
                                             </div>
 
                                             {/* Blur Gradient Overlay */}
-                                            {isOverflowing && (
-                                                <motion.div
-                                                    initial={{ opacity: 1 }}
-                                                    animate={{ opacity: isExpanded ? 0 : 1 }}
-                                                    transition={{ duration: 0.2 }}
-                                                    className={`absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t ${todo.status === 'done' ? 'from-gray-100' : 'from-white'} to-transparent`}
-                                                    style={{ pointerEvents: 'none' }}
-                                                />
-                                            )}
-                                        </motion.div>
+                                            {
+                                                isOverflowing && (
+                                                    <motion.div
+                                                        initial={{ opacity: 1 }}
+                                                        animate={{ opacity: isExpanded ? 0 : 1 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className={`absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t ${todo.status === 'done' ? 'from-gray-100' : 'from-white'} to-transparent`}
+                                                        style={{ pointerEvents: 'none' }}
+                                                    />
+                                                )
+                                            }
+                                        </motion.div >
                                     )}
 
                                     <div className="flex flex-wrap items-center gap-2">
@@ -314,10 +317,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                             )
                                         )}
                                     </div>
-                                </div>
+                                </div >
 
                                 {/* Delete/Edit Actions: Always visible, top right */}
-                                <div className="flex items-center gap-1 absolute top-2 right-2">
+                                < div className="flex items-center gap-1 absolute top-2 right-2" >
                                     {onDeleteTodo && (
                                         <button
                                             onClick={(e) => {
@@ -339,30 +342,32 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                             <Trash2 size={14} />
                                         </button>
                                     )}
-                                    {onClick && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const hasAssignees = todo.assignees && todo.assignees.length > 0;
-                                                const isAssignedToMe = hasAssignees && currentUserId && todo.assignees.some(a => a.id === currentUserId);
+                                    {
+                                        onClick && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const hasAssignees = todo.assignees && todo.assignees.length > 0;
+                                                    const isAssignedToMe = hasAssignees && currentUserId && todo.assignees.some(a => a.id === currentUserId);
 
-                                                if (!hasAssignees || isAssignedToMe) {
-                                                    onClick();
-                                                } else {
-                                                    alert('담당자가 지정된 할 일은 담당자만 수정할 수 있습니다.');
-                                                }
-                                            }}
-                                            className="p-1.5 text-gray-300 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-                                            title="Edit Task"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M12 20h9" />
-                                                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                                            </svg>
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
+                                                    if (!hasAssignees || isAssignedToMe) {
+                                                        onClick();
+                                                    } else {
+                                                        alert('담당자가 지정된 할 일은 담당자만 수정할 수 있습니다.');
+                                                    }
+                                                }}
+                                                className="p-1.5 text-gray-300 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                                                title="Edit Task"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M12 20h9" />
+                                                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                                                </svg>
+                                            </button>
+                                        )
+                                    }
+                                </div >
+                            </div >
 
                             {
                                 (todo.assignees && todo.assignees.length > 0) && <div className="mt-3 flex items-end justify-between border-t border-gray-100 pt-3">
@@ -378,7 +383,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                     </div>
                                 </div>
                             }
-                        </motion.div>
+                        </motion.div >
                     </div >
                 );
             }}
