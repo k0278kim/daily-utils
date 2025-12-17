@@ -21,8 +21,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [overlay, setOverlay] = useState(true);
 
 
-  const VERSION = "2.1.2";
-  const UPDATE_MEMOS = ["1. Daily Snippet 입력 시 Enter로 어제 Snippet 가져오기.", "2. 프로필 조회 (베타)", "3. Daily Snippet 및 Health Check 입력 가능일이 여러 개라면, 입력 가능일 중 제일 첫 번째 날짜가 초기 선택됩니다.", "Health Check 점수 스펙트럼 색을 유저 니즈에 따라 변경했습니다."];
+  const VERSION = "3.0.0";
+  const UPDATE_MEMOS = ["1. 스프린트 기반 할 일 관리"];
 
   useEffect(() => {
     if (user) {

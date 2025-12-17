@@ -2,6 +2,7 @@ import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Todo } from '@/model/Todo';
 import { CheckCircle2, Circle } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface TaskCardProps {
     todo: Todo;
@@ -13,7 +14,6 @@ interface TaskCardProps {
 const UserAvatar = ({ assignee, index, total }: { assignee: any, index: number, total: number }) => {
     const [imageError, setImageError] = React.useState(false);
 
-    // reset error if url changes (though key usually handles this)
     React.useEffect(() => {
         setImageError(false);
     }, [assignee.avatar_url]);
@@ -54,109 +54,117 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                     ref={provided.innerRef}
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
-                    className={`
-                        group relative mb-3 rounded-xl border border-gray-100 bg-white p-4 
-                        transition-all duration-200 ease-in-out
-                        hover:-translate-y-0.5 hover:shadow-md hover:border-gray-100
-                        ${snapshot.isDragging ? 'rotate-2 scale-[1.02] shadow-xl ring-1 ring-black/5 !border-transparent z-50' : ''}
-                        ${todo.status === 'done' ? 'opacity-75 bg-gray-50/50' : ''}
-                    `}
-                    style={{ ...provided.draggableProps.style }}
+                    className="mb-3 relative"
+                    style={{
+                        ...provided.draggableProps.style,
+                        zIndex: snapshot.isDragging ? 9999 : (1000 - index)
+                    }}
                 >
-                    <div className="flex items-start justify-between gap-3">
-                        {onToggleStatus && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onToggleStatus(todo);
-                                }}
-                                className={`
-                                    mt-0.5 flex-shrink-0 transition-colors duration-200
-                                    ${todo.status === 'done' ? 'text-green-500' : 'text-gray-300 hover:text-green-500'}
-                                `}
-                            >
-                                {todo.status === 'done' ? (
-                                    <CheckCircle2 size={20} className="drop-shadow-sm" />
-                                ) : (
-                                    <Circle size={20} />
-                                )}
-                            </button>
-                        )}
-
-                        <div className="flex-1 min-w-0">
-                            <h3 className={`
-                                truncate text-sm font-semibold leading-tight text-gray-900 
-                                ${todo.status === 'done' ? 'line-through text-gray-400' : ''}
-                            `}>
-                                {todo.title}
-                            </h3>
-
-                            {todo.description && (
-                                <p className={`mt-1 line-clamp-2 text-xs text-gray-500 ${todo.status === 'done' ? 'text-gray-300' : ''}`}>
-                                    {todo.description}
-                                </p>
+                    <motion.div
+                        layoutId={snapshot.isDragging ? undefined : todo.id}
+                        layout={!snapshot.isDragging}
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className={`
+                            group relative rounded-xl border border-gray-100 p-4 
+                            transition-colors duration-200 ease-in-out
+                            hover:shadow-md hover:border-gray-100
+                            ${snapshot.isDragging ? 'rotate-2 scale-[1.02] shadow-xl ring-1 ring-black/5 !border-transparent' : ''}
+                            ${todo.status === 'done' ? 'opacity-75 bg-gray-50/50 bg-gray-100' : 'bg-white'}
+                        `}
+                    >
+                        <div className="flex items-start justify-between gap-3">
+                            {onToggleStatus && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onToggleStatus(todo);
+                                    }}
+                                    className={`
+                                        mt-0.5 flex-shrink-0 transition-colors duration-200
+                                        ${todo.status === 'done' ? 'text-blue-500' : 'text-gray-300 hover:text-green-500'}
+                                    `}
+                                >
+                                    {todo.status === 'done' ? (
+                                        <CheckCircle2 size={20} className="" />
+                                    ) : (
+                                        <Circle size={20} />
+                                    )}
+                                </button>
                             )}
 
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                                {todo.categories && (
-                                    <span
-                                        className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium border"
-                                        style={{
-                                            backgroundColor: todo.categories.color ? `${todo.categories.color}15` : '#f3f4f6',
-                                            color: todo.categories.color || '#4b5563',
-                                            borderColor: todo.categories.color ? `${todo.categories.color}30` : '#e5e7eb'
-                                        }}
-                                    >
-                                        {todo.categories.name}
-                                    </span>
+                            <div className="flex-1 min-w-0">
+                                <h3 className={`
+                                    truncate text-sm font-semibold leading-tight 
+                                    ${todo.status === 'done' ? 'line-through text-gray-400' : 'text-gray-900'}
+                                `}>
+                                    {todo.title}
+                                </h3>
+
+                                {todo.description != "" && (
+                                    <p className={`mt-1 line-clamp-2 text-xs text-gray-500 ${todo.status === 'done' ? 'text-gray-300' : ''}`}>
+                                        {todo.description}
+                                    </p>
                                 )}
 
-                                {todo.due_date && (
-                                    <span className={`
-                                        inline-flex items-center text-[10px] font-medium
-                                        ${new Date(todo.due_date) < new Date() && todo.status !== 'done' ? 'text-red-500' : 'text-gray-400'}
-                                    `}>
-                                        {new Date(todo.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                    {todo.categories && (
+                                        <span
+                                            className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium border"
+                                            style={{
+                                                backgroundColor: todo.categories.color ? `${todo.categories.color}15` : '#f3f4f6',
+                                                color: todo.categories.color || '#4b5563',
+                                                borderColor: todo.categories.color ? `${todo.categories.color}30` : '#e5e7eb'
+                                            }}
+                                        >
+                                            {todo.categories.name}
+                                        </span>
+                                    )}
 
-                        {onClick && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onClick();
-                                }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 -mr-2 -mt-2 p-2 text-gray-400 hover:text-gray-600"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12 20h9" />
-                                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                                </svg>
-                            </button>
-                        )}
-                    </div>
-
-                    {
-                        (todo.assignees && todo.assignees.length > 0) && <div className="mt-3 flex items-end justify-between border-t border-gray-100 pt-3">
-                            <div className="flex -space-x-2 overflow-hidden py-1 pl-1">
-                                {todo.assignees && todo.assignees.map((assignee, i) => (
-                                    <UserAvatar
-                                        key={assignee.id || i}
-                                        assignee={assignee}
-                                        index={i}
-                                        total={todo.assignees?.length || 0}
-                                    />
-                                ))}
+                                    {todo.due_date && (
+                                        <span className={`
+                                            inline-flex items-center text-[10px] font-medium
+                                            ${new Date(todo.due_date) < new Date() && todo.status !== 'done' ? 'text-red-500' : 'text-gray-400'}
+                                        `}>
+                                            {new Date(todo.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Status Badge (Optional, mostly clean without it, but requested in plan) -- Let's keep it minimal or remove if redundant */}
-                            {/* Actually, the column defines status. Maybe remove to clean up? Or keep very subtle? */}
-                            {/* Let's remove specific status text badge to keep it cleaner, relying on column context. 
-                            However, if needed, we can re-add. User requested 'clean'. */}
+                            {onClick && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onClick();
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 -mr-2 -mt-2 p-2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M12 20h9" />
+                                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                                    </svg>
+                                </button>
+                            )}
                         </div>
-                    }
+
+                        {
+                            (todo.assignees && todo.assignees.length > 0) && <div className="mt-3 flex items-end justify-between border-t border-gray-100 pt-3">
+                                <div className="flex -space-x-2 overflow-hidden py-1 pl-1">
+                                    {todo.assignees && todo.assignees.map((assignee, i) => (
+                                        <UserAvatar
+                                            key={assignee.id || i}
+                                            assignee={assignee}
+                                            index={i}
+                                            total={todo.assignees?.length || 0}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        }
+                    </motion.div>
                 </div>
             )}
         </Draggable>

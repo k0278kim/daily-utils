@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 import TaskCard from './TaskCard';
 import { Todo } from '@/model/Todo';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Calendar, Tag } from 'lucide-react';
 import { CategoryCombobox } from './CategoryCombobox';
 
 interface ColumnProps {
@@ -129,65 +129,75 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
                         className={`flex-1 px-3 pb-3 overflow-y-auto scrollbar-hide`}
                     >
                         {isAdding && (
-                            <form onSubmit={handleAddSubmit} className="mb-3 bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-                                <input
-                                    autoFocus
-                                    type="text"
-                                    placeholder="Task title"
-                                    className="w-full text-[13px] font-medium text-gray-900 placeholder:text-gray-400 outline-none mb-2"
-                                    value={newTodoTitle}
-                                    onChange={(e) => setNewTodoTitle(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Escape') {
-                                            setIsAdding(false);
-                                            setNewTodoTitle('');
-                                            setNewTodoDueDate('');
-                                            setNewTodoDescription('');
-                                        }
-                                    }}
-                                />
+                            <form onSubmit={handleAddSubmit} className="mb-4 bg-white p-4 rounded-xl shadow-lg border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+                                <div className="space-y-3">
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        placeholder="할 일 제목"
+                                        className="w-full text-sm font-bold text-gray-900 placeholder:text-gray-300 outline-none"
+                                        value={newTodoTitle}
+                                        onChange={(e) => setNewTodoTitle(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Escape') {
+                                                setIsAdding(false);
+                                                setNewTodoTitle('');
+                                                setNewTodoDueDate('');
+                                                setNewTodoDescription('');
+                                            }
+                                        }}
+                                    />
 
-                                <textarea
-                                    placeholder="Description"
-                                    className="w-full text-xs text-gray-600 placeholder:text-gray-400 outline-none mb-2 resize-none bg-transparent"
-                                    rows={2}
-                                    value={newTodoDescription}
-                                    onChange={(e) => setNewTodoDescription(e.target.value)}
-                                />
+                                    <textarea
+                                        placeholder="자세한 설명이나 메모를 남기세요..."
+                                        className="w-full text-xs text-gray-600 placeholder:text-gray-300 outline-none resize-none leading-relaxed"
+                                        rows={2}
+                                        value={newTodoDescription}
+                                        onChange={(e) => setNewTodoDescription(e.target.value)}
+                                    />
+                                </div>
 
-                                <div className="space-y-2 mb-3">
+                                <div className="mt-4 pt-3 border-t border-gray-50 grid grid-cols-2 gap-3">
                                     {projectId && (
-                                        <CategoryCombobox
-                                            projectId={projectId}
-                                            value={newTodoCategoryId || undefined}
-                                            onChange={setNewTodoCategoryId}
-                                            className="w-full"
-                                        />
+                                        <div className="space-y-1">
+                                            <span className="text-[10px] font-semibold text-gray-400 flex items-center gap-1 uppercase tracking-wide">
+                                                <Tag size={10} /> 카테고리
+                                            </span>
+                                            <CategoryCombobox
+                                                projectId={projectId}
+                                                value={newTodoCategoryId || undefined}
+                                                onChange={setNewTodoCategoryId}
+                                                className="w-full"
+                                            />
+                                        </div>
                                     )}
 
-                                    <div className="flex items-center gap-2">
+                                    <div className="space-y-1">
+                                        <span className="text-[10px] font-semibold text-gray-400 flex items-center gap-1 uppercase tracking-wide">
+                                            <Calendar size={10} /> 마감일
+                                        </span>
                                         <input
                                             type="date"
-                                            className="text-[11px] bg-transparent border-none outline-none text-gray-500 w-full"
+                                            className="w-full text-xs bg-gray-50 border border-gray-100 rounded-md px-2 py-1.5 outline-none focus:border-gray-300 text-gray-600"
                                             value={newTodoDueDate}
                                             onChange={(e) => setNewTodoDueDate(e.target.value)}
                                         />
                                     </div>
                                 </div>
 
-                                <div className="flex justify-end gap-2 pt-2 border-t border-gray-50">
+                                <div className="flex justify-end gap-2 mt-4">
                                     <button
                                         type="button"
                                         onClick={() => { setIsAdding(false); setNewTodoTitle(''); setNewTodoDueDate(''); setNewTodoDescription(''); setNewTodoCategoryId(null); }}
-                                        className="px-2 py-1 text-[11px] text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors"
+                                        className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
                                     >
-                                        Cancel
+                                        취소
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-2 py-1 text-[11px] font-medium bg-gray-900 text-white rounded hover:bg-gray-800 transition-colors shadow-sm"
+                                        className="px-3 py-1.5 text-xs font-semibold bg-gray-900 text-white rounded-lg hover:bg-black transition-colors shadow-sm"
                                     >
-                                        Add
+                                        추가
                                     </button>
                                 </div>
                             </form>
