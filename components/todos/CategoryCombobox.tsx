@@ -262,7 +262,7 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
             <button
                 type="button"
                 onClick={() => setOpen(!open)}
-                className="w-full flex items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-green-500"
+                className="w-full flex items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
                 <span className="truncate flex items-center gap-2">
                     {selectedCategory && (
@@ -278,7 +278,7 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
 
             {open && dropdownPosition && createPortal(
                 <div
-                    className="category-combobox-portal absolute z-[100000] mt-1 max-h-80 overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
+                    className="category-combobox-portal absolute z-[100000] mt-1 max-h-80 overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-gray-300 ring-opacity-5 focus:outline-none sm:text-sm"
                     style={{
                         top: dropdownPosition.top,
                         left: dropdownPosition.left,

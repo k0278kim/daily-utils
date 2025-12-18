@@ -56,7 +56,10 @@ const EditTodoModal: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose, on
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <motion.div
+            initial={{ backdropFilter: "blur(0px)" }}
+            animate={{ backdropFilter: "blur(10px)" }}
+            className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40">
             <motion.div
                 initial={{ opacity: 0, scale: 0.9, backdropFilter: "blur(10px)" }}
                 animate={{ opacity: 1, scale: 1, backdropFilter: "blur(0px)" }}
@@ -145,7 +148,7 @@ const EditTodoModal: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose, on
                     </div>
                 </form>
             </motion.div>
-        </div >,
+        </motion.div >,
         document.body
     );
 };

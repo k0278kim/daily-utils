@@ -177,13 +177,13 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
                                         </div>
                                     )}
 
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 flex flex-col">
                                         <span className="text-[10px] font-semibold text-gray-400 flex items-center gap-1 uppercase tracking-wide">
                                             <Calendar size={10} /> 마감일
                                         </span>
                                         <input
                                             type="date"
-                                            className="w-full text-xs bg-gray-50 border border-gray-100 rounded-md px-2 py-1.5 outline-none focus:border-gray-300 text-gray-600"
+                                            className="flex-1 w-full text-xs bg-gray-50 border border-gray-100 rounded-md px-2 py-1.5 outline-none focus:border-gray-300 text-gray-600"
                                             value={newTodoDueDate}
                                             onChange={(e) => setNewTodoDueDate(e.target.value)}
                                         />
@@ -250,10 +250,10 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
                                             {showHeader && (
                                                 <div className="px-1 py-2 mt-2 mb-1">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-[11px] font-bold text-gray-600 bg-gray-200/50 px-2 py-0.5 rounded-md">
+                                                        <span className="text-[10px] font-bold text-gray-400 bg-gray-100/50 px-2 py-0.5 rounded-md">
                                                             {headerLabel}
                                                         </span>
-                                                        <div className="h-[1px] flex-1 bg-gray-200"></div>
+                                                        <div className="h-[1px] flex-1 bg-gray-100"></div>
                                                     </div>
                                                 </div>
                                             )}
