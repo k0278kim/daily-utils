@@ -1,21 +1,25 @@
 import React from 'react';
 import { User } from '@/model/user';
 import Image from 'next/image';
-import { LogOut } from 'lucide-react';
+import { LogOut, Camera } from 'lucide-react';
 
 interface ProfileHeaderProps {
     user: User | null;
     email: string | undefined;
     onLogout: () => void;
+    onAvatarClick?: () => void;
 }
 
-export function ProfileHeader({ user, email, onLogout }: ProfileHeaderProps) {
+export function ProfileHeader({ user, email, onLogout, onAvatarClick }: ProfileHeaderProps) {
     if (!user) return <div className="w-full h-40 bg-white rounded-[32px] animate-pulse" />;
 
     return (
         <div className="w-full bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center justify-between">
             <div className="flex items-center gap-6">
-                <div className="relative w-24 h-24 rounded-full bg-slate-50 overflow-hidden shadow-inner">
+                <div
+                    onClick={onAvatarClick}
+                    className="relative w-24 h-24 rounded-full bg-slate-50 overflow-hidden shadow-inner cursor-pointer group"
+                >
                     {user.avatar_url ? (
                         <Image src={user.avatar_url} alt={user.name} fill className="object-cover" />
                     ) : (
@@ -23,6 +27,11 @@ export function ProfileHeader({ user, email, onLogout }: ProfileHeaderProps) {
                             {user.name[0]}
                         </div>
                     )}
+
+                    {/* Hover Overlay */}
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Camera size={24} className="text-white" />
+                    </div>
                 </div>
 
                 <div className="flex flex-col">

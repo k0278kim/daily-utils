@@ -11,6 +11,7 @@ import { MyTodosWidget } from "@/components/profile/widgets/MyTodosWidget";
 import { MyPraisesWidget } from "@/components/profile/widgets/MyPraisesWidget";
 import { MyHealthWidget } from "@/components/profile/widgets/MyHealthWidget";
 import { MySnippetsWidget } from "@/components/profile/widgets/MySnippetsWidget";
+import AvatarOverlay from "./components/AvatarOverlay";
 
 const ProfilePage = () => {
   const { user } = useUser();
@@ -173,8 +174,30 @@ const ProfilePage = () => {
     }
   };
 
+  const [showAvatarOverlay, setShowAvatarOverlay] = useState(false);
+
+  // We need a dummy setter or one that updates the local profile state
+  // AvatarOverlay expects Dispatch<SetStateAction<string>>
+  // But profile.avatar_url is what we want to update.
+  const handleSetAvatarUrl = (url: string | ((prev: string) => string)) => {
+    // AvatarOverlay passes the new URL string directly usually
+    const newUrl = typeof url === 'function' ? url(profile?.avatar_url || '') : url;
+    if (profile) {
+      setProfile({ ...profile, avatar_url: newUrl });
+    }
+    // It also reloads page, so this logic might be redundant but safe.
+  };
+
   return (
-    <div className="w-full h-full bg-[#F8FAFC] p-10 overflow-y-auto">
+    <div className="w-full h-full bg-[#F8FAFC] p-10 overflow-y-auto relative">
+      {showAvatarOverlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowAvatarOverlay(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <AvatarOverlay setAvatarUrl={handleSetAvatarUrl as any} />
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto space-y-8">
 
         {/* Top: Header */}
@@ -182,6 +205,7 @@ const ProfilePage = () => {
           user={profile}
           email={user?.email}
           onLogout={handleLogout}
+          onAvatarClick={() => setShowAvatarOverlay(true)}
         />
 
         {/* Grid Layout */}

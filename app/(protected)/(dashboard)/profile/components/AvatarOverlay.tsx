@@ -1,8 +1,8 @@
-import {Dispatch, SetStateAction, useEffect, useState} from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import Image from "next/image";
-import {useSupabaseClient, useUser} from "@/context/SupabaseProvider";
-import {User} from "@/model/user";
-import {useRouter} from "next/navigation";
+import { useSupabaseClient, useUser } from "@/context/SupabaseProvider";
+import { User } from "@/model/user";
+import { useRouter } from "next/navigation";
 
 type AvatarOverlayProps = {
   setAvatarUrl: Dispatch<SetStateAction<string>>;
@@ -32,10 +32,10 @@ const AvatarOverlay = ({ setAvatarUrl }: AvatarOverlayProps) => {
         avatar_url: url
       })
       .eq("email", user?.user_metadata.email);
-      window.location.reload();
+    window.location.reload();
   }
 
-  return <div className={"w-full h-full bg-black/20 z-50 fixed flex items-center justify-center"}>
+  return <div className={"w-full h-full bg-black/20 z-50 fixed top-0 left-0 flex items-center justify-center"}>
     <div className={"w-[60%] h-fit p-10 rounded-2xl bg-white"}>
       <p className={"text-xl font-bold mb-5"}>라이브러리에서 사진 선택</p>
       <div className={"flex gap-2"}>
