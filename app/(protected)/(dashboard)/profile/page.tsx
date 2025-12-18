@@ -1,93 +1,223 @@
 "use client"
 
-import Image from "next/image";
-import {signOut, useSession} from "next-auth/react";
-import LoadOrLogin from "@/components/LoadOrLogin";
-import {MouseEventHandler, useEffect, useState} from "react";
-import VacationPage from "@/app/(protected)/(dashboard)/profile/vacation/page";
-import JigakPage from "@/app/(protected)/(dashboard)/profile/jigak/page";
-import { motion } from "framer-motion";
-import {roundTransition} from "@/app/transition/round_transition";
-import {useSupabaseClient, useUser} from "@/context/SupabaseProvider";
-import {useRouter} from "next/navigation";
-import {User} from "@/model/user";
-import AvatarOverlay from "@/app/(protected)/(dashboard)/profile/components/AvatarOverlay";
+import React, { useEffect, useState } from "react";
+import { useSupabaseClient, useUser } from "@/context/SupabaseProvider";
+import { User } from "@/model/user";
+import { Praise } from "@/model/praise";
+import { Todo } from "@/model/Todo";
+import fetchSnippet from "@/app/api/fetch_snippet";
+import { ProfileHeader } from "@/components/profile/widgets/ProfileHeader";
+import { MyTodosWidget } from "@/components/profile/widgets/MyTodosWidget";
+import { MyPraisesWidget } from "@/components/profile/widgets/MyPraisesWidget";
+import { MyHealthWidget } from "@/components/profile/widgets/MyHealthWidget";
+import { MySnippetsWidget } from "@/components/profile/widgets/MySnippetsWidget";
 
 const ProfilePage = () => {
   const { user } = useUser();
-  const [page, setPage] = useState<"VACATION" | "PROFILE" | "JIGAK">("PROFILE");
   const supabase = useSupabaseClient();
-  const router = useRouter();
-  const [profile, setProfile] = useState<User|null>(null);
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [avatarOverlay, setAvatarOverlay] = useState(false);
+
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<User | null>(null);
+  const [myTodos, setMyTodos] = useState<Todo[]>([]);
+  const [praisesReceived, setPraisesReceived] = useState<Praise[]>([]);
+  const [praisesGiven, setPraisesGiven] = useState<Praise[]>([]);
+  const [myHealth, setMyHealth] = useState<any[]>([]);
+  const [mySnippets, setMySnippets] = useState<any[]>([]);
 
   useEffect(() => {
-    if (user && !profile) {
-      (async () => {
-        const { data, error } = await supabase.from("profiles")
+    if (!user) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // 1. Profile
+        const { data: profileData } = await supabase.from("profiles")
           .select("*")
-          .eq("email", user?.email)
+          .eq("email", user.email)
           .single();
+        if (profileData) setProfile(profileData);
 
-        if (data) {
-          setProfile(data);
+        // 2. Todos (My Tasks - In Progress)
+        const { data: todosData } = await supabase.from('todos')
+          .select(`
+                *,
+                todo_assignees (user_id),
+                categories (id, name, color)
+            `)
+          .eq('status', 'in-progress')
+          .order('due_date', { ascending: true }); // Urgent first
+
+        if (todosData) {
+          // Client-side filter for assignment to me (since simple join filter is hard in one go without sophisticated RLS or complex query)
+          // or check if todo_assignees contains my id
+          // Note: todo_assignees returned as array of objects {user_id}
+          const myTasks = todosData.filter((t: any) =>
+            t.todo_assignees.some((a: any) => a.user_id === user.id)
+          );
+          setMyTodos(myTasks);
         }
-      })();
-    }
-  }, [user]);
 
-  return <div className={"w-full h-full flex justify-center px-20"}>
-    {
-      avatarOverlay && <AvatarOverlay setAvatarUrl={setAvatarUrl} />
-    }
-    <div className={"flex flex-col w-96 space-y-10 justify-center border-r-[1px] border-r-gray-200"}>
-      <div className={"w-52 aspect-square rounded-full relative mb-12"} onClick={() => setAvatarOverlay(true)}>
-        <Image src={profile?.avatar_url ? profile.avatar_url.replace(/=s\d+-c/, '=s1024-c') : ""} alt={""} fill className={"object-cover rounded-full"} />
-        <div className={"w-12 aspect-square bg-white border border-gray-300 rounded-full flex items-center justify-center absolute bottom-2 right-2"}>
-          <Image src={"/profile/pencil.svg"} alt={""} width={20} height={20} />
-        </div>
-      </div>
-      <div className={"flex flex-col space-y-2.5"}>
-        <p className={"text-2xl font-bold"}>{profile?.name}({profile?.nickname})</p>
-        <p className={"text-lg text-gray-500"}>{user?.email}</p>
-      </div>
-      <div className={"flex flex-col"}>
-        <LeftbarButton icon={"/profile/calendar.svg"} title={"휴가/지각 관리"} onClick={() => setPage("VACATION")} />
-        <LeftbarButton icon={"/profile/logout.svg"} title={"로그아웃"} onClick={async () => {
-          if (window.confirm("로그아웃할까요?")) {
-            await supabase.auth.signOut();
-            router.refresh();
+        // 3. Praises (Received & Given)
+        // 3. Praises (Received & Given)
+        const { data: receivedData } = await supabase
+          .from('praise')
+          .select(`
+                *,
+                praise_from (*),
+                praise_to (*)
+            `)
+          .eq('praise_to', user.id)
+          .order('created_at', { ascending: false });
+        if (receivedData) setPraisesReceived(receivedData);
+
+        const { data: givenData } = await supabase
+          .from('praise')
+          .select('*')
+          .eq('praise_from', user.id);
+        if (givenData) setPraisesGiven(givenData);
+
+        // 4. Health
+        // Fetch TEAM healthchecks for the last 5 days
+        const healthToday = new Date();
+        const healthFiveDaysAgo = new Date();
+        healthFiveDaysAgo.setDate(healthToday.getDate() - 5);
+
+        // We need team_id from profile data.
+        // Assuming profileData is available from step 1. If not, wait for it or fetch separately.
+        // But profileData variable is local to scope.
+        // Let's rely on user object having team_id if possible, or use the response from profile fetch.
+        // Actually step 1 sets profileData locally.
+
+        let teamId = null;
+        if (profileData && profileData.team_id) {
+          teamId = profileData.team_id;
+        }
+
+        // If teamId exists, fetch team data. Else fallback to personal data.
+        if (teamId) {
+          const { data: healthData, error } = await supabase
+            .from('healthcheck')
+            .select('*')
+            .eq('team', teamId)
+            .gte('date', healthFiveDaysAgo.toISOString().split('T')[0])
+            .lte('date', healthToday.toISOString().split('T')[0])
+            .order('date', { ascending: true });
+
+          if (!error && healthData && healthData.length > 0) {
+            setMyHealth(healthData);
+          } else {
+            // Fallback if team fetch returns empty (maybe just created team?)
+            // Try fetching personal
+            fetchPersonalHealth();
           }
-        }}/>
+        } else {
+          // No team_id, fetch personal
+          fetchPersonalHealth();
+        }
+
+        async function fetchPersonalHealth() {
+          const { data: healthData } = await supabase
+            .from('healthcheck')
+            .select('*')
+            .eq('created_user', user.id)
+            .gte('date', healthFiveDaysAgo.toISOString().split('T')[0])
+            .lte('date', healthToday.toISOString().split('T')[0])
+            .order('date', { ascending: true });
+
+          if (healthData) setMyHealth(healthData);
+        }
+
+        // 5. Snippets
+        // Use helper function as snippets are external
+        // Fetch last 30 days
+        const today = new Date();
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+
+        // fetchSnippet takes strings YYYY-MM-DD
+        const dateTo = today.toISOString().split('T')[0];
+        const dateFrom = thirtyDaysAgo.toISOString().split('T')[0];
+
+        try {
+          // Note: Imported dynamically or need import
+          // Assuming fetchSnippet default export from api/fetch_snippet
+          // We need to import it at top.
+          // But fetchSnippet is async.
+          const snippetsRes = await fetchSnippet(dateFrom, dateTo);
+
+          // Filter by user email since API might return team snippets?
+          // Checking fetch_snippet code... it calls n8n.
+          // Let's assume it returns team snippets, so filter by user.email
+          if (snippetsRes && Array.isArray(snippetsRes)) {
+            const mySnippets = snippetsRes.filter((s: any) => s.user_email === user.email);
+            setMySnippets(mySnippets);
+          }
+        } catch (err) {
+          console.error("Error fetching snippets", err);
+        }
+
+      } catch (e) {
+        console.error("Failed to fetch dashboard data", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user, supabase]);
+
+  const handleLogout = async () => {
+    if (confirm("로그아웃 하시겠습니까?")) {
+      await supabase.auth.signOut();
+      window.location.reload();
+    }
+  };
+
+  return (
+    <div className="w-full h-full bg-[#F8FAFC] p-10 overflow-y-auto">
+      <div className="max-w-6xl mx-auto space-y-8">
+
+        {/* Top: Header */}
+        <ProfileHeader
+          user={profile}
+          email={user?.email}
+          onLogout={handleLogout}
+        />
+
+        {/* Grid Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 h-[520px]">
+          {/* Col 1: Todos */}
+          <div className="md:col-span-1 h-full">
+            <MyTodosWidget
+              todos={myTodos}
+              loading={loading}
+              projectId={myTodos[0]?.project_id}
+            />
+          </div>
+
+          {/* Col 2: Praises */}
+          <div className="md:col-span-1 h-full">
+            <MyPraisesWidget
+              praisesReceived={praisesReceived}
+              praisesGiven={praisesGiven}
+              loading={loading}
+            />
+          </div>
+
+          {/* Col 3: Health & Snippets */}
+          <div className="md:col-span-1 h-full flex flex-col gap-8">
+            <div className="flex-1">
+              <MyHealthWidget myHealth={myHealth} loading={loading} />
+            </div>
+            <div className="flex-1">
+              <MySnippetsWidget snippets={mySnippets} loading={loading} />
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
-    <div className={"flex flex-col flex-1 bg-white"}>
-      {
-        page === "PROFILE"
-        ? <></>
-        : page === "VACATION"
-          ? <VacationPage />
-            : <></>
-      }
-    </div>
-  </div>
-}
-
-type leftBarButtonProps = {
-  icon: string;
-  title: string;
-  onClick?: MouseEventHandler<HTMLDivElement> | undefined
-}
-
-const LeftbarButton = ({ icon, title, onClick }: leftBarButtonProps) => {
-  const [hover, setHover] = useState(false);
-  return <div className={"w-full flex space-x-2.5 items-center cursor-pointer relative p-2.5"} onClick={onClick}  onMouseOver={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-    <div className={"w-8 aspect-square rounded-lg border-[1px] border-gray-200 flex items-center justify-center"}>
-      <Image src={icon} alt={""} width={20} height={20} />
-    </div>
-    <p className={"font-medium"}>{title}</p>
-  </div>
-}
+  );
+};
 
 export default ProfilePage;
