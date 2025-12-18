@@ -125,13 +125,20 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
     // Expand State for Description
     const [isExpanded, setIsExpanded] = React.useState(false);
     const [isOverflowing, setIsOverflowing] = React.useState(false);
+    const [shouldAnimate, setShouldAnimate] = React.useState(false);
     const textRef = React.useRef<HTMLDivElement>(null);
 
-    React.useEffect(() => {
+    React.useLayoutEffect(() => {
         if (textRef.current) {
             // Check if content exceeds 4.5rem (approx 72px)
             setIsOverflowing(textRef.current.scrollHeight > 72);
         }
+
+        // Enable animation after initial render
+        const timer = setTimeout(() => {
+            setShouldAnimate(true);
+        }, 300);
+        return () => clearTimeout(timer);
     }, [todo.description]);
     // ... (skipping context)
 
@@ -194,7 +201,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                         `}
                         >
                             <div className="flex items-center justify-between gap-3">
-                                {onToggleStatus && (
+                                {onToggleStatus && todo.status !== 'backlog' && (
                                     <div
                                         className="relative group/check"
                                         onMouseEnter={(e) => {
@@ -264,7 +271,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                         <motion.div
                                             initial={false}
                                             animate={{ height: isExpanded || !isOverflowing ? 'auto' : '4.5rem' }}
-                                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                            transition={{ duration: shouldAnimate ? 0.3 : 0, ease: 'easeInOut' }}
                                             className={`mt-1 mb-3 text-xs text-gray-500 prose prose-xs prose-p:my-0 prose-ul:my-0 prose-ol:my-0 prose-headings:my-0 relative overflow-hidden ${todo.status === 'done' ? 'text-gray-300' : ''}`}
                                         >
                                             <div ref={textRef}>
