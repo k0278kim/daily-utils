@@ -1,380 +1,117 @@
 "use client"
 
-import React, {ChangeEventHandler, useEffect, useRef, useState} from "react";
+import React, { useEffect, useState } from "react";
 import fetchTeamUsers from "@/app/api/fetch_team_users";
-import {useSession} from "next-auth/react";
-import {User} from "@/model/user";
-import Image from "next/image";
 import fetchTeamPraise from "@/app/api/praise/fetch_team_praise/fetchTeamPraise";
-import {Praise} from "@/model/praise";
-import IconTextButton from "@/components/IconTextButton";
 import fetchUserByEmail from "@/app/api/team/user/get_user_by_email/fetch_user_by_email";
-import Hangul from "hangul-js";
-import CircularLoader from "@/components/CircularLoader";
-import {AnimatePresence, motion} from "framer-motion";
-import formatDate from "@/lib/utils/format_date";
-import {addPraise} from "@/app/actions/addPraise";
-import {roundTransition} from "@/app/transition/round_transition";
-import {easeInOutTranstion} from "@/app/transition/ease_transition";
-import _ from "lodash";
-import LoadOrLogin from "@/components/LoadOrLogin";
-import {useSupabaseClient, useUser} from "@/context/SupabaseProvider";
+import { User } from "@/model/user";
+import { Praise } from "@/model/praise";
+import { useUser } from "@/context/SupabaseProvider";
+import { UserListSidebar } from "@/components/praises/UserListSidebar";
+// PraiseList is removed in V2
+import { PraiseFeed } from "@/components/praises/PraiseFeed";
+import { AddPraiseModal } from "@/components/praises/AddPraiseModal";
+import { motion, AnimatePresence } from "framer-motion";
 
 const PraisesPage = () => {
-
-  const [users, setUsers] = useState([]);
   const { user } = useUser();
+  const [users, setUsers] = useState<User[]>([]);
   const [praises, setPraises] = useState<Praise[]>([]);
-  const [addPraiseOverlay, setAddPraiseOverlay] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [me, setMe] = useState<User>();
-  const [myPraises, setMyPraises] = useState<Praise[]>([]);
-  const [loadOverflow, setLoadOverflow] = useState(false);
-  const [hoverUser, setHoverUser] = useState<User | null>(null);
-  const [page, setPage] = useState<number>(0);
 
-  useEffect(() => {
-    // TODO: 순위 불러오기.
-  }, []);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [filteredPraises, setFilteredPraises] = useState<Praise[]>([]);
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Initial Fetch
   useEffect(() => {
-    (async() => {
-      if (user) {
-        const users = await fetchTeamUsers("도다리도 뚜뚜려보고 건너는 양털");
-        const praisesRes: Praise[] = await fetchTeamPraise("도다리도 뚜뚜려보고 건너는 양털");
-        setUsers(users);
-        console.log(praisesRes);
-        setPraises(praisesRes.sort((a, b) => (new Date(b.created_at)).getTime() - (new Date(a.created_at).getTime())));
-        const email = user?.email;
-        if (email && !me) {
-          const me = await fetchUserByEmail(email);
-          setMe(me[0]);
-          setSelectedUser(me[0])
+    const init = async () => {
+      if (!user) return;
+
+      try {
+        const teamName = "도다리도 뚜뚜려보고 건너는 양털"; // Hardcoded in original
+        const [usersRes, praisesRes, meRes] = await Promise.all([
+          fetchTeamUsers(teamName),
+          fetchTeamPraise(teamName),
+          user.email ? fetchUserByEmail(user.email) : Promise.resolve([])
+        ]);
+
+        setUsers(usersRes);
+        setPraises(praisesRes);
+
+        if (meRes && meRes.length > 0) {
+          setMe(meRes[0]);
+          // Default select myself if no selection
+          if (!selectedUser) setSelectedUser(meRes[0]);
+        } else {
+          if (!selectedUser && usersRes.length > 0) setSelectedUser(usersRes[0]);
         }
+      } catch (e) {
+        console.error("Failed to load praises data", e);
+      } finally {
+        setIsLoading(false);
       }
-    })();
+    };
+
+    init();
   }, [user]);
 
+  // Filtering Logic
   useEffect(() => {
-    if (praises && selectedUser) {
-      const myPraises = praises.filter((praise) => praise.praise_to.email == selectedUser!.email);
-      setMyPraises(myPraises);
-      myPraises.map((praise) => praise["created_at"] = formatDate(new Date(praise.created_at)) as string);
-      myPraises.sort((a, b) => (new Date(b.created_at)).getTime() - (new Date(a.created_at).getTime()))
-      console.log(_.groupBy(myPraises, "created_at"));
+    if (selectedUser) {
+      // Filter praises where 'praise_to' email matches selected user
+      const userPraises = praises.filter(p => p.praise_to.email === selectedUser.email);
+      // Sort by date desc
+      userPraises.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setFilteredPraises(userPraises);
+    } else {
+      setFilteredPraises([]);
     }
   }, [selectedUser, praises]);
 
-  return <div className={"w-full h-full flex relative bg-gray-100"}>
-    <AnimatePresence>
-    {
-      addPraiseOverlay && <motion.div className={`fixed flex w-full h-full items-center justify-center bg-white/20 z-20 duration-1000 ${addPraiseOverlay ? "backdrop-blur-xl" : ""}`} transition={roundTransition} exit={{ opacity: 0 }}>
-        <AddPraiseOverlay setPraises={setPraises} praiseFromEmail={user?.email} setAddPraiseOverlay={setAddPraiseOverlay} me={me} setMe={setMe} />
+  const refreshPraises = async () => {
+    const praisesRes: Praise[] = await fetchTeamPraise("도다리도 뚜뚜려보고 건너는 양털");
+    setPraises(praisesRes);
+  };
+
+  return (
+    <div className="w-full h-full flex bg-white overflow-hidden text-sans text-slate-800 font-sans">
+      <AddPraiseModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onPraiseAdded={refreshPraises}
+        users={users}
+        me={me}
+      />
+
+      {/* 1. Left Sidebar: Team Members (Clean V2) */}
+      <UserListSidebar
+        users={users}
+        selectedUser={selectedUser}
+        me={me}
+        praises={praises}
+        onSelectUser={setSelectedUser}
+        onAddPraise={() => setIsModalOpen(true)}
+      />
+
+      {/* 2. Right Column: Main Content Feed (V2: Grid + Header) */}
+      <motion.div
+        key={selectedUser?.id || "empty"}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="flex-1 h-full min-w-0 bg-white relative"
+      >
+        <PraiseFeed
+          praises={filteredPraises}
+          isLoading={isLoading}
+          selectedUser={selectedUser}
+        />
       </motion.div>
-    }
-    </AnimatePresence>
-    <motion.div className={`z-0 w-full h-full flex relative duration-500 ${addPraiseOverlay ? "scale-90" : ""}`}>
-      <div className={`z-50 w-72 h-full border-r-[1px] border-r-gray-200 p-3 flex flex-col space-y-5 text-white bg-white sticky left-0 duration-1000 ${addPraiseOverlay ? "rounded-l-4xl" : ""}`}>
-        <div className={"mt-5 mb-5 mx-3"}>
-          <IconTextButton src={"/plus.svg"} className={"text-black"} text={"칭찬하기"} onClick={() => setAddPraiseOverlay(true)} darkmode={false} />
-        </div>
-        <div className={"flex flex-col"}>{
-          users.map((user: User) =>
-            <div key={user.email} className={"relative active:scale-90 duration-100"} onMouseOver={() => setHoverUser(user)} onMouseLeave={() => setHoverUser(null)}>
-              { hoverUser == user && <motion.div onClick={() => setSelectedUser(user)} transition={roundTransition} layoutId={"hover-user-bg"} className={"cursor-pointer w-full h-full absolute bg-gray-800/20 rounded-lg"}></motion.div>}
-              <UserBlock user={user} selectedUser={selectedUser ? selectedUser : me} setSelectedUser={setSelectedUser} praisesNumber={praises.filter((praise) => praise.praise_to.email == user.email).length} />
-            </div>)
-        }</div>
-      </div>
-      <AnimatePresence>
-        { selectedUser != undefined && myPraises.length > 0 &&
-          <motion.div
-            initial={{ opacity: 0, translateX: "-100%" }}
-            animate={{ opacity: 1, translateX: "0%" }}
-            exit={{ opacity: 0, translateX: "-100%" }}
-            transition={easeInOutTranstion}
-            className={"w-72 bg-gray-200 overflow-y-scroll scrollbar-hide"}>
-            <div className={""}>
-              <div className={"font-semibold text-gray-700 text-lg px-5 pt-10 pb-3"}>모아보기</div>
-              {
-                myPraises.map((praise: Praise, index) => <div key={"praise_summary_" + praise.id} className={"cursor-pointer p-5 text-gray-700 hover:bg-gray-200/70 flex space-x-2.5"}
-                  onClick={() => {
-                    window.location.hash = `#praise_block_${praise.id}`;
-                    const hash = window.location.hash;
-                    if (hash) {
-                      const el = document.querySelector(hash);
-                      if (el) {
-                        el.scrollIntoView({behavior: "smooth"});
-                      }
-                    }
-                  }}
-                >
-                  <div className={"w-7 text-xl font-semibold text-gray-500"}>{myPraises.length - index}</div>
-                  <div className={"flex flex-col space-y-1 flex-1"}>
-                    <p className={""}>{praise.title}</p>
-                    <p className={"text-sm text-gray-500"}>{praise.praise_from.name} · {formatDate(new Date(praise.created_at))}</p>
-                  </div>
-                </div>)
-              }
-            </div>
-          </motion.div>
-        }
-      </AnimatePresence>
-
-      <div className={`flex-1 w-full h-full bg-gray-100 flex justify-center overflow-y-scroll duration-500 scrollbar-hide ${addPraiseOverlay ? "rounded-r-4xl" : ""}`}>{
-        selectedUser != undefined
-          ? myPraises.length > 0
-            ? <div className={"w-[60%] min-w-[300px] py-20 space-y-12"}>
-              {
-              myPraises.map((praise: Praise) =>
-                <PraiseBlock key={praise.id} praise_id={praise.id} praise_from={praise.praise_from} praise_to={praise.praise_to} title={praise.title} content={praise.content} created_at={new Date(praise.created_at)} />
-              )}
-            </div>
-            : <motion.div
-              initial={{ opacity: 0, translateY: 10 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              className={"text-gray-500 font-semibold text-2xl items-center h-full flex justify-center"}>아직 받은 칭찬이 없어요.</motion.div>
-          : <motion.div className={"w-10 aspect-square"} layoutId={"circular"}>
-            <CircularLoader />
-          </motion.div>
-        }
-      </div>
-    </motion.div>
-  </div>
-}
-
-type userBlockType = {
-  user: User,
-  selectedUser: User | undefined,
-  setSelectedUser: (user: User) => void,
-  praisesNumber: number
-}
-const UserBlock = ({ user, selectedUser, setSelectedUser, praisesNumber }: userBlockType) => {
-  return <motion.div
-    initial={{ opacity: 0, translateX: -10 }}
-    animate={{ opacity: 1, translateX: 0 }}
-    layoutId={"user_"+user.name}
-    className={`active:scale-90 duration-100 flex items-center justify-between cursor-pointer w-full h-fit px-5 py-3 rounded-lg ${selectedUser?.id === user.id ? "bg-gray-100" : ""}`} onClick={() => setSelectedUser(user)}>
-    <div className={"flex flex-col"}>
-      <p className={"font-semibold text-black"}>{user.name}</p>
-      <p className={"text-gray-700 text-sm"}>{user.nickname}</p>
     </div>
-    <div className={`duration-100 w-7 h-7 flex items-center justify-center text-black opacity-70 font-bold rounded-full ${selectedUser?.id == user.id ? "bg-gray-300" : "bg-gray-700"}`}>{praisesNumber}</div>
-  </motion.div>
-}
-
-type praiseBlockType = {
-  praise_id: string;
-  praise_from: User;
-  praise_to: User;
-  title: string;
-  content: string;
-  created_at: Date;
-}
-
-const PraiseBlock = ({ praise_id, praise_from, praise_to, title, content, created_at }: praiseBlockType) => {
-  const supabase = useSupabaseClient();
-  const [praiseFromAvatar, setPraiseFromAvatar] = useState<string|null>(null);
-
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase.from('profiles')
-        .select("avatar_url")
-        .eq("id", praise_from.id)
-        .single();
-      if (data) {
-        setPraiseFromAvatar(data.avatar_url);
-      }
-      if (error) throw new Error(error.message);
-    })();
-  }, []);
-
-  return <motion.div
-    initial={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    transition={roundTransition}
-    className={"flex flex-col space-y-5 text-black"} layoutId={"praise_block_"+praise_id}>
-    <div className={"flex justify-between items-center"} id={"praise_block_"+praise_id}>
-      <div className={"flex space-x-5 items-center"}>
-        {
-          praiseFromAvatar
-          ? <div className={"rounded-lg bg-gray-400 w-10 aspect-square flex items-center justify-center relative"}>
-              <Image src={praiseFromAvatar} fill alt={""} className={"object-cover rounded-lg"} />
-            </div>
-          : <div className={"rounded-lg bg-gray-400 w-10 aspect-square flex items-center justify-center"}>
-              <Image src={"/user.svg"} width={20} height={20} alt={""} />
-            </div>
-        }
-        <div className={"flex flex-col"}>
-          <p className={"font-bold text-lg text-black"}>{praise_from.name}</p>
-          <p className={"opacity-60"}>{praise_from.nickname}</p>
-        </div>
-      </div>
-      <p className={"text-gray-400"}>{formatDate(created_at)}</p>
-    </div>
-    <div className={"w-full p-7 flex flex-col bg-white border border-gray-200 rounded-xl"}>
-      <div className={"flex flex-col space-y-1.5"}>
-        <p className={"font-bold text-lg break-keep"}>{title}</p>
-        <p className={"break-keep"}>{content}</p>
-      </div>
-    </div>
-  </motion.div>
-}
-
-type addPraiseOverlayType = {
-  setPraises: (praises: Praise[]) => void;
-  praiseFromEmail: string | null | undefined;
-  setAddPraiseOverlay: (newAddPraiseOverlay: boolean) => void;
-  me: User | undefined;
-  setMe: (newMe: User | undefined) => void;
-}
-
-const AddPraiseOverlay = ({ setPraises, praiseFromEmail, setAddPraiseOverlay, me, setMe }: addPraiseOverlayType) => {
-  const [praiseTo, setPraiseTo] = useState<User | null>(null);
-  const [teamUsers, setTeamUsers] = useState<User[]>([]);
-  const [searchUsers, setSearchUsers] = useState<User[]>([]);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [editable, setEditable] = useState(true);
-  const [editString, setEditString] = useState("");
-  const [inputFocus, setInputFocus] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const onTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value);
-  const onContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value);
-  const nameKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      if (searchUsers.length == 1) {
-        if (editString == "") {
-          setPraiseTo(null);
-        } else {
-          setPraiseTo(searchUsers[0]);
-          console.log(praiseTo, "등록");
-          setEditable(false);
-        }
-      }
-    }
-  }
-  const submitPraise = async (praiseFrom: User, praiseTo: User, title: string, content: string, teamId: string) => {
-    if (praiseFrom && praiseTo && title != "" && content != "" && teamId != "") {
-      await addPraise(praiseFrom, praiseTo, title, content, teamId);
-      const praisesRes: Praise[] = await fetchTeamPraise("도다리도 뚜뚜려보고 건너는 양털");
-      praisesRes.sort((a, b) => (new Date(b.created_at)).getTime() - (new Date(a.created_at).getTime()))
-      console.log(praisesRes);
-      setPraises(praisesRes);
-      setAddPraiseOverlay(false);
-    }
-  }
-
-  useEffect(() => {
-    (async() => {
-      const users: User[] = await fetchTeamUsers("도다리도 뚜뚜려보고 건너는 양털");
-      setTeamUsers(users);
-      setSearchUsers(users);
-    })();
-  }, []);
-
-  return <motion.div
-    initial={{ opacity: 0.6, scale: 0.8, filter: "blur(10px)" }}
-    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-    exit={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
-    transition={roundTransition}
-    className={"z-20 rounded-2xl bg-white w-[50%] p-10 flex flex-col space-y-5"} layoutId={"overlay"}>
-    <motion.div
-      className={"flex justify-between mb-5 items-center"}>
-      <div className={"flex space-x-2.5"}>
-        <p className={"font-black text-2xl"}>새로운 칭찬 전달하기</p>
-      </div>
-      <div className={"flex space-x-2.5"}>
-        <div className={""}>
-          {
-            !editable
-            ? <div className={"flex space-x-2.5 hover:bg-gray-100 rounded-lg p-3 cursor-pointer"} onClick={() => {
-              setEditable(true);
-              setPraiseTo(null);
-              setSearchUsers(teamUsers);
-            }}>
-                <div className={"flex flex-col text-end"}>
-                  <p className={"font-semibold"}>{praiseTo ? praiseTo?.name : ""}님에게 전달</p>
-                  <p className={"text-sm text-gray-700"}>{praiseTo ? praiseTo?.email : ""}</p>
-                </div>
-                <Image src={"/pencil.svg"} className={""} alt={"logo"} width={20} height={20} />
-              </div>
-            : <div className={"relative"}>
-                <div className={"flex space-x-2.5"}>
-                  <input type={"text"} placeholder={"칭찬할 사람을 입력하세요"} className={"border-gray-300 rounded-lg p-3 border-[1px]"} onFocus={() => { setInputFocus(true) }} onBlur={() => {
-                    setTimeout(() => setInputFocus(false), 100);
-                  }} onChange={(e => {
-                    setEditString(e.target.value);
-                    if (e.target.value == "") {
-                      setSearchUsers(teamUsers);
-                    } else {
-                      setSearchUsers(teamUsers.filter((user) => {
-                        const disassembled = Hangul.disassemble(user.name).join("");
-                        const queryDisassembled = Hangul.disassemble(e.target.value).join("");
-                        return disassembled.includes(queryDisassembled);
-                      }));
-                    }
-                  })} defaultValue={praiseTo?.name} onKeyDown={nameKeyPress} />
-                  <IconTextButton text={"등록"} src={"/check.svg"} onClick={() => {
-                    if (searchUsers.length == 1) {
-                      if (editString == "") {
-                        setPraiseTo(null);
-                      } else {
-                        setPraiseTo(searchUsers[0]);
-                        console.log(praiseTo, "등록");
-                        setEditable(false);
-                      }
-                    }
-                  }} />
-                </div>
-                <AnimatePresence>
-                  { inputFocus && <motion.div className={"absolute bg-white border-[1px] border-gray-300 w-full"} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    { searchUsers.length != 0
-                      ? searchUsers.map((user: User) => <div key={user.email} className={"p-3 hover:bg-gray-100"} onClick={() => {
-                        setPraiseTo(user);
-                        setEditable(false);
-                      }}>{user.name}</div>)
-                      : <p className={"p-3 font-semibold text-gray-500"}>검색 결과가 없어요.</p>
-                    }
-                  </motion.div> }
-                </AnimatePresence>
-              </div>
-          }
-        </div>
-
-      </div>
-    </motion.div>
-    <div className={"border-gray-300 border-[1px] rounded-lg flex flex-col w-full]"}>
-      <input type={"text"} placeholder={"어떤 것을 칭찬할까요?"} onChange={onTitleChange} className={"p-5 font-semibold text-lg rounded-lg rounded-b-none w-full"} />
-      <div className={"w-full h-[1px] bg-gray-300"}></div>
-      <textarea placeholder={"칭찬할 내용을 적어주세요."} onChange={onContentChange} className={"p-5 rounded-lg rounded-t-none w-full min-h-52"} />
-    </div>
-    <div className={"flex w-full justify-end space-x-2.5"}>
-      <button className={"w-fit rounded-lg bg-white text-gray-700 font-bold px-5 py-3 border-[1px] border-gray-300 hover:bg-gray-100"} onClick={() => setAddPraiseOverlay(false)}>취소</button>
-      <motion.button className={`w-36 flex justify-center items-center rounded-lg font-bold px-5 py-3 border-[1px] duration-100 ${praiseTo && title != "" && content != "" ? "border-gray-800 text-white bg-gray-800" : "border-gray-300 bg-gray-300 text-gray-500"}`} onClick={async () => {
-        if (!loading) {
-          setLoading(true);
-          await submitPraise(me!, praiseTo!, title, content, me!.team_id!).then((res) => {
-            setLoading(false);
-          });
-        }
-      }}>{
-        loading
-          ? <div className={"w-5 h-5"}><CircularLoader/></div>
-          : <div className={"flex space-x-2.5 items-center justify-center"}>
-            {
-              praiseTo && title != "" && content != "" && <AnimatePresence>
-                <motion.div className={""} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0 }}>
-                  <Image src={"/paper-airplane.svg"} alt={""} className={"-rotate-45"} width={15} height={15} />
-                </motion.div>
-              </AnimatePresence>
-            }
-          <motion.p layoutId={"button-submit"}>칭찬하기</motion.p></div>
-      }</motion.button>
-    </div>
-  </motion.div>
-}
+  );
+};
 
 export default PraisesPage;
