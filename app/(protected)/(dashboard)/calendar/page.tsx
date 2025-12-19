@@ -762,19 +762,19 @@ const CalendarPage = () => {
                         <div className="flex-1 overflow-y-auto">
                             {(isEditing || isCreating) ? (
                                 // Edit / Create Form - Notion Style
-                                <div className="p-5 space-y-5">
+                                <div className="p-5 flex flex-col h-full">
                                     {/* Title Input - Large & Clean */}
                                     <input
                                         type="text"
                                         value={editForm.summary || ""}
                                         onChange={e => setEditForm({ ...editForm, summary: e.target.value })}
-                                        className="w-full text-2xl font-bold text-slate-800 border-none px-0 py-1 focus:ring-0 placeholder:text-slate-300 bg-transparent outline-none"
+                                        className="w-full text-2xl font-bold text-slate-800 border-none px-0 py-1 focus:ring-0 placeholder:text-slate-300 bg-transparent outline-none shrink-0 mb-5"
                                         placeholder="제목"
                                         autoFocus
                                     />
 
                                     {/* Properties - Notion Style */}
-                                    <div className="space-y-1 -mx-2">
+                                    <div className="space-y-1 -mx-2 shrink-0">
                                         {/* Date/Time */}
                                         <div className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-slate-50 group transition-colors">
                                             <Clock size={14} className="text-slate-400 shrink-0" />
@@ -822,7 +822,7 @@ const CalendarPage = () => {
                                     </div>
 
                                     {/* Footer Actions */}
-                                    <div className="flex items-center justify-between pt-6 border-t border-slate-50">
+                                    <div className="flex items-center justify-between pt-6 border-t border-slate-50 shrink-0 mt-5">
                                         <button
                                             onClick={() => setIsImporting(!isImporting)}
                                             className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${isImporting ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-50'}`}
@@ -852,9 +852,9 @@ const CalendarPage = () => {
 
                                     {/* Todo Import Panel */}
                                     {isImporting && (
-                                        <div className="mt-4 border-t border-slate-100 pt-4">
-                                            <h3 className="text-xs font-bold text-slate-500 mb-3 px-1">내 할 일 목록 (진행 중)</h3>
-                                            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
+                                        <div className="mt-4 border-t border-slate-100 pt-4 flex-1 flex flex-col min-h-0">
+                                            <h3 className="text-xs font-bold text-slate-500 mb-3 px-1 shrink-0">내 할 일 목록 (진행 중)</h3>
+                                            <div className="space-y-2 flex-1 overflow-y-auto pr-1 custom-scrollbar">
                                                 {isLoadingTodos ? (
                                                     <div className="flex justify-center py-4"><Loader2 className="animate-spin text-slate-300" size={16} /></div>
                                                 ) : availableTodos.length === 0 ? (
@@ -883,7 +883,7 @@ const CalendarPage = () => {
                                         </div>
                                     )}
                                 </div>
-                            ) : (
+                            ) : selectedEvent ? (
                                 // View Mode - Notion Style
                                 <div className="p-5 space-y-4">
                                     {/* Title & Time */}
@@ -966,7 +966,7 @@ const CalendarPage = () => {
                                         </a>
                                     )}
                                 </div>
-                            )}
+                            ) : null}
                         </div>
                     </>
                 ) : (

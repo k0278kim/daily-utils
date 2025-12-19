@@ -13,7 +13,7 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
         }
 
-        const oauth2Client = await getAuthenticatedGoogleClient(user.id);
+        const oauth2Client = await getAuthenticatedGoogleClient();
         const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
         const eventPatch: any = {

@@ -14,7 +14,7 @@ export async function DELETE(req: NextRequest) {
         }
 
         const { user } = await requireAuth();
-        const oauth2Client = await getAuthenticatedGoogleClient(user.id);
+        const oauth2Client = await getAuthenticatedGoogleClient();
         const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
         await calendar.events.delete({

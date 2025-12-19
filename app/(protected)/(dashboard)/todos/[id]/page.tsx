@@ -572,8 +572,12 @@ const TodoDetailPage = () => {
                             ) : linkedEvents.length > 0 ? (
                                 <div className="flex flex-col gap-1">
                                     {linkedEvents.map(ev => {
-                                        // Extract date for calendar navigation
-                                        const eventDate = ev.start ? new Date(ev.start).toISOString().split('T')[0] : '';
+                                        // Extract date for calendar navigation (use local date, not UTC)
+                                        let eventDate = '';
+                                        if (ev.start) {
+                                            const d = new Date(ev.start);
+                                            eventDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                        }
                                         return (
                                             <a
                                                 key={ev.id}
