@@ -254,6 +254,39 @@ const TodoDetailPage = () => {
                 {/* Properties Section (Notion Style) */}
                 <div className="flex flex-col gap-1 mb-8">
 
+                    {/* Status Property */}
+                    <div className="flex items-center py-1.5 group/prop">
+                        <div className="w-[120px] flex items-center gap-2 text-slate-500 text-sm">
+                            <div className="p-0.5 rounded text-slate-400">
+                                <Check size={16} />
+                            </div>
+                            <span>상태</span>
+                        </div>
+                        <div className="flex-1">
+                            <select
+                                value={todo.status || 'backlog'}
+                                onChange={async (e) => {
+                                    const newStatus = e.target.value as any;
+
+                                    if ((newStatus === 'done' || newStatus === 'in-progress') && (!todo.assignees || todo.assignees.length === 0)) {
+                                        alert("담당자가 지정되지 않은 할 일은 진행 중 또는 완료 상태로 변경할 수 없습니다.");
+                                        return;
+                                    }
+
+                                    setTodo({ ...todo, status: newStatus });
+                                    // Update status and touch updated_at for sync
+                                    await supabase.from("todos").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", id);
+                                }}
+                                disabled={!canEdit}
+                                className="text-sm text-slate-700 hover:bg-slate-50 px-2 -ml-2 py-0.5 rounded cursor-pointer transition-colors bg-transparent border-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-transparent outline-none focus:outline-none ring-0 focus:ring-offset-0 appearance-none"
+                            >
+                                <option value="backlog">대기중</option>
+                                <option value="in-progress">진행중</option>
+                                <option value="done">완료</option>
+                            </select>
+                        </div>
+                    </div>
+
                     {/* Assignee Property (Multi-user Support) */}
                     <div className="flex items-center py-1.5 group/prop">
                         <div className="w-[120px] flex items-center gap-2 text-slate-500 text-sm">
