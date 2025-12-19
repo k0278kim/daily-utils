@@ -12,9 +12,10 @@ interface CategoryComboboxProps {
     value?: string; // category_id
     onChange: (categoryId: string | null) => void;
     className?: string;
+    variant?: 'default' | 'ghost'; // Added variant prop
 }
 
-export function CategoryCombobox({ projectId, value, onChange, className }: CategoryComboboxProps) {
+export function CategoryCombobox({ projectId, value, onChange, className, variant = 'default' }: CategoryComboboxProps) {
     const supabase = createClient();
     const [open, setOpen] = useState(false);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -262,7 +263,10 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
             <button
                 type="button"
                 onClick={() => setOpen(!open)}
-                className="w-full flex items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={variant === 'ghost'
+                    ? "flex items-center gap-2 text-sm text-slate-700 hover:bg-slate-50 px-2 -ml-2 py-0.5 rounded cursor-pointer transition-colors bg-transparent border-none focus:outline-none ring-0 w-full text-left"
+                    : "w-full flex items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                }
             >
                 <span className="truncate flex items-center gap-2">
                     {selectedCategory && (
@@ -271,9 +275,9 @@ export function CategoryCombobox({ projectId, value, onChange, className }: Cate
                             style={{ backgroundColor: selectedCategory.color || '#9ca3af' }}
                         />
                     )}
-                    {selectedCategory ? selectedCategory.name : '카테고리 선택...'}
+                    {selectedCategory ? selectedCategory.name : <span className="text-slate-400">카테고리 선택...</span>}
                 </span>
-                <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                {variant !== 'ghost' && <ChevronsUpDown className="h-4 w-4 text-gray-400" />}
             </button>
 
             {open && dropdownPosition && createPortal(

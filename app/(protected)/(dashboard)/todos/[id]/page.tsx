@@ -6,7 +6,8 @@ import { useSupabaseClient, useUser } from "@/context/SupabaseProvider";
 import { Todo } from "@/model/Todo";
 import { Profile } from "@/model/Profile";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Calendar, Save, Lock, User, Check } from "lucide-react";
+import { ArrowLeft, Calendar, Save, Lock, User, Check, Tag } from "lucide-react";
+import { CategoryCombobox } from "@/components/todos/CategoryCombobox";
 
 // Dynamically import BlockEditor to avoid SSR issues
 const Editor = dynamic(() => import("@/components/BlockEditor"), { ssr: false });
@@ -273,9 +274,26 @@ const TodoDetailPage = () => {
                                         return;
                                     }
 
-                                    setTodo({ ...todo, status: newStatus });
-                                    // Update status and touch updated_at for sync
-                                    await supabase.from("todos").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", id);
+                                    // Calculate new values
+                                    const now = new Date().toISOString();
+                                    const newCompletedAt = newStatus === 'done' ? now : undefined;
+
+                                    // 1. Optimistic Update
+                                    setTodo({
+                                        ...todo,
+                                        status: newStatus,
+                                        completed_at: newCompletedAt
+                                        // Note: updated_at is also updated on server but we don't strictly need it for UI right now
+                                    });
+
+                                    // 2. Server Update
+                                    const updateData = {
+                                        status: newStatus,
+                                        updated_at: now,
+                                        completed_at: newCompletedAt
+                                    };
+
+                                    await supabase.from("todos").update(updateData).eq("id", id);
                                 }}
                                 disabled={!canEdit}
                                 className="text-sm text-slate-700 hover:bg-slate-50 px-2 -ml-2 py-0.5 rounded cursor-pointer transition-colors bg-transparent border-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-transparent outline-none focus:outline-none ring-0 focus:ring-offset-0 appearance-none"
@@ -394,7 +412,7 @@ const TodoDetailPage = () => {
                             </div>
                             <span>마감일</span>
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 flex items-center gap-2">
                             <input
                                 type="date"
                                 value={todo.due_date ? new Date(todo.due_date).toISOString().split('T')[0] : ""}
@@ -406,6 +424,58 @@ const TodoDetailPage = () => {
                                 disabled={!canEdit}
                                 className="text-sm text-slate-700 hover:bg-slate-50 px-2 -ml-2 py-0.5 rounded cursor-pointer transition-colors bg-transparent border-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-transparent outline-none focus:outline-none ring-0 focus:ring-offset-0"
                             />
+
+                            {/* Late Chip */}
+                            {(() => {
+                                if (todo.status === 'done' && todo.completed_at && todo.due_date) {
+                                    const doneDate = new Date(todo.completed_at);
+                                    const dueDate = new Date(todo.due_date);
+                                    // Reset hours to compare dates only
+                                    doneDate.setHours(0, 0, 0, 0);
+                                    dueDate.setHours(0, 0, 0, 0);
+
+                                    const diffTime = doneDate.getTime() - dueDate.getTime();
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                    if (diffDays > 0) {
+                                        return (
+                                            <span className="text-[10px] font-medium bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">
+                                                +{diffDays}일 지연
+                                            </span>
+                                        );
+                                    }
+                                }
+                                return null;
+                            })()}
+                        </div>
+                    </div>
+
+                    {/* Category Property */}
+                    <div className="flex items-center py-1.5 group/prop">
+                        <div className="w-[120px] flex items-center gap-2 text-slate-500 text-sm">
+                            <div className="p-0.5 rounded text-slate-400">
+                                <Tag size={16} />
+                            </div>
+                            <span>카테고리</span>
+                        </div>
+                        <div className="flex-1">
+                            {todo.project_id ? (
+                                <CategoryCombobox
+                                    projectId={todo.project_id}
+                                    value={todo.category_id}
+                                    onChange={async (categoryId) => {
+                                        setTodo({ ...todo, category_id: categoryId || undefined });
+                                        // Update category and touch updated_at
+                                        await supabase.from("todos").update({
+                                            category_id: categoryId,
+                                            updated_at: new Date().toISOString()
+                                        }).eq("id", id);
+                                    }}
+                                    className="w-full max-w-[240px]"
+                                />
+                            ) : (
+                                <span className="text-sm text-slate-400 italic">프로젝트 없음</span>
+                            )}
                         </div>
                     </div>
 

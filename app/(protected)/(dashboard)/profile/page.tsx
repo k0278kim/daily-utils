@@ -120,7 +120,7 @@ const ProfilePage = () => {
           const { data: healthData } = await supabase
             .from('healthcheck')
             .select('*')
-            .eq('created_user', user.id)
+            .eq('created_user', user!.id)
             .gte('date', healthFiveDaysAgo.toISOString().split('T')[0])
             .lte('date', healthToday.toISOString().split('T')[0])
             .order('date', { ascending: true });
