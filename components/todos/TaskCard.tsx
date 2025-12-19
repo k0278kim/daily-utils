@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Todo } from '@/model/Todo';
@@ -5,6 +7,8 @@ import { CheckCircle2, Circle, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 
 interface TaskCardProps {
     todo: Todo;
@@ -14,9 +18,6 @@ interface TaskCardProps {
     currentUserId?: string;
     onDeleteTodo?: (id: string) => void;
 }
-
-import { createPortal } from 'react-dom';
-import { useRouter } from 'next/navigation';
 
 const UserAvatar = ({ assignee, index, total }: { assignee: any, index: number, total: number }) => {
     const [imageError, setImageError] = React.useState(false);
@@ -357,17 +358,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    const hasAssignees = todo.assignees && todo.assignees.length > 0;
-                                                    const isAssignedToMe = hasAssignees && currentUserId && todo.assignees.some(a => a.id === currentUserId);
-
-                                                    if (!hasAssignees || isAssignedToMe) {
-                                                        onClick();
-                                                    } else {
-                                                        alert('담당자가 지정된 할 일은 담당자만 수정할 수 있습니다.');
-                                                    }
+                                                    // Navigate to Detail Page (Document)
+                                                    router.push(`/todos/${todo.id}`);
                                                 }}
                                                 className="p-1.5 text-gray-300 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-                                                title="Edit Task"
+                                                title="Open Document"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                     <path d="M12 20h9" />

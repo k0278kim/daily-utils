@@ -1,15 +1,26 @@
-import React, { useEffect, useState, useRef } from 'react';
+"use client";
+
+import React, { useState, useRef } from 'react';
 import { Plus, Folder, FolderOpen, Pencil, Trash2, X, Check, MoreHorizontal } from 'lucide-react';
-import { createClient } from "@/utils/supabase/supabaseClient";
 import { Project } from '@/model/Project';
 
 interface ProjectSidebarProps {
     selectedProjectId: string | null;
     onSelectProject: (projectId: string | null) => void;
+    projects: Project[];
+    onCreateProject: (name: string) => Promise<void>;
+    onRenameProject: (project: Project, newName: string) => Promise<void>;
+    onDeleteProject: (projectId: string) => Promise<void>;
 }
 
-const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ selectedProjectId, onSelectProject }) => {
-    const [projects, setProjects] = useState<Project[]>([]);
+const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
+    selectedProjectId,
+    onSelectProject,
+    projects,
+    onCreateProject,
+    onRenameProject,
+    onDeleteProject
+}) => {
     const [isCreating, setIsCreating] = useState(false);
     const [newProjectName, setNewProjectName] = useState('');
 
@@ -17,45 +28,15 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ selectedProjectId, onSe
     const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
     const [editProjectName, setEditProjectName] = useState('');
 
-    const supabase = createClient();
-
-    useEffect(() => {
-        fetchProjects();
-    }, []);
-
-    const fetchProjects = async () => {
-        const { data, error } = await supabase
-            .from('projects')
-            .select('*')
-            .order('created_at', { ascending: true });
-
-        if (error) {
-            console.error('Error fetching projects:', error);
-        } else {
-            setProjects(data || []);
-        }
-    };
-
     const handleCreateProject = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newProjectName.trim()) return;
 
-        const { data, error } = await supabase
-            .from('projects')
-            .insert([{ name: newProjectName }])
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Error creating project:', error);
-            alert('프로젝트 생성 실패');
-        } else {
-            const newProjects = [...projects, data];
-            setProjects(newProjects);
-            setNewProjectName('');
-            setIsCreating(false);
-            onSelectProject(data.id);
-        }
+        await onCreateProject(newProjectName);
+        setNewProjectName('');
+        setIsCreating(false);
+        // Selection is handled by parent if needed, or we can't select effectively because we don't have the new ID immediately here unless we wait or parent selects.
+        // Actually, parent should handle selection after create if desired.
     };
 
     const handleStartRename = (project: Project, e: React.MouseEvent) => {
@@ -68,40 +49,17 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ selectedProjectId, onSe
         e.preventDefault();
         if (!editProjectName.trim() || !editingProjectId) return;
 
-        const { error } = await supabase
-            .from('projects')
-            .update({ name: editProjectName })
-            .eq('id', editingProjectId);
-
-        if (error) {
-            console.error('Error renaming project:', error);
-            alert('프로젝트 수정 실패');
-        } else {
-            setProjects(projects.map(p =>
-                p.id === editingProjectId ? { ...p, name: editProjectName } : p
-            ));
-            setEditingProjectId(null);
+        const project = projects.find(p => p.id === editingProjectId);
+        if (project) {
+            await onRenameProject(project, editProjectName);
         }
+        setEditingProjectId(null);
     };
 
     const handleDeleteProject = async (projectId: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!confirm('정말로 이 프로젝트를 삭제하시겠습니까?\n포함된 모든 할 일도 함께 삭제됩니다.')) return;
-
-        const { error } = await supabase
-            .from('projects')
-            .delete()
-            .eq('id', projectId);
-
-        if (error) {
-            console.error('Error deleting project:', error);
-            alert('프로젝트 삭제 실패');
-        } else {
-            setProjects(projects.filter(p => p.id !== projectId));
-            if (selectedProjectId === projectId) {
-                onSelectProject(null);
-            }
-        }
+        await onDeleteProject(projectId);
     };
 
     return (
