@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import {
     format,
     addMonths,
@@ -47,6 +48,7 @@ interface CalendarEvent {
 
 const CalendarPage = () => {
     const supabase = useSupabaseClient();
+    const searchParams = useSearchParams();
 
     // State
     const [currentDate, setCurrentDate] = useState(new Date()); // The day we are viewing
@@ -60,6 +62,7 @@ const CalendarPage = () => {
     const [isImporting, setIsImporting] = useState(false);
     const [availableTodos, setAvailableTodos] = useState<Todo[]>([]);
     const [isLoadingTodos, setIsLoadingTodos] = useState(false);
+    const [pendingTodoId, setPendingTodoId] = useState<string | null>(null);
 
     // Edit & Create State
     const [isEditing, setIsEditing] = useState(false);
@@ -70,6 +73,18 @@ const CalendarPage = () => {
     // Drag Interaction State
     const [dragStart, setDragStart] = useState<number | null>(null);
     const [dragCurrent, setDragCurrent] = useState<number | null>(null);
+
+    // Read date from URL params on mount
+    useEffect(() => {
+        const dateParam = searchParams.get('date');
+        if (dateParam) {
+            const parsedDate = new Date(dateParam);
+            if (!isNaN(parsedDate.getTime())) {
+                setCurrentDate(parsedDate);
+                setViewMonth(parsedDate);
+            }
+        }
+    }, [searchParams]);
 
     // Reset edit state when selection changes
     useEffect(() => {
@@ -187,8 +202,9 @@ const CalendarPage = () => {
     };
 
     const handleSaveEvent = async () => {
+        console.log('[Debug] handleSaveEvent called, isCreating:', isCreating);
         if (isCreating) {
-            handleCreateEvent();
+            await handleCreateEvent();
             return;
         }
 
@@ -212,6 +228,32 @@ const CalendarPage = () => {
                     return;
                 }
                 throw new Error(errData.error || "Failed to update");
+            }
+
+            // If we imported from a todo, save the link (or update existing)
+            if (selectedEvent.id) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    // First, delete any existing link for this event
+                    await supabase
+                        .from('calendar_todo_links')
+                        .delete()
+                        .eq('calendar_event_id', selectedEvent.id);
+
+                    // If a new todo was selected, insert the new link
+                    if (pendingTodoId) {
+                        console.log('[Debug] Saving link - User:', user?.id, 'TodoId:', pendingTodoId, 'EventId:', selectedEvent.id);
+                        const { data, error } = await supabase.from('calendar_todo_links').insert({
+                            todo_id: pendingTodoId,
+                            calendar_event_id: selectedEvent.id,
+                            user_id: user.id,
+                            event_summary: editForm.summary || selectedEvent.summary,
+                            event_start: editForm.start?.dateTime || selectedEvent.start?.dateTime
+                        }).select();
+                        console.log('[Debug] Link insert result:', data, error);
+                    }
+                }
+                setPendingTodoId(null);
             }
 
             // Refresh events
@@ -255,10 +297,31 @@ const CalendarPage = () => {
                 throw new Error(errData.error || "Failed to create");
             }
 
+            const createdEvent = await res.json();
+            console.log('[Debug] Created event:', createdEvent);
+            console.log('[Debug] pendingTodoId:', pendingTodoId);
+
+            // If we imported from a todo, save the link
+            if (pendingTodoId && createdEvent.id) {
+                const { data: { user } } = await supabase.auth.getUser();
+                console.log('[Debug] User for insert:', user?.id);
+                if (user) {
+                    const { data, error } = await supabase.from('calendar_todo_links').insert({
+                        todo_id: pendingTodoId,
+                        calendar_event_id: createdEvent.id,
+                        user_id: user.id,
+                        event_summary: editForm.summary,
+                        event_start: editForm.start?.dateTime
+                    }).select();
+                    console.log('[Debug] Insert result:', data, error);
+                }
+            }
+
             setRefreshKey(prev => prev + 1);
             setIsCreating(false);
             setEditForm({});
             setSelectedEvent(null);
+            setPendingTodoId(null);
         } catch (e: any) {
             console.error(e);
             alert(e.message || "일정 생성에 실패했습니다.");
@@ -283,9 +346,16 @@ const CalendarPage = () => {
                 throw new Error(errData.error || "Failed to delete");
             }
 
+            // Also delete any associated todo links
+            await supabase
+                .from('calendar_todo_links')
+                .delete()
+                .eq('calendar_event_id', selectedEvent.id);
+
             setRefreshKey(prev => prev + 1);
             setSelectedEvent(null);
             setIsEditing(false);
+            setPendingTodoId(null);
         } catch (e: any) {
             console.error(e);
             alert(e.message || "일정 삭제에 실패했습니다.");
@@ -799,6 +869,7 @@ const CalendarPage = () => {
                                                                     summary: todo.title,
                                                                     description: (todo.description || todo.title) + `\n\n[할 일 문서](/todos/${todo.id})`
                                                                 }));
+                                                                setPendingTodoId(todo.id);
                                                                 setIsImporting(false);
                                                             }}
                                                             className="w-full text-left p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all group"

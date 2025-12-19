@@ -6,7 +6,7 @@ import { useSupabaseClient, useUser } from "@/context/SupabaseProvider";
 import { Todo } from "@/model/Todo";
 import { Profile } from "@/model/Profile";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Calendar, Save, Lock, User, Check, Tag, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Save, Lock, User, Check, Tag, FileText, Loader2, CalendarDays } from "lucide-react";
 import { CategoryCombobox } from "@/components/todos/CategoryCombobox";
 
 // Dynamically import BlockEditor to avoid SSR issues
@@ -29,6 +29,8 @@ const TodoDetailPage = () => {
     const [exporting, setExporting] = useState(false);
     // Add a key to force Editor re-mount when server content explicitly changes
     const [editorVersion, setEditorVersion] = useState(0);
+    const [linkedEvents, setLinkedEvents] = useState<{ id: string; summary: string; start: string }[]>([]);
+    const [loadingEvents, setLoadingEvents] = useState(false);
 
     // Reusable Fetch Function
     // Wrapped in useCallback to be safe for useEffect dependencies
@@ -145,6 +147,35 @@ const TodoDetailPage = () => {
             supabase.removeChannel(channel);
         };
     }, [id, supabase, fetchData]);
+
+    // Fetch linked calendar events from Supabase
+    useEffect(() => {
+        if (!id) return;
+        const fetchLinkedEvents = async () => {
+            setLoadingEvents(true);
+            try {
+                const { data, error } = await supabase
+                    .from('calendar_todo_links')
+                    .select('*')
+                    .eq('todo_id', id)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('Failed to fetch linked events:', error);
+                } else if (data) {
+                    setLinkedEvents(data.map((link: any) => ({
+                        id: link.calendar_event_id,
+                        summary: link.event_summary || '(제목 없음)',
+                        start: link.event_start || ''
+                    })));
+                }
+            } catch (e) {
+                console.error('Failed to fetch linked events:', e);
+            }
+            setLoadingEvents(false);
+        };
+        fetchLinkedEvents();
+    }, [id, supabase]);
 
     // Permission Logic
     const hasAssignees = todo?.assignees && todo.assignees.length > 0;
@@ -522,6 +553,45 @@ const TodoDetailPage = () => {
                                 }
                                 return null;
                             })()}
+                        </div>
+                    </div>
+
+                    {/* Linked Calendar Events Property */}
+                    <div className="flex items-start py-1.5 group/prop">
+                        <div className="w-[120px] flex items-center gap-2 text-slate-500 text-sm">
+                            <div className="p-0.5 rounded text-slate-400">
+                                <CalendarDays size={16} />
+                            </div>
+                            <span>일정</span>
+                        </div>
+                        <div className="flex-1">
+                            {loadingEvents ? (
+                                <span className="text-xs text-slate-400 flex items-center gap-1">
+                                    <Loader2 size={12} className="animate-spin" /> 불러오는 중...
+                                </span>
+                            ) : linkedEvents.length > 0 ? (
+                                <div className="flex flex-col gap-1">
+                                    {linkedEvents.map(ev => {
+                                        // Extract date for calendar navigation
+                                        const eventDate = ev.start ? new Date(ev.start).toISOString().split('T')[0] : '';
+                                        return (
+                                            <a
+                                                key={ev.id}
+                                                href={eventDate ? `/calendar?date=${eventDate}` : '/calendar'}
+                                                className="flex items-center gap-2 px-2 py-1 -ml-2 rounded hover:bg-blue-50 transition-colors text-sm text-blue-600 group/event"
+                                            >
+                                                <CalendarDays size={14} className="text-blue-400 shrink-0" />
+                                                <span className="font-medium truncate">{ev.summary || '(제목 없음)'}</span>
+                                                <span className="text-xs text-slate-400 shrink-0">
+                                                    {ev.start ? new Date(ev.start).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : ''}
+                                                </span>
+                                            </a>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <span className="text-sm text-slate-400">연결된 일정 없음</span>
+                            )}
                         </div>
                     </div>
 
