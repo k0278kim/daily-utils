@@ -6,7 +6,7 @@ import { useSupabaseClient, useUser } from "@/context/SupabaseProvider";
 import { Todo } from "@/model/Todo";
 import { Profile } from "@/model/Profile";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Calendar, Save, Lock, User } from "lucide-react";
+import { ArrowLeft, Calendar, Save, Lock, User, Check } from "lucide-react";
 
 
 // Dynamically import BlockEditor to avoid SSR issues
@@ -135,8 +135,7 @@ const TodoDetailPage = () => {
 
     if (!todo) return null;
 
-    // Current Assignee ID (assuming single assignee for the dropdown)
-    const currentAssigneeId = todo.assignees && todo.assignees.length > 0 ? todo.assignees[0].id : "";
+
 
     return (
         <div className="w-full h-full bg-[#F8FAFC] overflow-y-auto">
@@ -188,7 +187,7 @@ const TodoDetailPage = () => {
                 {/* Properties Section (Notion Style) */}
                 <div className="flex flex-col gap-1 mb-8">
 
-                    {/* Assignee Property (Replaces Status) */}
+                    {/* Assignee Property (Multi-user Support) */}
                     <div className="flex items-center py-1.5 group/prop">
                         <div className="w-[120px] flex items-center gap-2 text-slate-500 text-sm">
                             <div className="p-0.5 rounded text-slate-400">
@@ -201,27 +200,23 @@ const TodoDetailPage = () => {
                                 <button
                                     onClick={() => setAssigneeDropdownOpen(!assigneeDropdownOpen)}
                                     disabled={!canEdit}
-                                    className="flex items-center gap-2 px-2 py-1 -ml-2 rounded hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-70 text-sm text-slate-700"
+                                    className="flex items-center gap-2 px-2 py-1 -ml-2 rounded hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-70 text-sm text-slate-700 min-h-[28px]"
                                 >
-                                    {currentAssigneeId ? (
-                                        (() => {
-                                            const profile = profiles.find(p => p.id === currentAssigneeId);
-                                            if (!profile) return <span>Unknown User</span>;
-                                            return (
-                                                <>
-                                                    <div className="w-5 h-5 rounded-full overflow-hidden bg-slate-200 flex-shrink-0">
-                                                        {profile.avatar_url ? (
-                                                            <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500">
-                                                                {profile.name?.[0]?.toUpperCase() || "?"}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <span>{profile.nickname || profile.name}</span>
-                                                </>
-                                            );
-                                        })()
+                                    {todo.assignees && todo.assignees.length > 0 ? (
+                                        <div className="flex items-center -space-x-2 overflow-hidden">
+                                            {todo.assignees.map((assignee) => (
+                                                <div key={assignee.id} className="relative w-6 h-6 ring-2 ring-white rounded-full bg-slate-200 overflow-hidden" title={assignee.nickname || assignee.name}>
+                                                    {assignee.avatar_url ? (
+                                                        <img src={assignee.avatar_url} alt={assignee.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-slate-500">
+                                                            {assignee.name?.[0]?.toUpperCase() || "?"}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {/* Optional: Add +N if too many, but for now simple list is fine */}
+                                        </div>
                                     ) : (
                                         <span className="text-slate-400">담당자 없음</span>
                                     )}
@@ -234,49 +229,51 @@ const TodoDetailPage = () => {
                                             onClick={() => setAssigneeDropdownOpen(false)}
                                         />
                                         <div className="absolute top-full left-0 mt-1 w-[240px] bg-white rounded-lg shadow-xl border border-slate-100 py-1 z-20 max-h-[300px] overflow-y-auto">
-                                            <button
-                                                onClick={async () => {
-                                                    setTodo({ ...todo, assignees: [] });
-                                                    await supabase.from("todo_assignees").delete().eq("todo_id", id);
-                                                    setAssigneeDropdownOpen(false);
-                                                }}
-                                                className="w-full text-left px-3 py-2 text-sm text-slate-500 hover:bg-slate-50 transition-colors"
-                                            >
-                                                담당자 없음
-                                            </button>
-
-                                            {/* Only show Myself as an option */}
+                                            {/* Only show Myself as a toggle option */}
                                             {(() => {
                                                 const myProfile = profiles.find(p => p.id === user?.id);
                                                 if (!myProfile) return null;
+
+                                                const isAssigned = todo.assignees?.some(a => a.id === myProfile.id);
 
                                                 return (
                                                     <button
                                                         key={myProfile.id}
                                                         onClick={async () => {
-                                                            // Optimistic update
-                                                            setTodo({ ...todo, assignees: [myProfile] });
+                                                            let newAssignees = todo.assignees || [];
+                                                            if (isAssigned) {
+                                                                // Unassign Me
+                                                                newAssignees = newAssignees.filter(a => a.id !== myProfile.id);
+                                                                setTodo({ ...todo, assignees: newAssignees });
+                                                                await supabase.from("todo_assignees").delete().match({ todo_id: id, user_id: myProfile.id });
+                                                            } else {
+                                                                // Assign Me
+                                                                newAssignees = [...newAssignees, myProfile];
+                                                                setTodo({ ...todo, assignees: newAssignees });
+                                                                await supabase.from("todo_assignees").insert({ todo_id: id, user_id: myProfile.id });
+                                                            }
+                                                            // Keep dropdown open or close? Usually toggle stays for checkmark confirmation, but simple interaction might be closing.
+                                                            // Let's close it for now as it's the only option.
                                                             setAssigneeDropdownOpen(false);
-
-                                                            // DB Update
-                                                            await supabase.from("todo_assignees").delete().eq("todo_id", id);
-                                                            await supabase.from("todo_assignees").insert({ todo_id: id, user_id: myProfile.id });
                                                         }}
-                                                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors flex items-center gap-3"
+                                                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors flex items-center justify-between"
                                                     >
-                                                        <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-100">
-                                                            {myProfile.avatar_url ? (
-                                                                <img src={myProfile.avatar_url} alt={myProfile.name} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-400">
-                                                                    {myProfile.name?.[0]?.toUpperCase() || "?"}
-                                                                </div>
-                                                            )}
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-100">
+                                                                {myProfile.avatar_url ? (
+                                                                    <img src={myProfile.avatar_url} alt={myProfile.name} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-400">
+                                                                        {myProfile.name?.[0]?.toUpperCase() || "?"}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-col min-w-0">
+                                                                <span className="font-medium text-slate-900 truncate">{myProfile.nickname || myProfile.name} (나)</span>
+                                                                <span className="text-xs text-slate-400 truncate">{myProfile.name}</span>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex flex-col min-w-0">
-                                                            <span className="font-medium text-slate-900 truncate">{myProfile.nickname || myProfile.name} (나)</span>
-                                                            <span className="text-xs text-slate-400 truncate">{myProfile.name}</span>
-                                                        </div>
+                                                        {isAssigned && <Check size={16} className="text-blue-500" />}
                                                     </button>
                                                 );
                                             })()}
