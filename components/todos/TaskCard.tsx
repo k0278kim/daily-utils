@@ -3,7 +3,7 @@
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Todo } from '@/model/Todo';
-import { CheckCircle2, Circle, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, Trash2, Calendar, Clock, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -47,8 +47,6 @@ const UserAvatar = ({ assignee, index, total }: { assignee: any, index: number, 
 
     const Tooltip = () => {
         if (!showTooltip) return null;
-
-        // Ensure we're in the browser
         if (typeof window === 'undefined') return null;
 
         return createPortal(
@@ -63,8 +61,6 @@ const UserAvatar = ({ assignee, index, total }: { assignee: any, index: number, 
                 <div className="bg-gray-900 text-white text-xs rounded-lg py-1.5 px-3 shadow-xl whitespace-nowrap min-w-[max-content] flex flex-col items-center">
                     <div className="font-semibold">{assignee.nickname || 'Unknown'}({assignee.name || "Unknown"})</div>
                     {assignee.email && <div className="text-[10px] text-gray-400">{assignee.email}</div>}
-
-                    {/* Arrow (Visual only) */}
                     <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-gray-900"></div>
                 </div>
             </div>,
@@ -144,13 +140,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
         return () => clearTimeout(timer);
     }, [todo.description]);
 
-    // Debug logging
-    console.log(`TaskCard Render: ${todo.id}`, {
-        hasOnDelete: !!onDeleteTodo,
-        currentUserId,
-        assignees: todo.assignees?.length
-    });
-
     return (
         <Draggable draggableId={todo.id} index={index}>
             {(provided, snapshot) => {
@@ -168,6 +157,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                         (match, p1) => `${parseFloat(p1) * 0.15}px` // 0.1 -> 15% movement (Very heavy)
                     );
                 }
+
+                const hasDates = !!(todo.due_date || (todo.status === 'done' && todo.completed_at));
+                const hasAssignees = !!(todo.assignees && todo.assignees.length > 0);
+                const showFooter = hasDates || hasAssignees;
 
                 return (
                     <div
@@ -195,7 +188,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                             transition-colors duration-200 ease-in-out
                             hover:shadow-md hover:border-gray-100
                             ${snapshot.isDragging ? 'rotate-2 scale-[1.02] shadow-xl ring-1 ring-black/5 !border-transparent' : ''}
-                            ${todo.status === 'done' ? 'opacity-75 bg-gray-50/50 bg-gradient-to-r from-blue-50 to-gray-100' : 'bg-white'}
+                            ${todo.status === 'done' ? 'opacity-75 bg-gradient-to-r from-blue-50 to-gray-100' : 'bg-white'}
                             ${isOverflowing ? 'cursor-pointer' : 'cursor-default'}
                         `}
                         >
@@ -294,73 +287,28 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                         </motion.div >
                                     )}
 
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        {/* Status Chip */}
-                                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium border
-                                            ${todo.status === 'done' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                todo.status === 'in-progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                                    'bg-gray-50 text-gray-600 border-gray-200'}`}
+                                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                                        {/* Status Chip (Pastel Pill) */}
+                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide border
+                                            ${todo.status === 'done' ? 'bg-white text-blue-600 border-blue-100' :
+                                                todo.status === 'in-progress' ? 'bg-blue-100 text-blue-700 border-transparent' :
+                                                    'bg-gray-100 text-gray-600 border-transparent'}`}
                                         >
-                                            {todo.status === 'done' ? '완료' :
-                                                todo.status === 'in-progress' ? '진행 중' : '할 일'}
+                                            {todo.status === 'done' ? 'Completed' :
+                                                todo.status === 'in-progress' ? 'In Progress' : 'To Do'}
                                         </span>
 
+                                        {/* Category Chip (Soft Color Pill) */}
                                         {todo.categories && (
                                             <span
-                                                className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium border"
+                                                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide"
                                                 style={{
-                                                    backgroundColor: todo.categories.color ? `${todo.categories.color}15` : '#f3f4f6',
+                                                    backgroundColor: todo.categories.color ? `${todo.categories.color}20` : '#f3f4f6',
                                                     color: todo.categories.color || '#4b5563',
-                                                    borderColor: todo.categories.color ? `${todo.categories.color}30` : '#e5e7eb'
                                                 }}
                                             >
                                                 {todo.categories.name}
                                             </span>
-                                        )}
-
-                                        {todo.status === 'done' && todo.completed_at ? (
-                                            <>
-                                                <span className="inline-flex items-center text-[10px] text-gray-400 font-medium">
-                                                    {new Date(todo.completed_at).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
-                                                </span>
-
-                                                {/* Delay Chip Logic */}
-                                                {(() => {
-                                                    if (todo.due_date) {
-                                                        const doneDate = new Date(todo.completed_at!);
-                                                        const dueDate = new Date(todo.due_date);
-                                                        doneDate.setHours(0, 0, 0, 0);
-                                                        dueDate.setHours(0, 0, 0, 0);
-
-                                                        const diffTime = doneDate.getTime() - dueDate.getTime();
-                                                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                                                        if (diffDays > 0) {
-                                                            return (
-                                                                <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-600">
-                                                                    +{diffDays}일
-                                                                </span>
-                                                            );
-                                                        } else {
-                                                            return (
-                                                                <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-600">
-                                                                    {diffDays === 0 ? "제때" : `${Math.abs(diffDays)}일 빠름`}
-                                                                </span>
-                                                            );
-                                                        }
-                                                    }
-                                                    return null;
-                                                })()}
-                                            </>
-                                        ) : (
-                                            todo.due_date && (
-                                                <span className={`
-                                                inline-flex items-center text-[10px] font-medium
-                                                ${new Date(todo.due_date) < new Date() && todo.status !== 'done' ? 'text-red-500' : 'text-gray-400'}
-                                            `}>
-                                                    {new Date(todo.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                </span>
-                                            )
                                         )}
                                     </div>
                                 </div >
@@ -409,19 +357,77 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                 </div >
                             </div >
 
+                            {/* Footer: Date (Left) & Assignees (Right) */}
                             {
-                                (todo.assignees && todo.assignees.length > 0) && <div className="mt-3 flex items-end justify-between border-t border-gray-100 pt-3">
-                                    <div className="flex -space-x-2 py-1 pl-1 isolate">
-                                        {todo.assignees && todo.assignees.map((assignee, i) => (
-                                            <UserAvatar
-                                                key={assignee.id || i}
-                                                assignee={assignee}
-                                                index={i}
-                                                total={todo.assignees?.length || 0}
-                                            />
-                                        ))}
+                                showFooter && (
+                                    <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+                                        {/* Left: Date / Delay Info (Plain Text) */}
+                                        <div className="flex items-center gap-2">
+                                            {todo.status === 'done' && todo.completed_at ? (
+                                                <>
+                                                    {/* Completion Date */}
+                                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-gray-400">
+                                                        {new Date(todo.completed_at).toLocaleDateString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric' })}
+                                                    </span>
+
+                                                    {/* Delay Info */}
+                                                    {(() => {
+                                                        if (todo.due_date) {
+                                                            const doneDate = new Date(todo.completed_at!);
+                                                            const dueDate = new Date(todo.due_date);
+                                                            doneDate.setHours(0, 0, 0, 0);
+                                                            dueDate.setHours(0, 0, 0, 0);
+
+                                                            const diffTime = doneDate.getTime() - dueDate.getTime();
+                                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                                            if (diffDays > 0) {
+                                                                return (
+                                                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-500">
+                                                                        {diffDays}일 지연 완료
+                                                                    </span>
+                                                                );
+                                                            } else {
+                                                                return (
+                                                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-500">
+                                                                        {diffDays === 0 ? "On Time" : `${Math.abs(diffDays)}일 일찍 완료`}
+                                                                    </span>
+                                                                );
+                                                            }
+                                                        }
+                                                        return null;
+                                                    })()}
+                                                </>
+                                            ) : (
+                                                todo.due_date && (
+                                                    <span className={`inline-flex items-center gap-1 text-[10px] font-medium
+                                                        ${new Date(todo.due_date) < new Date() && todo.status !== 'done'
+                                                            ? 'text-red-500' // Overdue
+                                                            : 'text-gray-400' // Normal Due Date
+                                                        }
+                                                    `}>
+                                                        <Calendar size={12} />
+                                                        {new Date(todo.due_date).toLocaleDateString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric' })}
+                                                    </span>
+                                                )
+                                            )}
+                                        </div>
+
+                                        {/* Right: Assignees */}
+                                        {hasAssignees && (
+                                            <div className="flex -space-x-2 py-1 pl-1 isolate">
+                                                {todo.assignees && todo.assignees.map((assignee, i) => (
+                                                    <UserAvatar
+                                                        key={assignee.id || i}
+                                                        assignee={assignee}
+                                                        index={i}
+                                                        total={todo.assignees?.length || 0}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
+                                )
                             }
                         </motion.div >
                     </div >

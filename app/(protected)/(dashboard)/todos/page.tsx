@@ -29,10 +29,10 @@ export default function TodosPage() {
         }
     };
 
-    const handleCreateProject = async (name: string) => {
+    const handleCreateProject = async (name: string, icon?: string) => {
         const { data, error } = await supabase
             .from('projects')
-            .insert([{ name }])
+            .insert([{ name, icon }])
             .select()
             .single();
 
@@ -44,15 +44,15 @@ export default function TodosPage() {
         }
     };
 
-    const handleRenameProject = async (project: Project, newName: string) => {
+    const handleRenameProject = async (project: Project, newName: string, newIcon?: string) => {
         const { error } = await supabase
             .from('projects')
-            .update({ name: newName })
+            .update({ name: newName, icon: newIcon })
             .eq('id', project.id);
 
         if (!error) {
             setProjects(projects.map(p =>
-                p.id === project.id ? { ...p, name: newName } : p
+                p.id === project.id ? { ...p, name: newName, icon: newIcon } : p
             ));
         }
     };
