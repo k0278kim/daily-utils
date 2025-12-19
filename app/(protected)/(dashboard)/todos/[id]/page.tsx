@@ -6,7 +6,7 @@ import { useSupabaseClient, useUser } from "@/context/SupabaseProvider";
 import { Todo } from "@/model/Todo";
 import { Profile } from "@/model/Profile";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Calendar, Save, Lock, User, Check, Tag } from "lucide-react";
+import { ArrowLeft, Calendar, Save, Lock, User, Check, Tag, FileText, Loader2 } from "lucide-react";
 import { CategoryCombobox } from "@/components/todos/CategoryCombobox";
 
 // Dynamically import BlockEditor to avoid SSR issues
@@ -26,6 +26,7 @@ const TodoDetailPage = () => {
     const [saving, setSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [assigneeDropdownOpen, setAssigneeDropdownOpen] = useState(false);
+    const [exporting, setExporting] = useState(false);
     // Add a key to force Editor re-mount when server content explicitly changes
     const [editorVersion, setEditorVersion] = useState(0);
 
@@ -226,6 +227,74 @@ const TodoDetailPage = () => {
                     </button>
 
                     <div className="flex items-center gap-3 text-xs font-medium text-slate-300">
+                        {/* Google Drive Export Button */}
+                        <button
+                            onClick={async () => {
+                                if (saving || exporting) return;
+                                if (!confirm("현재 내용을 구글 문서로 내보내시겠습니까?")) return;
+
+                                setExporting(true);
+                                try {
+                                    // Construct Filename: YYYY-MM-DD_Category_Title
+                                    const dateStr = new Date().toISOString().split('T')[0];
+                                    const categoryName = todo.categories?.name || "기타";
+                                    const fileName = `${dateStr}_${categoryName}_${todo.title}`;
+
+                                    const res = await fetch("/api/drive/create-doc", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                            title: fileName,
+                                            content: content // Use the markdown content
+                                        }),
+                                    });
+
+                                    if (res.ok) {
+                                        const data = await res.json();
+                                        if (confirm("구글 문서가 생성되었습니다! 지금 확인하시겠습니까?")) {
+                                            window.open(data.webViewLink, "_blank");
+                                        }
+                                    } else {
+                                        const err = await res.json();
+                                        if (res.status === 401 || err.error?.includes("Google")) {
+                                            if (confirm("Google Drive 연동이 필요합니다. 지금 연동하시겠습니까?")) {
+                                                await supabase.auth.signInWithOAuth({
+                                                    provider: 'google',
+                                                    options: {
+                                                        redirectTo: window.location.href,
+                                                        queryParams: {
+                                                            access_type: 'offline',
+                                                            prompt: 'consent'
+                                                        },
+                                                        scopes: 'https://www.googleapis.com/auth/drive.file'
+                                                    }
+                                                });
+                                            }
+                                        } else {
+                                            alert(`오류가 발생했습니다: ${err.error}`);
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error(e);
+                                    alert("내보내기 중 문제가 발생했습니다.");
+                                } finally {
+                                    setExporting(false);
+                                }
+                            }}
+                            disabled={exporting}
+                            className="flex items-center gap-1 hover:text-slate-600 transition-colors disabled:opacity-50"
+                            title="Save to Google Drive"
+                        >
+                            {exporting ? (
+                                <Loader2 className="animate-spin" size={14} />
+                            ) : (
+                                <FileText size={14} />
+                            )}
+                            <span className="hidden sm:inline">Docs 저장</span>
+                        </button>
+
+                        <div className="w-[1px] h-3 bg-slate-200 mx-1"></div>
+
                         {!canEdit && (
                             <span className="text-slate-400 flex items-center gap-1">
                                 <Lock size={12} /> 읽기 전용
