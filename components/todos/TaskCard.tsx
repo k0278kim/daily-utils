@@ -143,7 +143,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
         }, 300);
         return () => clearTimeout(timer);
     }, [todo.description]);
-    // ... (skipping context)
 
     // Debug logging
     console.log(`TaskCard Render: ${todo.id}`, {
@@ -183,10 +182,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                         }}
                     >
                         <motion.div
-                            // layoutId={snapshot.isDragging ? undefined : todo.id}
-                            // layout={!snapshot.isDragging}
-                            // layoutId={snapshot.isDragging ? undefined : todo.id}
-                            // layout={!snapshot.isDragging}
                             onClick={() => {
                                 // Navigate to Detail Page
                                 router.push(`/todos/${todo.id}`);
@@ -300,6 +295,16 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                     )}
 
                                     <div className="flex flex-wrap items-center gap-2">
+                                        {/* Status Chip */}
+                                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium border
+                                            ${todo.status === 'done' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                todo.status === 'in-progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                    'bg-gray-50 text-gray-600 border-gray-200'}`}
+                                        >
+                                            {todo.status === 'done' ? '완료' :
+                                                todo.status === 'in-progress' ? '진행 중' : '할 일'}
+                                        </span>
+
                                         {todo.categories && (
                                             <span
                                                 className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium border"
@@ -314,9 +319,39 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                                         )}
 
                                         {todo.status === 'done' && todo.completed_at ? (
-                                            <span className="inline-flex items-center text-[10px] font-medium text-gray-400">
-                                                완료: {new Date(todo.completed_at).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })} {new Date(todo.completed_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
+                                            <>
+                                                <span className="inline-flex items-center text-[10px] text-gray-400 font-medium">
+                                                    {new Date(todo.completed_at).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
+                                                </span>
+
+                                                {/* Delay Chip Logic */}
+                                                {(() => {
+                                                    if (todo.due_date) {
+                                                        const doneDate = new Date(todo.completed_at!);
+                                                        const dueDate = new Date(todo.due_date);
+                                                        doneDate.setHours(0, 0, 0, 0);
+                                                        dueDate.setHours(0, 0, 0, 0);
+
+                                                        const diffTime = doneDate.getTime() - dueDate.getTime();
+                                                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                                        if (diffDays > 0) {
+                                                            return (
+                                                                <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-600">
+                                                                    +{diffDays}일
+                                                                </span>
+                                                            );
+                                                        } else {
+                                                            return (
+                                                                <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-600">
+                                                                    {diffDays === 0 ? "제때" : `${Math.abs(diffDays)}일 빠름`}
+                                                                </span>
+                                                            );
+                                                        }
+                                                    }
+                                                    return null;
+                                                })()}
+                                            </>
                                         ) : (
                                             todo.due_date && (
                                                 <span className={`
