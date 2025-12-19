@@ -323,7 +323,7 @@ const TodoDetailPage = () => {
                             <div className="relative">
                                 <button
                                     onClick={() => setAssigneeDropdownOpen(!assigneeDropdownOpen)}
-                                    disabled={!canEdit}
+                                    disabled={!canEdit && todo.status === 'done'}
                                     className="flex items-center gap-2 px-2 py-1 -ml-2 rounded hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-70 text-sm text-slate-700 min-h-[28px]"
                                 >
                                     {todo.assignees && todo.assignees.length > 0 ? (

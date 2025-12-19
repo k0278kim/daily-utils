@@ -34,18 +34,31 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
             fetchTodos();
 
             const channel = supabase
-                .channel('realtime todos')
+                .channel(`board:${projectId}`)
                 .on(
                     'postgres_changes',
                     {
                         event: '*',
                         schema: 'public',
                         table: 'todos',
-                        // Filter removed to ensure UPDATE events are received even if project_id is not in user payload (Replica Identity issue)
                     },
                     (payload) => {
-                        console.log('Realtime change (todos):', payload);
-                        handleRealtimeChange(payload);
+                        // Check if the change is relevant to this project
+                        const newProject = payload.new as Todo;
+                        const oldProject = payload.old as Todo;
+
+                        // If it's a DELETE, we might not know the project ID unless we fetch or have replica identity.
+                        // But for safety, we can just refetch.
+                        // Optimization: Check IDs if possible.
+                        if (
+                            (newProject && newProject.project_id === projectId) ||
+                            // For delete/updates where we might validly guess it was here?
+                            // Simpler: Just refresh. It's safe.
+                            true
+                        ) {
+                            console.log('Realtime change (todos):', payload);
+                            fetchTodos();
+                        }
                     }
                 )
                 .on(
@@ -60,13 +73,15 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                         handleAssigneeChange(payload);
                     }
                 )
-                .subscribe();
+                .subscribe((status) => {
+                    console.log(`Realtime subscription status for project ${projectId}:`, status);
+                });
 
             return () => {
                 supabase.removeChannel(channel);
             };
         }
-    }, [projectId]); // Add projectId to dependency array
+    }, [projectId]);
 
     const fetchTodoById = async (id: string) => {
         const { data, error } = await supabase
@@ -431,34 +446,10 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                     }
                 }
             } else if (destination.droppableId === 'backlog') {
-                if (user) {
-                    targetAssignees = targetAssignees.filter(a => a.id !== user.id);
-                    // Determine status based on remaining assignees
-                    if (targetAssignees.length === 0) {
-                        targetStatus = 'backlog';
-                    } else {
-                        // Stays in-progress (shared task) or backlog if explicitly moved there?
-                        // If moved to backlog, it implies "Backlog" status usually.
-                        // But if others are working on it, it shouldn't be 'backlog'.
-                        // However, user dragged it to "Backlog" UI.
-                        // If we set 'backlog', it might disrupt others.
-                        // But for now, let's reset to 'backlog' if no one else is assigned.
-                        // If others are assigned, it stays 'in-progress' but unassigned from me.
-                        // This matches "Backlog" column filter logic: (in-progress && !assignedToMe).
-                    }
-                    // Explicitly set to backlog if moving to backlog column and logic permits?
-                    // Actually, if I move to backlog, I want it to be 'backlog' status usually.
-                    // But if Assignee exists, 'backlog' status might be weird.
-                    // Let's stick to: Unassign Me. If no assignees -> Backlog.
-                    if (targetAssignees.length === 0) {
-                        targetStatus = 'backlog';
-                    } else {
-                        // It stays in-progress but I am removed.
-                        // It will appear in Backlog column because filter catches it.
-                        targetStatus = 'in-progress';
-                    }
-                    targetCompletedAt = undefined; // Unset completion
-                }
+                // Moving to backlog just changes status to 'backlog'.
+                // Assignees are PRESERVED (per user request).
+                targetStatus = 'backlog';
+                targetCompletedAt = undefined; // Unset completion
             }
         }
 
@@ -497,19 +488,8 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                         }
                     }
                 }
-            } else if (destination.droppableId === 'backlog') {
-                if (user) {
-                    const { error: unassignError } = await supabase
-                        .from('todo_assignees')
-                        .delete()
-                        .eq('todo_id', draggableId)
-                        .eq('user_id', user.id);
-
-                    if (unassignError) {
-                        console.error('Error unassigning user:', unassignError);
-                    }
-                }
             }
+            // Removed 'backlog' unassignment block here.
 
             const updates: any = {
                 status: targetStatus,
