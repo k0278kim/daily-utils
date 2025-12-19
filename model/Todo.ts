@@ -5,6 +5,7 @@ export interface Todo {
     id: string;
     title: string;
     description?: string;
+    content?: string;
     status: 'backlog' | 'in-progress' | 'done';
     assignees: Profile[];
     created_at?: string;

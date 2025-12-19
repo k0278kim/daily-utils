@@ -25,7 +25,7 @@ export function MyTodosWidget({ todos, loading, projectId }: MyTodosWidgetProps)
                     </span>
                 </div>
                 {projectId && (
-                    <Link href={`/project/${projectId}/todo`} className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
+                    <Link href={`/todos`} className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
                         <ArrowRight size={16} />
                     </Link>
                 )}

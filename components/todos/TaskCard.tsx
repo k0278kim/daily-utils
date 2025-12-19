@@ -16,6 +16,7 @@ interface TaskCardProps {
 }
 
 import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 
 const UserAvatar = ({ assignee, index, total }: { assignee: any, index: number, total: number }) => {
     const [imageError, setImageError] = React.useState(false);
@@ -105,6 +106,7 @@ const UserAvatar = ({ assignee, index, total }: { assignee: any, index: number, 
 };
 
 const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatus, currentUserId, onDeleteTodo }) => {
+    const router = useRouter();
 
     const canComplete = React.useMemo(() => {
         if (!currentUserId) return false;
@@ -182,10 +184,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
                         <motion.div
                             // layoutId={snapshot.isDragging ? undefined : todo.id}
                             // layout={!snapshot.isDragging}
+                            // layoutId={snapshot.isDragging ? undefined : todo.id}
+                            // layout={!snapshot.isDragging}
                             onClick={() => {
-                                if (isOverflowing) {
-                                    setIsExpanded(!isExpanded);
-                                }
+                                // Navigate to Detail Page
+                                router.push(`/todos/${todo.id}`);
                             }}
                             initial={{ opacity: 0, scale: 0.95, y: -10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
