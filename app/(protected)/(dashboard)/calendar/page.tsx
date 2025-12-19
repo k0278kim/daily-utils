@@ -673,91 +673,80 @@ const CalendarPage = () => {
             </div>
 
             {/* Right Sidebar: Persistent Event Details / Edit */}
-            <div className={`w-[400px] bg-white border-l border-slate-200 shadow-xl flex flex-col shrink-0 z-40 transition-all ${(selectedEvent || isCreating) ? '' : 'bg-slate-50/50'}`}>
+            <div className={`w-[380px] bg-white border-l border-slate-100 flex flex-col shrink-0 z-40 transition-all ${(selectedEvent || isCreating) ? '' : 'bg-slate-50/30'}`}>
                 {(selectedEvent || isCreating) ? (
                     <>
-                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                            <h2 className="font-semibold text-lg text-slate-800">
-                                {isCreating ? '새 일정 만들기' : (isEditing ? '일정 수정' : '일정 상세')}
-                            </h2>
-                            <button onClick={() => { setSelectedEvent(null); setIsEditing(false); setIsCreating(false); }} className="p-1 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
-                                <span className="sr-only">닫기</span>
-                                <ChevronRight className="rotate-0" size={20} />
+                        {/* Minimal Header */}
+                        <div className="h-12 px-4 flex items-center justify-between border-b border-slate-50">
+                            <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                                {isCreating ? '새 일정' : (isEditing ? '수정' : '상세')}
+                            </span>
+                            <button
+                                onClick={() => { setSelectedEvent(null); setIsEditing(false); setIsCreating(false); setIsImporting(false); }}
+                                className="w-7 h-7 flex items-center justify-center hover:bg-slate-100 rounded transition-colors text-slate-400 hover:text-slate-600"
+                            >
+                                <X size={16} />
                             </button>
                         </div>
 
-                        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                        <div className="flex-1 overflow-y-auto">
                             {(isEditing || isCreating) ? (
-                                // Edit / Create Form
-                                <div className="space-y-6">
+                                // Edit / Create Form - Notion Style
+                                <div className="p-5 space-y-5">
                                     {/* Title Input - Large & Clean */}
-                                    <div className="pt-2">
-                                        <input
-                                            type="text"
-                                            value={editForm.summary || ""}
-                                            onChange={e => setEditForm({ ...editForm, summary: e.target.value })}
-                                            className="w-full text-3xl font-bold text-slate-900 border-none px-0 py-2 focus:ring-0 placeholder:text-slate-300 bg-transparent"
-                                            placeholder="제목 없음"
-                                            autoFocus
-                                        />
-                                    </div>
+                                    <input
+                                        type="text"
+                                        value={editForm.summary || ""}
+                                        onChange={e => setEditForm({ ...editForm, summary: e.target.value })}
+                                        className="w-full text-2xl font-bold text-slate-800 border-none px-0 py-1 focus:ring-0 placeholder:text-slate-300 bg-transparent outline-none"
+                                        placeholder="제목"
+                                        autoFocus
+                                    />
 
-                                    {/* Properties Group */}
-                                    <div className="space-y-4">
-                                        {/* Date/Time Row */}
-                                        <div className="flex items-start gap-3 group">
-                                            <div className="flex items-center gap-2 w-20 pt-2 text-slate-500">
-                                                <Clock size={16} />
-                                                <span className="text-sm">일시</span>
-                                            </div>
-                                            <div className="flex-1 flex flex-col gap-1">
-                                                <div className="flex items-center gap-2 hover:bg-slate-50 p-1 -ml-1 rounded transition-colors">
-                                                    <span className="text-xs text-slate-400 w-8">시작</span>
-                                                    <input
-                                                        type="datetime-local"
-                                                        value={toLocalISOString(editForm.start?.dateTime)}
-                                                        onChange={e => handleDateChange('start', e.target.value)}
-                                                        className="flex-1 text-sm text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer"
-                                                    />
-                                                </div>
-                                                <div className="flex items-center gap-2 hover:bg-slate-50 p-1 -ml-1 rounded transition-colors">
-                                                    <span className="text-xs text-slate-400 w-8">종료</span>
-                                                    <input
-                                                        type="datetime-local"
-                                                        value={toLocalISOString(editForm.end?.dateTime)}
-                                                        onChange={e => handleDateChange('end', e.target.value)}
-                                                        className="flex-1 text-sm text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer"
-                                                    />
-                                                </div>
+                                    {/* Properties - Notion Style */}
+                                    <div className="space-y-1 -mx-2">
+                                        {/* Date/Time */}
+                                        <div className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-slate-50 group transition-colors">
+                                            <Clock size={14} className="text-slate-400 shrink-0" />
+                                            <span className="text-sm text-slate-500 w-14 shrink-0">일시</span>
+                                            <div className="flex-1 flex flex-col text-sm text-slate-700">
+                                                <input
+                                                    type="datetime-local"
+                                                    value={toLocalISOString(editForm.start?.dateTime)}
+                                                    onChange={e => handleDateChange('start', e.target.value)}
+                                                    className="bg-transparent border-none p-0 focus:ring-0 outline-none cursor-pointer text-sm"
+                                                />
+                                                <input
+                                                    type="datetime-local"
+                                                    value={toLocalISOString(editForm.end?.dateTime)}
+                                                    onChange={e => handleDateChange('end', e.target.value)}
+                                                    className="bg-transparent border-none p-0 focus:ring-0 outline-none cursor-pointer text-sm text-slate-500"
+                                                />
                                             </div>
                                         </div>
 
-                                        {/* Location Row */}
-                                        <div className="flex items-center gap-3 group">
-                                            <div className="flex items-center gap-2 w-20 text-slate-500">
-                                                <MapPin size={16} />
-                                                <span className="text-sm">위치</span>
-                                            </div>
+                                        {/* Location */}
+                                        <div className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-slate-50 group transition-colors">
+                                            <MapPin size={14} className="text-slate-400 shrink-0" />
+                                            <span className="text-sm text-slate-500 w-14 shrink-0">위치</span>
                                             <input
                                                 type="text"
                                                 value={editForm.location || ""}
                                                 onChange={e => setEditForm({ ...editForm, location: e.target.value })}
-                                                className="flex-1 text-sm text-slate-700 bg-transparent border-none p-1 -ml-1 rounded hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-100 placeholder:text-slate-400 transition-all"
-                                                placeholder="위치 추가"
+                                                className="flex-1 text-sm text-slate-700 bg-transparent border-none p-0 focus:ring-0 outline-none placeholder:text-slate-400"
+                                                placeholder="추가..."
                                             />
                                         </div>
 
-                                        {/* Description Row */}
-                                        <div className="flex items-start gap-3 group">
-                                            <div className="flex items-center gap-2 w-20 pt-1.5 text-slate-500">
-                                                <AlignLeft size={16} />
-                                                <span className="text-sm">설명</span>
-                                            </div>
+                                        {/* Description */}
+                                        <div className="flex items-start gap-2 px-2 py-2 rounded-md hover:bg-slate-50 group transition-colors">
+                                            <AlignLeft size={14} className="text-slate-400 shrink-0 mt-0.5" />
+                                            <span className="text-sm text-slate-500 w-14 shrink-0">설명</span>
                                             <textarea
                                                 value={editForm.description || ""}
                                                 onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                                                className="flex-1 text-sm text-slate-700 bg-transparent border-none p-1.5 -ml-1.5 rounded hover:bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-100 placeholder:text-slate-400 min-h-[100px] resize-none leading-relaxed transition-all"
-                                                placeholder="설명 추가"
+                                                className="flex-1 text-sm text-slate-700 bg-transparent border-none p-0 focus:ring-0 outline-none placeholder:text-slate-400 min-h-[80px] resize-none leading-relaxed"
+                                                placeholder="추가..."
                                             />
                                         </div>
                                     </div>
@@ -824,86 +813,88 @@ const CalendarPage = () => {
                                     )}
                                 </div>
                             ) : (
-                                // View Mode
-                                <>
+                                // View Mode - Notion Style
+                                <div className="p-5 space-y-4">
+                                    {/* Title & Time */}
                                     <div>
-                                        <div className="flex items-start gap-3">
-                                            <div className={`w-4 h-4 rounded mt-1.5 shrink-0 bg-blue-500`}></div>
-                                            <div>
-                                                <h3 className="text-xl font-bold text-slate-800 leading-tight">{selectedEvent.summary || '(제목 없음)'}</h3>
-                                                <p className="text-sm text-slate-500 mt-1">
-                                                    {selectedEvent.start.date
-                                                        ? '종일'
-                                                        : `${format(new Date(selectedEvent.start.dateTime!), 'M월 d일 (E) a h:mm', { locale: ko })} ~ ${format(new Date(selectedEvent.end.dateTime!), 'a h:mm', { locale: ko })}`
-                                                    }
-                                                </p>
-                                            </div>
-                                        </div>
+                                        <h3 className="text-xl font-bold text-slate-800 leading-tight">{selectedEvent.summary || '(제목 없음)'}</h3>
+                                        <p className="text-sm text-slate-500 mt-1">
+                                            {selectedEvent.start.date
+                                                ? '종일'
+                                                : `${format(new Date(selectedEvent.start.dateTime!), 'M월 d일 (E) a h:mm', { locale: ko })} ~ ${format(new Date(selectedEvent.end.dateTime!), 'a h:mm', { locale: ko })}`
+                                            }
+                                        </p>
                                     </div>
 
-                                    {selectedEvent.location && (
-                                        <div className="flex gap-3 text-sm text-slate-600">
-                                            <div className="w-5 h-5 flex items-center justify-center shrink-0 text-slate-400">📍</div>
-                                            <span>{selectedEvent.location}</span>
-                                        </div>
-                                    )}
+                                    {/* Properties List */}
+                                    <div className="space-y-1 -mx-2">
+                                        {/* Location */}
+                                        {selectedEvent.location && (
+                                            <div className="flex items-center gap-2 px-2 py-2 rounded-md text-sm">
+                                                <MapPin size={14} className="text-slate-400 shrink-0" />
+                                                <span className="text-slate-500 w-14 shrink-0">위치</span>
+                                                <span className="text-slate-700 flex-1">{selectedEvent.location}</span>
+                                            </div>
+                                        )}
 
-                                    {selectedEvent.description && (
-                                        <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-700 whitespace-pre-wrap leading-relaxed border border-slate-100">
-                                            {(() => {
-                                                const desc = selectedEvent.description || "";
-                                                const todoLinkMatch = desc.match(/\[할 일 문서\]\((.*?)\)/);
-                                                const cleanDesc = desc.replace(/\[할 일 문서\]\(.*?\)/, "").trim();
+                                        {/* Todo Link (if any) */}
+                                        {selectedEvent.description?.includes('[할 일 문서]') && (() => {
+                                            const match = selectedEvent.description?.match(/\[할 일 문서\]\((.*?)\)/);
+                                            if (!match) return null;
+                                            return (
+                                                <a
+                                                    href={match[1]}
+                                                    className="flex items-center gap-2 px-2 py-2 rounded-md text-sm hover:bg-slate-50 transition-colors"
+                                                >
+                                                    <FileText size={14} className="text-blue-500 shrink-0" />
+                                                    <span className="text-slate-500 w-14 shrink-0">연결</span>
+                                                    <span className="text-blue-600 flex-1 font-medium">할 일 문서 보러가기 →</span>
+                                                </a>
+                                            );
+                                        })()}
+                                    </div>
 
-                                                return (
-                                                    <>
-                                                        {cleanDesc}
-                                                        {todoLinkMatch && (
-                                                            <div className="mt-3 pt-3 border-t border-slate-200">
-                                                                <a
-                                                                    href={todoLinkMatch[1]}
-                                                                    className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                                                                >
-                                                                    <FileText size={16} />
-                                                                    <span>할 일 문서 보러가기</span>
-                                                                </a>
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                );
-                                            })()}
-                                        </div>
-                                    )}
+                                    {/* Description */}
+                                    {selectedEvent.description && (() => {
+                                        const desc = selectedEvent.description || "";
+                                        const cleanDesc = desc.replace(/\[할 일 문서\]\(.*?\)/, "").trim();
+                                        if (!cleanDesc) return null;
+                                        return (
+                                            <div className="bg-slate-50/70 p-3 rounded-lg text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
+                                                {cleanDesc}
+                                            </div>
+                                        );
+                                    })()}
 
-
-                                    <div className="pt-8 flex gap-2">
+                                    {/* Actions */}
+                                    <div className="pt-4 flex gap-2">
                                         <button
                                             onClick={handleStartEdit}
-                                            className="flex-1 py-2 rounded border border-slate-200 hover:bg-slate-50 text-sm font-medium text-slate-700 transition-colors"
+                                            className="flex-1 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-medium text-slate-700 transition-colors"
                                         >
-                                            수정하기
+                                            수정
                                         </button>
-
                                         <button
                                             onClick={handleDeleteEvent}
                                             disabled={isSaving}
-                                            className="px-3 py-2 rounded border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-red-500 transition-colors"
+                                            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
                                         >
-                                            <Trash2 size={18} />
+                                            <Trash2 size={16} />
                                         </button>
                                     </div>
 
+                                    {/* Google Calendar Link */}
                                     {selectedEvent.htmlLink && (
                                         <a
                                             href={selectedEvent.htmlLink}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center justify-center w-full py-2 rounded border border-transparent text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                                            className="block text-center text-xs text-slate-400 hover:text-blue-500 transition-colors"
                                         >
-                                            Google 캘린더에서 보기 ↗
+                                            Google 캘린더에서 열기 ↗
                                         </a>
                                     )}
-                                </>
+                                </div>
                             )}
                         </div>
                     </>
@@ -950,10 +941,13 @@ const CurrentTimeIndicator = () => {
 
     return (
         <div
-            className="absolute left-16 right-0 border-t-2 border-red-500 z-20 flex items-center pointer-events-none"
+            className="absolute left-16 right-0 z-20 pointer-events-none"
             style={{ top: `${top}px` }}
         >
-            <div className="w-2 h-2 bg-red-500 rounded-full -ml-1"></div>
+            {/* Circle aligned with line */}
+            <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-red-500 rounded-full"></div>
+            {/* Line */}
+            <div className="h-[2px] bg-red-500 w-full"></div>
         </div>
     );
 };
