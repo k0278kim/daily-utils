@@ -383,14 +383,20 @@ const TaskCard: React.FC<TaskCardProps> = ({ todo, index, onClick, onToggleStatu
 
                                                             if (diffDays > 0) {
                                                                 return (
-                                                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-500">
-                                                                        {diffDays}일 지연 완료
+                                                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-red-50 text-red-600 px-1.5 py-0.5 rounded-md ml-1">
+                                                                        {diffDays}일 지연
+                                                                    </span>
+                                                                );
+                                                            } else if (diffDays < 0) {
+                                                                return (
+                                                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-md ml-1">
+                                                                        {Math.abs(diffDays)}일 단축
                                                                     </span>
                                                                 );
                                                             } else {
                                                                 return (
-                                                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-500">
-                                                                        {diffDays === 0 ? "On Time" : `${Math.abs(diffDays)}일 일찍 완료`}
+                                                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md ml-1">
+                                                                        On Time
                                                                     </span>
                                                                 );
                                                             }
