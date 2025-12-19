@@ -212,7 +212,13 @@ const TodoDetailPage = () => {
                 {/* Header / Navigation */}
                 <div className="flex items-center justify-between mb-8 group">
                     <button
-                        onClick={() => router.back()}
+                        onClick={() => {
+                            if (todo.project_id) {
+                                router.push(`/todos?projectId=${todo.project_id}`);
+                            } else {
+                                router.push("/todos");
+                            }
+                        }}
                         className="flex items-center text-slate-400 hover:text-slate-700 transition-colors gap-1 px-2 py-1 -ml-2 rounded-lg hover:bg-slate-50"
                     >
                         <ArrowLeft size={18} />

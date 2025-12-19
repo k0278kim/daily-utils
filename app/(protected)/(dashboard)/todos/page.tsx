@@ -1,20 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Board from "@/components/todos/Board";
 import ProjectSidebar from "@/components/todos/ProjectSidebar";
 import { Folder } from "lucide-react";
-import { createClient } from "@/utils/supabase/supabaseClient"; // Assuming path
-import { Project } from "@/model/Project"; // Assuming path
+import { createClient } from "@/utils/supabase/supabaseClient";
+import { Project } from "@/model/Project";
 
-export default function TodosPage() {
+function TodosContent() {
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [projects, setProjects] = useState<Project[]>([]);
     const supabase = createClient();
+    const searchParams = useSearchParams();
 
     useEffect(() => {
         fetchProjects();
-    }, []);
+        const projectId = searchParams.get("projectId");
+        if (projectId) {
+            setSelectedProjectId(projectId);
+        }
+    }, [searchParams]);
 
     const fetchProjects = async () => {
         const { data, error } = await supabase
@@ -101,8 +107,8 @@ export default function TodosPage() {
                                             onClick={() => setSelectedProjectId(project.id)}
                                             className="group flex flex-col p-6 bg-white border border-gray-200 rounded-xl hover:shadow-md hover:border-blue-500/30 hover:ring-1 hover:ring-blue-500/30 transition-all duration-200 text-left"
                                         >
-                                            <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform duration-200">
-                                                <Folder size={20} />
+                                            <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform duration-200 text-xl">
+                                                {project.icon || <Folder size={20} />}
                                             </div>
                                             <h3 className="font-semibold text-gray-900 mb-1 truncate w-full">{project.name}</h3>
                                             <p className="text-xs text-gray-400">클릭하여 할 일 보기</p>
@@ -115,5 +121,13 @@ export default function TodosPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function TodosPage() {
+    return (
+        <Suspense fallback={<div className="w-full h-full bg-white flex items-center justify-center">Loading...</div>}>
+            <TodosContent />
+        </Suspense>
     );
 }
