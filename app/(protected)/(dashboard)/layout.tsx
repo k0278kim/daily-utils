@@ -15,7 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user } = useUser();
 
   const pathname = usePathname();
-  const index = pathname === "/snippets" ? 0 : pathname === "/healthchecks" ? 1 : pathname === "/praises" ? 2 : pathname === "/japdories" ? 3 : pathname === "/todos" ? 4 : -1;
+  const index = pathname === "/snippets" ? 0 : pathname === "/healthchecks" ? 1 : pathname === "/praises" ? 2 : pathname === "/japdories" ? 3 : pathname === "/todos" ? 4 : pathname === "/calendar" ? 5 : -1;
 
   const [selectedArea, setSelectedArea] = useState(index);
   const [overlay, setOverlay] = useState(true);
@@ -53,7 +53,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
         }
-        <TopBar darkmode={selectedArea == 3} routes={[]} routeDestinations={["/snippets", "/healthchecks", "/praises", "/japdories", "/todos"]} titles={["Snippet 조회", "Health Check 조회", "칭찬 챌린지", "잡도리 챌린지", "할 일 관리"]} selectedArea={selectedArea} setSelectedArea={setSelectedArea} />
+        <TopBar darkmode={selectedArea == 3} routes={[]} routeDestinations={["/snippets", "/healthchecks", "/praises", "/japdories", "/todos", "/calendar"]} titles={["Snippet 조회", "Health Check 조회", "칭찬 챌린지", "잡도리 챌린지", "할 일 관리", "캘린더"]} selectedArea={selectedArea} setSelectedArea={setSelectedArea} />
         <div className={"flex-1 w-full h-full overflow-y-scroll scrollbar-hide"}>
           {children}
         </div>
