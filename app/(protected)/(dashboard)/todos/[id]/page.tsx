@@ -8,7 +8,6 @@ import { Profile } from "@/model/Profile";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Calendar, Save, Lock, User, Check } from "lucide-react";
 
-
 // Dynamically import BlockEditor to avoid SSR issues
 const Editor = dynamic(() => import("@/components/BlockEditor"), { ssr: false });
 
@@ -26,61 +25,131 @@ const TodoDetailPage = () => {
     const [saving, setSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [assigneeDropdownOpen, setAssigneeDropdownOpen] = useState(false);
+    // Add a key to force Editor re-mount when server content explicitly changes
+    const [editorVersion, setEditorVersion] = useState(0);
 
-    // Fetch Todo Data & Profiles
-    useEffect(() => {
+    // Reusable Fetch Function
+    // Wrapped in useCallback to be safe for useEffect dependencies
+    const fetchData = React.useCallback(async () => {
         if (!id || !user) return;
+        // Don't set loading on re-fetches to avoid flicker, only initial
+        // But we need to know if it's initial load. 
+        // We can check if todo is null? Or just skip setLoading(true) here and handle it initially?
+        // Let's safe-guard: if we are loading, keep it.
 
-        const fetchData = async () => {
-            setLoading(true);
+        // Fetch Todo
+        const { data: todoData, error: todoError } = await supabase
+            .from("todos")
+            .select(`
+                *,
+                todo_assignees (
+                    user_id,
+                    profiles:user_id (*)
+                )
+            `)
+            .eq("id", id)
+            .single();
 
-            // 1. Fetch Todo
-            const { data: todoData, error: todoError } = await supabase
-                .from("todos")
-                .select(`
-                    *,
-                    todo_assignees (
-                        user_id,
-                        profiles:user_id (*)
-                    )
-                `)
-                .eq("id", id)
-                .single();
+        // Fetch Profiles
+        const { data: profilesData, error: profilesError } = await supabase
+            .from("profiles")
+            .select("*");
 
-            // 2. Fetch Profiles (for Assignee dropdown)
-            const { data: profilesData, error: profilesError } = await supabase
-                .from("profiles")
-                .select("*");
+        if (todoError) {
+            console.error("Error fetching todo:", todoError);
+            router.push("/todos");
+        } else {
+            // Map assignees
+            const assignees = todoData.todo_assignees?.map((ta: any) => ta.profiles).filter(Boolean) || [];
+            const finalTodo: Todo = { ...todoData, assignees };
 
-            if (todoError) {
-                console.error("Error fetching todo:", todoError);
-                router.push("/todos");
-            } else {
-                // Map assignees
-                const assignees = todoData.todo_assignees?.map((ta: any) => ta.profiles).filter(Boolean) || [];
-                const finalTodo: Todo = { ...todoData, assignees };
+            setTodo(finalTodo);
 
-                setTodo(finalTodo);
-                setContent(todoData.content || "");
-                setDescription(todoData.description || "");
-            }
+            // Sync Content & Description (Real-time)
+            // We update local state to match server. 
+            // NOTE: If user is typing, this might overwrite. 
+            // In a pro app we'd check if (saving) or use CRDTs. 
+            // But per user request "Must be updated", we prioritize latest server state.
 
-            if (profilesData) {
-                setProfiles(profilesData);
-            }
+            const serverContent = todoData.content || "";
+            const serverDesc = todoData.description || "";
 
-            setLoading(false);
-        };
+            setContent(prev => {
+                if (prev !== serverContent) {
+                    // Content changed from outside?
+                    // Use a simple check: if we are updated from server, update.
+                    // Let's update and bump version to force Editor refresh to show new content
+                    setEditorVersion(v => v + 1);
+                    return serverContent;
+                }
+                return prev;
+            });
 
-        fetchData();
+            setDescription(prev => {
+                if (prev !== serverDesc) {
+                    return serverDesc;
+                }
+                return prev;
+            });
+        }
+
+        if (profilesData) {
+            setProfiles(profilesData);
+        }
+
+        setLoading(false);
     }, [id, user, supabase, router]);
+
+    // 1. Initial Fetch
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    // 2. Realtime Sync Subscription
+    useEffect(() => {
+        if (!id || !supabase) return;
+
+        const channel = supabase
+            .channel(`todo_detail:${id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'todos',
+                    filter: `id=eq.${id}`
+                },
+                () => {
+                    // When the todo is updated (including "touched" updated_at), we re-fetch everything.
+                    fetchData();
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'todo_assignees',
+                    filter: `todo_id=eq.${id}`
+                },
+                () => {
+                    // We keep this for immediate feedback on INSERTs if they work
+                    fetchData();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [id, supabase, fetchData]);
 
     // Permission Logic
     const hasAssignees = todo?.assignees && todo.assignees.length > 0;
-    const isAssignee = user && todo?.assignees?.some(a => a.id === user.id);
+    const isAssignee = !!(user && todo?.assignees?.some(a => a.id === user.id));
     const canEdit = !hasAssignees || isAssignee;
 
-    // Auto-save logic for CONTENT
+    // 3. Auto-save CONTENT
     useEffect(() => {
         if (!todo || loading || !canEdit) return;
         if (content === (todo.content || "")) return;
@@ -102,7 +171,7 @@ const TodoDetailPage = () => {
         return () => clearTimeout(timer);
     }, [content, todo, id, supabase, loading, canEdit]);
 
-    // Auto-save logic for DESCRIPTION
+    // 4. Auto-save DESCRIPTION
     useEffect(() => {
         if (!todo || loading || !canEdit) return;
         if (description === (todo.description || "")) return;
@@ -134,8 +203,6 @@ const TodoDetailPage = () => {
     }
 
     if (!todo) return null;
-
-
 
     return (
         <div className="w-full h-full bg-[#F8FAFC] overflow-y-auto">
@@ -215,7 +282,6 @@ const TodoDetailPage = () => {
                                                     )}
                                                 </div>
                                             ))}
-                                            {/* Optional: Add +N if too many, but for now simple list is fine */}
                                         </div>
                                     ) : (
                                         <span className="text-slate-400">담당자 없음</span>
@@ -241,6 +307,7 @@ const TodoDetailPage = () => {
                                                         key={myProfile.id}
                                                         onClick={async () => {
                                                             let newAssignees = todo.assignees || [];
+                                                            const now = new Date().toISOString();
                                                             if (isAssigned) {
                                                                 // Unassign Me
                                                                 newAssignees = newAssignees.filter(a => a.id !== myProfile.id);
@@ -252,8 +319,10 @@ const TodoDetailPage = () => {
                                                                 setTodo({ ...todo, assignees: newAssignees });
                                                                 await supabase.from("todo_assignees").insert({ todo_id: id, user_id: myProfile.id });
                                                             }
-                                                            // Keep dropdown open or close? Usually toggle stays for checkmark confirmation, but simple interaction might be closing.
-                                                            // Let's close it for now as it's the only option.
+                                                            // Important: Touch the todo to trigger realtime update for everyone (including those listening to 'todos')
+                                                            // This ensures permissions are re-evaluated immediately even if the 'todo_assignees' listener misses the DELETE event.
+                                                            await supabase.from("todos").update({ updated_at: now }).eq("id", id);
+
                                                             setAssigneeDropdownOpen(false);
                                                         }}
                                                         className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors flex items-center justify-between"
@@ -346,9 +415,9 @@ const TodoDetailPage = () => {
 
                 {/* Editor Area - Notion Style */}
                 <div className="flex-1 w-full min-h-[500px]">
-                    {/* Add key to force re-mounting when switching todos */}
+                    {/* Add key to force re-mounting when switching todos OR when server content changes */}
                     <Editor
-                        key={id as string}
+                        key={`${id}-${editorVersion}`}
                         initialContent={content}
                         onChange={setContent}
                         editable={canEdit}
