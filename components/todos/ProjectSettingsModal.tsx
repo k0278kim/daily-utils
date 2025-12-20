@@ -39,6 +39,13 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const emojiPickerRef = useRef<HTMLDivElement>(null);
 
+    // Sync state with props if they change externally (Real-time sync)
+    useEffect(() => {
+        setName(project.name);
+        setVisibility(project.visibility || 'private');
+        setIcon(project.icon || '📁');
+    }, [project.name, project.visibility, project.icon]);
+
     useEffect(() => {
         fetchCurrentUser();
         fetchMembers();

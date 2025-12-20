@@ -36,7 +36,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     const [showPicker, setShowPicker] = useState(false);
     const [pickerPosition, setPickerPosition] = useState({ top: 0, left: 0 });
     const pickerRef = useRef<HTMLDivElement>(null);
-    const [projectForSettings, setProjectForSettings] = useState<Project | null>(null);
+    const [projectForSettingsId, setProjectForSettingsId] = useState<string | null>(null);
 
     // Close picker on outside click
     useEffect(() => {
@@ -182,7 +182,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                         {project.currentUserRole === 'owner' && (
                             <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity ml-2">
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); setProjectForSettings(project); }}
+                                    onClick={(e) => { e.stopPropagation(); setProjectForSettingsId(project.id); }}
                                     className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md"
                                     title="Project Settings"
                                 >
@@ -193,13 +193,13 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                     </div>
                 ))}
 
-                {projectForSettings && (
+                {projectForSettingsId && projects.find(p => p.id === projectForSettingsId) && (
                     <ProjectSettingsModal
-                        project={projectForSettings}
-                        onClose={() => setProjectForSettings(null)}
+                        project={projects.find(p => p.id === projectForSettingsId)!}
+                        onClose={() => setProjectForSettingsId(null)}
                         onUpdate={(updated) => {
                             onRenameProject(updated, updated.name, updated.icon, updated.visibility);
-                            setProjectForSettings(null);
+                            setProjectForSettingsId(null);
                         }}
                         onDelete={onDeleteProject}
                     />

@@ -20,6 +20,21 @@ function TodosContent() {
         if (projectId) {
             setSelectedProjectId(projectId);
         }
+
+        // Real-time subscriptions
+        const projectsChannel = supabase
+            .channel('projects-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
+                fetchProjects();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'project_members' }, () => {
+                fetchProjects();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(projectsChannel);
+        };
     }, [searchParams]);
 
     const fetchProjects = async () => {
@@ -34,12 +49,16 @@ function TodosContent() {
         if (error) {
             console.error('Error fetching projects:', error);
         } else {
-            // Transform data to include currentUserRole
             const projectsWithRole = (data || []).map((p: any) => ({
                 ...p,
                 currentUserRole: p.project_members?.find((m: any) => m.user_id === user.id)?.role
             }));
             setProjects(projectsWithRole);
+
+            // Real-time deletion handling: if selected project is gone, deselect it
+            if (selectedProjectId && !projectsWithRole.some(p => p.id === selectedProjectId)) {
+                setSelectedProjectId(null);
+            }
         }
     };
 

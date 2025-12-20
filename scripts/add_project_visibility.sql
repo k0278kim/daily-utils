@@ -136,3 +136,24 @@ CREATE POLICY "Categories are manageable by project owner or editors" ON categor
             AND role IN ('owner', 'editor')
         )
     );
+
+-- 10. Enable Realtime for projects and members
+ALTER TABLE projects REPLICA IDENTITY FULL;
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        CREATE PUBLICATION supabase_realtime;
+    END IF;
+
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE projects;
+    EXCEPTION WHEN duplicate_object THEN
+        NULL;
+    END;
+
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE project_members;
+    EXCEPTION WHEN duplicate_object THEN
+        NULL;
+    END;
+END $$;
