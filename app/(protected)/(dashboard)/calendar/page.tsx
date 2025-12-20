@@ -48,6 +48,8 @@ interface CalendarEvent {
         responseStatus?: string;
         self?: boolean;
         displayName?: string;
+        nickname?: string;
+        name?: string;
         avatarUrl?: string; // Fetched from Supabase
     }[];
 }
@@ -239,11 +241,50 @@ const CalendarPage = () => {
 
                 if (res.ok) {
                     const data = await res.json();
-                    setEvents(data);
+
+                    // Enrich attendee data with Supabase profile information
+                    const enrichedData = await Promise.all(
+                        data.map(async (event: CalendarEvent) => {
+                            if (!event.attendees || event.attendees.length === 0) {
+                                return event;
+                            }
+
+                            const enrichedAttendees = await Promise.all(
+                                event.attendees.map(async (att) => {
+                                    try {
+                                        const { data: profile } = await supabase
+                                            .from('profiles')
+                                            .select('nickname, name, avatar_url')
+                                            .eq('email', att.email)
+                                            .single();
+
+                                        if (profile) {
+                                            return {
+                                                ...att,
+                                                nickname: profile.nickname,
+                                                name: profile.name,
+                                                avatarUrl: profile.avatar_url || att.avatarUrl
+                                            };
+                                        }
+                                    } catch (err) {
+                                        // Profile not found, keep original data
+                                    }
+                                    return att;
+                                })
+                            );
+
+                            return {
+                                ...event,
+                                attendees: enrichedAttendees
+                            };
+                        })
+                    );
+
+                    setEvents(enrichedData);
 
                     // Update selected event reference if it exists in new data
                     if (selectedEvent) {
-                        const updated = data.find((e: CalendarEvent) => e.id === selectedEvent.id);
+                        const updated = enrichedData.find((e: CalendarEvent) => e.id === selectedEvent.id);
                         if (updated) setSelectedEvent(updated);
                     }
                 } else {
@@ -272,6 +313,16 @@ const CalendarPage = () => {
 
         fetchEvents();
     }, [currentDate, refreshKey, selectedCalendarIds]);
+
+    // Auto-refresh: Poll for updates every 60 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            console.log('[Auto-refresh] Refreshing calendar events...');
+            setRefreshKey(prev => prev + 1);
+        }, 60000); // 60 seconds
+
+        return () => clearInterval(interval);
+    }, []); // Empty deps: set up once on mount
 
     // Handlers
     const handlePrevMonth = () => setViewMonth(subMonths(viewMonth, 1));
@@ -322,7 +373,10 @@ const CalendarPage = () => {
                 body: JSON.stringify({
                     eventId: selectedEvent.id,
                     ...editForm,
-                    attendees: editForm.attendees?.map(a => ({ email: a.email }))
+                    attendees: editForm.attendees?.map(a => ({
+                        email: a.email,
+                        responseStatus: a.responseStatus || 'needsAction'
+                    }))
                 })
             });
 
@@ -390,7 +444,10 @@ const CalendarPage = () => {
                     location: editForm.location,
                     start: editForm.start,
                     end: editForm.end,
-                    attendees: editForm.attendees?.map(a => ({ email: a.email }))
+                    attendees: editForm.attendees?.map(a => ({
+                        email: a.email,
+                        responseStatus: 'needsAction'
+                    }))
                 })
             });
 
@@ -1024,8 +1081,8 @@ const CalendarPage = () => {
                                                 const bg = AVATAR_COLORS[colorHash % AVATAR_COLORS.length];
 
                                                 return (
-                                                    <div key={i} className="flex items-center justify-between gap-2 group/att px-2 py-1.5 hover:bg-slate-50 rounded">
-                                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                    <div key={i} className="flex items-center justify-between gap-2 group/att px-2 py-1.5 hover:bg-slate-50 rounded overflow-hidden">
+                                                        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                                                             {/* Avatar */}
                                                             <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-slate-100 bg-slate-100 flex items-center justify-center">
                                                                 {att.avatarUrl ? (
@@ -1037,13 +1094,13 @@ const CalendarPage = () => {
                                                                 )}
                                                             </div>
                                                             {/* Info */}
-                                                            <div className="flex flex-col min-w-0">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span className="text-sm font-medium text-slate-700 truncate">
-                                                                        {att.displayName || att.email.split('@')[0]}
-                                                                    </span>
-                                                                </div>
-                                                                <span className="text-xs text-slate-400 truncate">{att.email}</span>
+                                                            <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+                                                                <span className="text-sm font-medium text-slate-700 truncate">
+                                                                    {att.nickname || att.name || att.email.split('@')[0]}
+                                                                </span>
+                                                                <span className="text-xs text-slate-400 truncate">
+                                                                    {att.nickname && att.name && `${att.name} · `}{att.email}
+                                                                </span>
                                                             </div>
                                                         </div>
                                                         {/* Remove Button */}
@@ -1144,6 +1201,8 @@ const CalendarPage = () => {
                                                                         updatedAttendees.push({
                                                                             email: profile.email,
                                                                             displayName: profile.nickname || profile.name,
+                                                                            nickname: profile.nickname,
+                                                                            name: profile.name,
                                                                             avatarUrl: profile.avatar_url
                                                                         });
                                                                     }
@@ -1292,10 +1351,10 @@ const CalendarPage = () => {
 
                                         {/* Attendees */}
                                         {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
-                                            <div className="flex items-start gap-2 px-2 py-2 rounded-md hover:bg-slate-50 group transition-colors">
+                                            <div className="flex items-start gap-2 px-2 py-2 rounded-md hover:bg-slate-50 group transition-colors overflow-hidden">
                                                 <Users size={14} className="text-slate-400 shrink-0 mt-1" />
                                                 <span className="text-sm text-slate-500 w-14 shrink-0 mt-0.5">참석자</span>
-                                                <div className="flex-1 space-y-2">
+                                                <div className="flex-1 space-y-2 min-w-0 overflow-hidden">
                                                     {selectedEvent.attendees.map((att, i) => {
                                                         const status = att.responseStatus;
                                                         const isAccepted = status === 'accepted';
@@ -1306,16 +1365,23 @@ const CalendarPage = () => {
                                                         const initial = name.charAt(0).toUpperCase();
 
                                                         return (
-                                                            <div key={i} className="flex items-center justify-between text-sm">
-                                                                <div className="flex items-center gap-2 min-w-0">
+                                                            <div key={i} className="flex items-center justify-between text-sm overflow-hidden">
+                                                                <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                                                                     {att.avatarUrl ? (
-                                                                        <img src={att.avatarUrl} alt={name} className="w-5 h-5 rounded-full object-cover bg-slate-100 shrink-0" />
+                                                                        <img src={att.avatarUrl} alt={name} className="w-6 h-6 rounded-full object-cover bg-slate-100 shrink-0" />
                                                                     ) : (
-                                                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-slate-700 shrink-0 ${AVATAR_COLORS[(name.charCodeAt(0) || 0) % AVATAR_COLORS.length]}`}>
+                                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-slate-700 shrink-0 ${AVATAR_COLORS[(name.charCodeAt(0) || 0) % AVATAR_COLORS.length]}`}>
                                                                             {initial}
                                                                         </div>
                                                                     )}
-                                                                    <span className="truncate text-slate-700" title={att.email}>{name}</span>
+                                                                    <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+                                                                        <span className="truncate text-slate-700 font-medium text-sm">
+                                                                            {att.nickname || att.name || att.email.split('@')[0]}
+                                                                        </span>
+                                                                        <span className="truncate text-slate-400 text-xs">
+                                                                            {att.nickname && att.name && `${att.name} · `}{att.email}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
                                                                 <div className="shrink-0 ml-2" title={status}>
                                                                     {att.self ? (
@@ -1647,7 +1713,7 @@ const TimeEventBlock = ({
             </div>
 
             {/* Attendee Avatars Group */}
-            {event.attendees && event.attendees.length > 1 && (
+            {event.attendees && event.attendees.length > 0 && (
                 <div className="absolute top-1 right-1 flex -space-x-1.5 pointer-events-none">
                     {event.attendees
                         .slice(0, 3)
