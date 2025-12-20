@@ -15,9 +15,10 @@ interface CategoryComboboxProps {
     onChange: (categoryId: string | null) => void;
     className?: string;
     variant?: 'default' | 'ghost'; // Added variant prop
+    disabled?: boolean;
 }
 
-export function CategoryCombobox({ projectId, value, onChange, className, variant = 'default' }: CategoryComboboxProps) {
+export function CategoryCombobox({ projectId, value, onChange, className, variant = 'default', disabled = false }: CategoryComboboxProps) {
     const supabase = createClient();
     const [open, setOpen] = useState(false);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -264,13 +265,15 @@ export function CategoryCombobox({ projectId, value, onChange, className, varian
         <div className={`relative ${className}`} ref={dropdownRef}>
             <button
                 type="button"
-                onClick={() => setOpen(!open)}
+                onClick={() => !disabled && setOpen(!open)}
+                disabled={disabled}
                 className={variant === 'ghost'
-                    ? `flex items-center gap-2 text-sm px-2 -ml-2 py-0.5 rounded cursor-pointer transition-colors border-none focus:outline-none ring-0 text-left
+                    ? `flex items-center gap-2 text-sm px-2 -ml-2 py-0.5 rounded transition-colors border-none focus:outline-none ring-0 text-left
+                       ${disabled ? 'cursor-default opacity-80' : 'cursor-pointer'}
                        ${selectedCategory
                         ? 'bg-slate-100/80 hover:bg-slate-200/80 text-slate-700 font-medium'
                         : 'text-slate-700 hover:bg-slate-50 bg-transparent'}`
-                    : "w-full flex items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    : `w-full flex items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm transition-all focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? 'cursor-default opacity-60 bg-gray-50' : 'hover:bg-gray-50'}`
                 }
             >
                 <span className="truncate flex items-center gap-2">

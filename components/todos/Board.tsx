@@ -10,7 +10,8 @@ type Columns = {
     [key: string]: Todo[];
 };
 
-const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
+const Board: React.FC<{ projectId: string; currentUserRole?: 'owner' | 'editor' | 'viewer' }> = ({ projectId, currentUserRole }) => {
+    const isViewer = currentUserRole === 'viewer';
     const [columns, setColumns] = useState<Columns>({
         backlog: [],
         'my-tasks': [],
@@ -328,6 +329,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
     };
 
     const onDragEnd = async (result: DropResult) => {
+        if (isViewer) return;
         const { source, destination, draggableId } = result;
 
         if (!destination) return;
@@ -508,6 +510,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
     };
 
     const addTodo = async (title: string, dueDate?: string, description?: string, categoryId?: string) => {
+        if (isViewer) return;
         if (!title.trim() || !projectId) return;
 
         const newTodo: any = {
@@ -536,6 +539,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
     const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
 
     const updateTodo = async (updatedTodo: Todo) => {
+        if (isViewer) return;
         const { error } = await supabase
             .from('todos')
             .update({
@@ -555,6 +559,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
     };
 
     const handleToggleStatus = async (todo: Todo) => {
+        if (isViewer) return;
         // Enforce completion permission (Strict)
         const isAssignedToMe = currentUser && todo.assignees && todo.assignees.some(a => a.id === currentUser.id);
         if (!isAssignedToMe) {
@@ -585,6 +590,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
     };
 
     const deleteTodo = async (todoId: string) => {
+        if (isViewer) return;
         if (!confirm('정말 삭제하시겠습니까?')) return;
 
         const { error } = await supabase
@@ -609,7 +615,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             droppableId="backlog"
                             title="백로그 (할 일)"
                             todos={columns['backlog']}
-                            onAddTodo={addTodo}
+                            onAddTodo={isViewer ? undefined : addTodo}
                             onEditTodo={setEditingTodo}
                             enableDateFilter={true}
                             projectId={projectId}
@@ -617,6 +623,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             onDeleteTodo={deleteTodo}
                             currentUserId={currentUser?.id}
                             isLoading={isLoading}
+                            currentUserRole={currentUserRole}
                         />
                     </div>
                     <div className="flex-1 h-full min-w-[300px]">
@@ -631,6 +638,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             onDeleteTodo={deleteTodo}
                             currentUserId={currentUser?.id}
                             isLoading={isLoading}
+                            currentUserRole={currentUserRole}
                         />
                     </div>
                     <div className="flex-1 h-full min-w-[300px]">
@@ -645,6 +653,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                             currentUserId={currentUser?.id}
                             isLoading={isLoading}
                             enableDateGrouping={true}
+                            currentUserRole={currentUserRole}
                         />
                     </div>
                 </div>
@@ -656,6 +665,7 @@ const Board: React.FC<{ projectId: string }> = ({ projectId }) => {
                 onClose={() => setEditingTodo(null)}
                 onSave={updateTodo}
                 projectId={projectId}
+                currentUserRole={currentUserRole}
             />
         </>
     );

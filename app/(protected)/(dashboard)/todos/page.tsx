@@ -104,7 +104,10 @@ function TodosContent() {
             />
             <div className="flex-1 h-full overflow-hidden bg-white relative">
                 {selectedProjectId ? (
-                    <Board projectId={selectedProjectId} />
+                    <Board
+                        projectId={selectedProjectId}
+                        currentUserRole={projects.find(p => p.id === selectedProjectId)?.currentUserRole}
+                    />
                 ) : (
                     <div className="h-full overflow-y-auto p-8">
                         <div className="max-w-4xl mx-auto">

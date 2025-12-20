@@ -110,12 +110,11 @@ CREATE POLICY "Todos are viewable if project is accessible" ON todos
 DROP POLICY IF EXISTS "Todos are manageable by project owner or editors" ON todos;
 CREATE POLICY "Todos are manageable by project owner or editors" ON todos
     FOR ALL USING (
-        check_is_project_owner(project_id, auth.uid()) OR
         EXISTS (
             SELECT 1 FROM project_members 
             WHERE project_id = todos.project_id 
             AND user_id = auth.uid() 
-            AND role = 'editor'
+            AND role IN ('owner', 'editor')
         )
     );
 
@@ -130,11 +129,10 @@ CREATE POLICY "Categories are viewable if project is accessible" ON categories
 DROP POLICY IF EXISTS "Categories are manageable by project owner or editors" ON categories;
 CREATE POLICY "Categories are manageable by project owner or editors" ON categories
     FOR ALL USING (
-        user_id = auth.uid() OR
         EXISTS (
             SELECT 1 FROM project_members 
             WHERE project_id = categories.project_id 
             AND user_id = auth.uid() 
-            AND role = 'editor'
+            AND role IN ('owner', 'editor')
         )
     );

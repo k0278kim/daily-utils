@@ -14,9 +14,11 @@ interface EditTodoModalProps {
     onClose: () => void;
     onSave: (updatedTodo: Todo) => void;
     projectId?: string;
+    currentUserRole?: 'owner' | 'editor' | 'viewer';
 }
 
-const EditTodoModal: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose, onSave, projectId }) => {
+const EditTodoModal: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose, onSave, projectId, currentUserRole }) => {
+    const isViewer = currentUserRole === 'viewer';
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -68,7 +70,7 @@ const EditTodoModal: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose, on
                 transition={roundTransition}
                 className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="flex justify-between items-center px-6 py-4 border-b border-gray-50 shrink-0">
-                    <h2 className="text-sm font-semibold text-gray-500">할 일 수정</h2>
+                    <h2 className="text-sm font-semibold text-gray-500">{isViewer ? '할 일 상세' : '할 일 수정'}</h2>
                     <button
                         onClick={onClose}
                         className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 transition-colors"
@@ -84,18 +86,20 @@ const EditTodoModal: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose, on
                             <input
                                 type="text"
                                 required
-                                className="w-full text-2xl font-bold text-gray-900 border-none p-0 outline-none focus:ring-0 placeholder:text-gray-300"
+                                className="w-full text-2xl font-bold text-gray-900 border-none p-0 outline-none focus:ring-0 placeholder:text-gray-300 disabled:bg-transparent"
                                 placeholder="할 일 제목"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                autoFocus
+                                autoFocus={!isViewer}
+                                disabled={isViewer}
                             />
                             <textarea
                                 rows={5}
-                                className="w-full text-base text-gray-600 border-none p-0 outline-none focus:ring-0 resize-none placeholder:text-gray-300 leading-relaxed"
+                                className="w-full text-base text-gray-600 border-none p-0 outline-none focus:ring-0 resize-none placeholder:text-gray-300 leading-relaxed disabled:bg-transparent"
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="상세 설명을 입력하세요..."
+                                placeholder={isViewer ? "설명이 없습니다." : "상세 설명을 입력하세요..."}
+                                disabled={isViewer}
                             />
                         </div>
 
@@ -112,6 +116,7 @@ const EditTodoModal: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose, on
                                         value={categoryId || undefined}
                                         onChange={setCategoryId}
                                         className="bg-white border-gray-200"
+                                        disabled={isViewer}
                                     />
                                 ) : (
                                     <div className="text-sm text-gray-400">프로젝트 필요</div>
@@ -125,9 +130,10 @@ const EditTodoModal: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose, on
                                 </label>
                                 <input
                                     type="date"
-                                    className="w-full text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-black focus:ring-1 focus:ring-black transition-all text-gray-700"
+                                    className="w-full text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-black focus:ring-1 focus:ring-black transition-all text-gray-700 disabled:bg-gray-50"
                                     value={dueDate}
                                     onChange={(e) => setDueDate(e.target.value)}
+                                    disabled={isViewer}
                                 />
                             </div>
                         </div>
@@ -139,14 +145,16 @@ const EditTodoModal: React.FC<EditTodoModalProps> = ({ todo, isOpen, onClose, on
                             onClick={onClose}
                             className="px-5 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
                         >
-                            취소
+                            {isViewer ? '닫기' : '취소'}
                         </button>
-                        <button
-                            type="submit"
-                            className="px-5 py-2.5 text-sm font-semibold bg-black text-white rounded-xl hover:bg-gray-800 transition-all shadow-sm active:scale-95"
-                        >
-                            저장하기
-                        </button>
+                        {!isViewer && (
+                            <button
+                                type="submit"
+                                className="px-5 py-2.5 text-sm font-semibold bg-black text-white rounded-xl hover:bg-gray-800 transition-all shadow-sm active:scale-95"
+                            >
+                                저장하기
+                            </button>
+                        )}
                     </div>
                 </form>
             </motion.div>

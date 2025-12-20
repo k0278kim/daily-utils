@@ -22,9 +22,11 @@ interface ColumnProps {
     onDeleteTodo?: (id: string) => void;
     isLoading?: boolean;
     enableDateGrouping?: boolean;
+    currentUserRole?: 'owner' | 'editor' | 'viewer';
 }
 
-const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, onEditTodo, onToggleStatus, projectId, enableDateFilter, enableStatusFilter, currentUserId, onDeleteTodo, isLoading, enableDateGrouping }) => {
+const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, onEditTodo, onToggleStatus, projectId, enableDateFilter, enableStatusFilter, currentUserId, onDeleteTodo, isLoading, enableDateGrouping, currentUserRole }) => {
+    const isViewer = currentUserRole === 'viewer';
     const [isAdding, setIsAdding] = useState(false);
     const [newTodoTitle, setNewTodoTitle] = useState('');
     const [newTodoDueDate, setNewTodoDueDate] = useState('');
@@ -116,7 +118,7 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
                             <option value="done">Done</option>
                         </select>
                     )}
-                    {onAddTodo && (
+                    {!isViewer && onAddTodo && (
                         <button
                             onClick={() => setIsAdding(true)}
                             className="text-gray-400 hover:text-gray-800 transition-colors p-1"
@@ -263,9 +265,9 @@ const Column: React.FC<ColumnProps> = ({ droppableId, title, todos, onAddTodo, o
                                                 todo={todo}
                                                 index={index}
                                                 onClick={() => onEditTodo(todo)}
-                                                onToggleStatus={onToggleStatus}
+                                                onToggleStatus={isViewer ? undefined : onToggleStatus}
                                                 currentUserId={currentUserId}
-                                                onDeleteTodo={onDeleteTodo}
+                                                onDeleteTodo={isViewer ? undefined : onDeleteTodo}
                                             />
                                         </React.Fragment>
                                     );
