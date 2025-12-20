@@ -2,7 +2,8 @@
 @import "tw-animate-css";
 
 @plugin "@tailwindcss/typography" {
-  className: "prose";   /* 기본값은 prose지만, 바꿀 수 있음 */
+  className: "prose";
+  /* 기본값은 prose지만, 바꿀 수 있음 */
 }
 
 @theme inline {
@@ -48,7 +49,8 @@
 @font-face {
   font-family: "Pretendard";
   src: url("/fonts/PretendardVariable.ttf") format("truetype");
-  font-weight: 100 900; /* Variable font라면 범위로 지정 */
+  font-weight: 100 900;
+  /* Variable font라면 범위로 지정 */
   font-style: normal;
 }
 
@@ -140,6 +142,7 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground break-keep;
   }
@@ -147,14 +150,36 @@ body {
 
 @layer utilities {
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;     /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
   }
+
   .scrollbar-hide::-webkit-scrollbar {
-    display: none;             /* Chrome, Safari, Opera */
+    display: none;
+    /* Chrome, Safari, Opera */
   }
 }
 
 button {
   cursor: pointer;
+}
+
+/* Tiptap Placeholder Styling - High Specificity */
+.tiptap p.is-editor-empty:first-child::before,
+.tiptap p.is-empty::before,
+.tiptap p[data-placeholder]::before {
+  content: attr(data-placeholder) !important;
+  float: left !important;
+  color: #94a3b8 !important;
+  /* Slightly darker slate for better visibility */
+  pointer-events: none !important;
+  height: 0 !important;
+  display: block !important;
+}
+
+.tiptap p.is-editor-empty:first-child,
+.tiptap p.is-empty {
+  position: relative !important;
 }

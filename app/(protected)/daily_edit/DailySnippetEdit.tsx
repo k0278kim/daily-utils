@@ -1,46 +1,46 @@
 "use client"
-import React, {useEffect, useState} from "react";
-import Editor from "@/components/MdEditor";
+import React, { useEffect, useState, useRef } from "react";
+import NovelEditor, { NovelEditorHandle } from "@/components/NovelEditor";
 import formatDate from "@/lib/utils/format_date";
 import fetchSnippet from "@/app/api/fetch_snippet";
-import {Snippet} from "@/model/snippet";
-import {addSnippet} from "@/app/api/snippet/add_snippet/add_snippet";
+import { Snippet } from "@/model/snippet";
+import { addSnippet } from "@/app/api/snippet/add_snippet/add_snippet";
 import CircularLoader from "@/components/CircularLoader";
-import IconTextButton from "@/components/IconTextButton";
-import {driveUploadFile} from "@/app/api/drive_upload_file";
-import {signIn, useSession} from "next-auth/react";
-import {driveGetFolder} from "@/app/api/drive_get_folder";
-import {driveDeleteFile} from "@/app/api/drive_delete_file";
-import LoadOrLogin from "@/components/LoadOrLogin";
-import {useRouter} from "next/navigation";
-import {snippetDriveId} from "@/app/data/drive_id";
-import {useUser} from "@/context/SupabaseProvider";
+import { driveUploadFile } from "@/app/api/drive_upload_file";
+import { driveGetFolder } from "@/app/api/drive_get_folder";
+import { driveDeleteFile } from "@/app/api/drive_delete_file";
+import { snippetDriveId } from "@/app/data/drive_id";
+import { useUser } from "@/context/SupabaseProvider";
+import { Check, Clock, Save, Upload, Calendar as CalendarIcon, Loader2, PlusCircle } from "lucide-react";
+import { startOfDay, endOfDay, format } from "date-fns";
+
+interface CalendarEvent {
+  id: string;
+  summary: string;
+  start: { dateTime?: string; date?: string };
+  end: { dateTime?: string; date?: string };
+}
 
 type dailySnippetEditProps = {
   setSelectedArea: (area: number) => void;
 };
 
-export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) => {
+export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps) => {
   const template = ``;
-  // const { data: session } = useSession();
+  const editorRef = useRef<NovelEditorHandle>(null);
   const [submitText, setSubmitText] = useState<string>("발행하기");
   const [snippetContent, setSnippetContent] = useState(template);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
-  const [snippets, setSnippets] = useState([]);
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [loadStatus, setLoadStatus] = useState(false);
   const [editorDisabled, setEditorDisabled] = useState(true);
-  const [loadOverflow, setLoadOverflow] = useState(false);
   const [initCompleted, setInitCompleted] = useState(false);
   const [error, setError] = useState("");
   const [tempContent, setTempContent] = useState("");
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [isCalendarLoading, setIsCalendarLoading] = useState(false);
   const { user } = useUser();
-
-  const router = useRouter();
-
-  const onSnippetChange = (str: string) => {
-    setSnippetContent(str);
-  }
 
   const dailySnippetAvailableDate = () => {
     const now = new Date();
@@ -67,194 +67,275 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps ) =>
   }
 
   useEffect(() => {
-    (async() => {
+    (async () => {
       if (user && !initCompleted) {
         setLoadStatus(false);
         try {
-          await getMySnippets(user?.email as string).then((res) => {
-            console.log(res);
-            setSnippets(res);
-            const snip: Snippet[] = res.filter((sn: Snippet) => sn.snippet_date == selectedDate);
-            if (snip.length == 1) {
-              setSnippetContent(snip[0].content);
-            } else {
-              setEditorDisabled(false);
-            }
-            setLoadStatus(true);
-          });
+          const res = await getMySnippets(user?.email as string);
+          setSnippets(res);
+          setLoadStatus(true);
           setInitCompleted(true);
         } catch (e) {
-          const confirm = window.confirm("지금 상태로 스니펫을 임시저장할까요?");
-          if (confirm) {
-            window.localStorage.setItem(`snippet__tempsave__${selectedDate!}`, snippetContent);
-          }
           setError(e as string);
         }
       }
-      if (!isUploading) {
-        setEditorDisabled(false);
-      }
     })();
+  }, [user, initCompleted]);
 
-  }, [user]);
-
+  // Sync content and locked state when date or snippets change
   useEffect(() => {
-    console.log(snippets);
-    if (snippets.length != 0) {
-      const yesterday = new Date(selectedDate!);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const snip: Snippet[] = snippets.filter((sn: Snippet) => sn.snippet_date == formatDate(yesterday));
-      console.log(snip);
-      if (snip.length == 1) {
-        setTempContent(snip[0].content);
-      }
+    const snip = snippets.find((sn) => sn.snippet_date === selectedDate);
+    if (snip) {
+      setSnippetContent(snip.content);
+      setEditorDisabled(true);
+    } else {
+      setEditorDisabled(false);
+      // Only reset if it's not the initial load or a deliberate change
+      // (Optional: preserve temp content if switching away and back)
     }
   }, [selectedDate, snippets]);
 
+  // Fetch calendar events
   useEffect(() => {
-    setTimeout(() => {
-      setLoadOverflow(true);
-    }, 3000);
-  }, [])
+    const fetchEvents = async () => {
+      if (!selectedDate) return;
+      setIsCalendarLoading(true);
+      try {
+        const timeMin = startOfDay(new Date(selectedDate)).toISOString();
+        const timeMax = endOfDay(new Date(selectedDate)).toISOString();
+        const res = await fetch(`/api/calendar/events?timeMin=${timeMin}&timeMax=${timeMax}&calendarIds=primary`, {
+          cache: 'no-store'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCalendarEvents(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch calendar events", e);
+      } finally {
+        setIsCalendarLoading(false);
+      }
+    };
+    fetchEvents();
+  }, [selectedDate]);
 
-  // if (!session) return <LoadOrLogin loadOverflow={loadOverflow} setLoadOverflow={setLoadOverflow} />
-  if (error) return <div className={"w-full h-full flex items-center justify-center text-gray-700 text-2xl"}>Daily Snippet 서버에 접속할 수 없어요.</div>
+  const handlePublish = async () => {
+    if (!isUploading && user?.email != "" && editorRef.current) {
+      setEditorDisabled(true);
+      const email = user?.email as string;
+      setIsUploading(true);
+      setSubmitText("처리 중...")
 
-  return error ? <div className={"w-full h-full flex items-center justify-center text-gray-700 text-2xl"}>Daily Snippet 서버에 접속할 수 없어요.</div>
-    :
-    <div className={"w-full h-full bg-gray-100"}>
-    <div className={"flex flex-col p-10 h-full space-y-10"}>
-      <div className={"flex h-12"}>
-        <div className={"flex space-x-2.5"}>
-          {
-            dailySnippetAvailableDate().map((date) => {
-              const dateSplit = date!.split("-");
-              const snippet: Snippet[] = snippets.filter((snip: Snippet) => snip.snippet_date == date);
-              return <button
-                key={date}
+      const markdownContent = await editorRef.current.getMarkdown();
+      const result = (await addSnippet(email, selectedDate!, markdownContent)).received;
+      const myDriveList = (await driveGetFolder(snippetDriveId)).filter((f: { id: string, name: string }) => f.name == `${selectedDate!}_${user?.user_metadata.full_name}`);
+
+      if (result.length == 1) {
+        const freshSnippets = await getMySnippets(user?.email as string);
+        setSnippets(freshSnippets);
+        for await (const file of myDriveList) {
+          await driveDeleteFile(file.id);
+        }
+        await driveUploadFile(snippetDriveId, `${selectedDate!}_${user?.user_metadata.full_name}`, markdownContent);
+        setSubmitText("발행 완료");
+        window.localStorage.removeItem(`snippet__tempsave__${selectedDate!}`);
+
+        setTimeout(() => {
+          setIsUploading(false);
+          setSelectedArea(1);
+        }, 800);
+      } else {
+        setSubmitText("이미 존재함");
+        setTimeout(() => setIsUploading(false), 800);
+      }
+    }
+  };
+
+  if (error) return (
+    <div className="w-full h-full flex items-center justify-center bg-white p-10">
+      <div className="max-w-xs text-center">
+        <p className="text-sm text-slate-400 mb-4">{error || "서버에 접속할 수 없습니다."}</p>
+        <button onClick={() => window.location.reload()} className="text-xs font-bold underline decoration-slate-200 underline-offset-4">다시 시도</button>
+      </div>
+    </div>
+  );
+
+  const isPublished = snippets.some((snip: Snippet) => snip.snippet_date == selectedDate);
+
+  return (
+    <div className="w-full h-full bg-white relative font-sans text-slate-900 scrollbar-hide flex">
+      {/* Left Sidebar: Calendar Events */}
+      <aside className="w-72 h-screen sticky top-0 border-r border-slate-50 p-8 flex flex-col shrink-0 overflow-y-auto scrollbar-hide">
+        <div className="flex items-center gap-2 mb-8">
+          <CalendarIcon size={14} className="text-slate-400" />
+          <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Today's Schedule</h2>
+        </div>
+
+        {isCalendarLoading ? (
+          <div className="flex flex-col gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="animate-pulse flex flex-col gap-2">
+                <div className="h-2 w-12 bg-slate-50 rounded" />
+                <div className="h-3 w-full bg-slate-50 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : calendarEvents.length > 0 ? (
+          <div className="flex flex-col gap-8">
+            {calendarEvents.map((event) => {
+              const startTime = event.start.dateTime ? format(new Date(event.start.dateTime), "HH:mm") : "";
+              const endTime = event.end.dateTime ? format(new Date(event.end.dateTime), "HH:mm") : "";
+              const isAllDay = !event.start.dateTime;
+              const timeRange = isAllDay ? "All Day" : `${startTime} - ${endTime}`;
+
+              return (
+                <button
+                  key={event.id}
+                  onClick={() => {
+                    if (editorRef.current) {
+                      const isEmpty = editorRef.current.isEmpty();
+                      let nextIdx = 1;
+
+                      if (!isEmpty) {
+                        const markdown = editorRef.current.getMarkdown();
+                        // Find all number patterns (including our invisible \u200B prefix)
+                        const matches = markdown.match(/(\d+)\.\s/g);
+                        if (matches) {
+                          const numbers = matches.map(m => parseInt(m.match(/\d+/)![0]));
+                          nextIdx = Math.max(...numbers) + 1;
+                        }
+                      }
+
+                      // \u200B is a Zero-Width Space to bypass Tiptap auto-list (prevents nesting)
+                      const summary = `\u200B${nextIdx}. [${timeRange}] ${event.summary}`;
+                      editorRef.current.insertContent(summary);
+                    }
+                  }}
+                  className="group relative flex flex-col gap-1.5 text-left w-full p-3 -m-3 rounded-xl hover:bg-slate-50 transition-all active:scale-[0.98]"
+                >
+                  <span className="text-[10px] font-medium text-slate-400 tabular-nums">
+                    {timeRange}
+                  </span>
+                  <h3 className="text-sm font-medium text-slate-700 leading-snug group-hover:text-slate-900 transition-colors">
+                    {event.summary}
+                  </h3>
+                  <div className="opacity-0 group-hover:opacity-100 absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 transition-all">
+                    <PlusCircle size={14} />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 opacity-30">
+            <CalendarIcon size={24} className="mb-4 text-slate-300" />
+            <span className="text-[10px] font-medium text-slate-400">No events today</span>
+          </div>
+        )}
+      </aside>
+
+      <div className="flex-1 h-full flex flex-col items-center overflow-y-auto">
+
+        {/* Ultra Minimal Header */}
+        <header className="w-full max-w-4xl px-8 py-10 flex items-center justify-between">
+          <div className="flex flex-col">
+            {/* <h1 className="text-xl font-medium tracking-tight">Daily Snippet</h1> */}
+            <div className="flex items-center gap-2 mt-1">
+              {dailySnippetAvailableDate().map((date) => {
+                const snippet: Snippet[] = snippets.filter((snip: Snippet) => snip.snippet_date == date);
+                const isSelected = selectedDate == date;
+                const datePublished = snippet.length == 1;
+                const dateSplit = date!.split("-");
+
+                return (
+                  <button
+                    key={date}
+                    onClick={() => {
+                      if (loadStatus) {
+                        setSelectedDate(date!);
+                      }
+                    }}
+                    className={`px-5 py-2 border border-slate-200 rounded-full text-lg font-medium transition-all ${isSelected ? "text-slate-900" : "text-slate-300 hover:text-slate-500"
+                      } flex items-center gap-1.5`}
+                  >
+                    <span>{`${dateSplit[1]}.${dateSplit[2]}`}</span>
+                    {datePublished && <div className="w-1 h-1 rounded-full bg-slate-900" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={async () => {
+                  if (editorRef.current) {
+                    const markdown = editorRef.current.getMarkdown();
+                    window.localStorage.setItem(`snippet__tempsave__${selectedDate!}`, markdown);
+                    alert("임시저장되었습니다.");
+                  }
+                }}
+                className="text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
+              >
+                Save
+              </button>
+              <button
                 onClick={() => {
-                  if (loadStatus) {
-                    setSelectedDate(date!);
-                    if (snippet.length == 1) {
-                      setSnippetContent(snippet[0].content);
-                      setEditorDisabled(true);
-                    } else {
-                      setEditorDisabled(false);
-                      setSnippetContent(template);
+                  const result = window.localStorage.getItem(`snippet__tempsave__${selectedDate!}`);
+                  if (result && window.confirm("저장된 내용을 불러올까요?")) {
+                    setSnippetContent(result!);
+                    setEditorDisabled(false);
+                  }
+                }}
+                className="text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
+              >
+                Load
+              </button>
+            </div>
+
+            <button
+              onClick={handlePublish}
+              disabled={isUploading || isPublished}
+              className={`text-[11px] font-black uppercase tracking-[0.2em] px-5 py-2.5 rounded-full transition-all border ${isUploading
+                ? "bg-slate-50 text-slate-300 border-slate-100"
+                : isPublished
+                  ? "bg-slate-900 text-white border-slate-900 opacity-50 cursor-not-allowed"
+                  : "bg-white text-slate-900 border-slate-900 hover:bg-slate-900 hover:text-white"
+                }`}
+            >
+              {isUploading ? submitText : isPublished ? "Published" : "Publish"}
+            </button>
+          </div>
+        </header>
+
+        {/* Pure Canvas */}
+        <main className="w-full max-w-4xl px-8 pb-32">
+          <div className="relative">
+            {isPublished && (
+              <div className="mb-8 p-6 bg-slate-50 rounded-xl flex items-center justify-center">
+                <span className="text-xs text-slate-500 font-medium italic">이미 발행된 기록입니다. 수정이 불가합니다.</span>
+              </div>
+            )}
+
+            <div className={`transition-opacity duration-300 ${editorDisabled ? "opacity-50" : "opacity-100"}`}>
+              <NovelEditor
+                key={selectedDate}
+                ref={editorRef}
+                initialContent={snippetContent}
+                editable={!editorDisabled}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && editorRef.current?.isEmpty() && tempContent) {
+                    if (window.confirm("어제 기록을 가져올까요?")) {
+                      editorRef.current.setContent(tempContent);
                     }
                   }
                 }}
-                className={`text-sm flex items-center space-x-2.5 rounded-lg p-3 border-[1px] cursor-pointer ${!loadStatus ? "bg-gray-200 text-gray-500" : selectedDate == date ? "bg-white border-gray-200" : "border-transparent text-gray-600"} font-bold`}>
-                <p>{`${dateSplit[0]}년 ${dateSplit[1]}월 ${dateSplit[2]}일`}</p>
-                <div className={"w-4 aspect-square flex items-center justify-center"}>
-                  {
-                    isUploading || !loadStatus
-                      ? <div className={"w-4 aspect-square"}><CircularLoader/></div>
-                      : <div className={`w-2 aspect-square rounded-full ${snippet.length == 1 ? "bg-green-500" : "bg-gray-400"}`}></div>
-                  }
-                </div>
-
-              </button>
-            })
-          }
-        </div>
-        <div className={"flex space-x-2.5 flex-1 justify-end"}>
-          { !editorDisabled && <IconTextButton src={"/arrow-path.svg"} text={"초기화"} onClick={() => {
-            const confirm = window.confirm("작성하시던 내용을 초기화하시겠습니까?");
-            if (confirm) {
-              setSnippetContent(template);
-            }
-          }} />}
-          <IconTextButton src={"/arrow-up-right.svg"} text={"Snippet 조회하기"} onClick={() => location.href="/snippets"} />
-          <IconTextButton src={"/arrow-up-right.svg"} text={"Daily Snippet"} onClick={() => { window.open("https://daily.1000.school")}} />
-          <IconTextButton src={"/globe.svg"} text={"임시저장"} onClick={() => {
-            const confirm = window.confirm("지금 상태로 스니펫을 임시저장할까요?");
-            if (confirm) {
-              window.localStorage.setItem(`snippet__tempsave__${selectedDate!}`, snippetContent);
-            }
-          }} />
-          <IconTextButton src={"/globe.svg"} text={"임시저장 불러오기"} onClick={() => {
-            const result = window.localStorage.getItem(`snippet__tempsave__${selectedDate!}`);
-            if (result) {
-              const confirm = window.confirm("임시저장한 스니펫을 불러올까요?");
-              if (confirm) {
-                setSnippetContent(result!);
-              }
-            } else {
-              window.alert("임시저장한 스니펫이 없어요.");
-            }
-          }} />
-          <button className={`text-sm rounded-lg font-semibold flex w-fit px-5 items-center justify-center ${isUploading ? "text-gray-300 bg-gray-500" : "text-white bg-gray-800"}`} onClick={async () => {
-            if (!isUploading && user?.email != "") {
-              setEditorDisabled(true);
-              const email = user?.email as string;
-              setIsUploading(true);
-              setSubmitText("Daily Snippet 채널에 업로드가 가능한지 확인 중")
-              const result = (await addSnippet(email, selectedDate!, snippetContent)).received;
-              const myDriveList = (await driveGetFolder(snippetDriveId)).filter((f: { id: string, name: string } ) => f.name == `${selectedDate!}_${user?.user_metadata.full_name}`);
-              if (result.length == 1) {
-                setSnippets(await getMySnippets(user?.email as string));
-                setSubmitText("Google Drive에서 파일 정리 중")
-                for await (const file of myDriveList) {
-                  await driveDeleteFile(file.id);
-                }
-                setSubmitText("Google Drive에 파일 업로드 중")
-                await driveUploadFile(snippetDriveId, `${selectedDate!}_${user?.user_metadata.full_name}`, snippetContent);
-                setSubmitText("업로드 완료");
-                window.localStorage.removeItem(`snippet__tempsave__${selectedDate!}`);
-                setTimeout(() => {
-                  setIsUploading(false);
-                }, 1000);
-                setSelectedArea(1);
-              } else {
-                setSubmitText("이미 업로드가 되어 있어요");
-                setEditorDisabled(true);
-                setTimeout(() => {
-                  setIsUploading(false);
-                }, 1000);
-              }
-              if (myDriveList.length == 0) {
-                setSubmitText("Google Drive에 파일이 업로드되어 있지 않아서 업로드하고 있어요")
-                await getMySnippets(user?.email as string).then(async (res) => {
-                  setSnippets(res);
-                  const snip: Snippet[] = res.filter((sn: Snippet) => sn.snippet_date == selectedDate);
-                  if (snip.length == 1) {
-                    setSnippetContent(snip[0].content);
-                    await driveUploadFile(snippetDriveId, `${selectedDate!}_${user?.user_metadata.full_name}`, snip[0].content);
-                  }
-                });
-                setSubmitText("업로드 완료");
-                setEditorDisabled(true);
-                setTimeout(() => {
-                  setIsUploading(false);
-                }, 1000);
-              }
-            }
-          }}>{ isUploading ? <div className={"flex space-x-2.5"}>
-            <div className={"w-5 aspect-square"}><CircularLoader/></div>
-            <p>{submitText}</p>
-          </div> : editorDisabled ? "Google Drive 업로드 확인하기" : "발행하기" }</button>
-        </div>
-      </div>
-      <div className={"flex-1 relative"}>
-        <div className={"absolute w-full h-full flex items-end justify-center bg-gray-800/40 rounded-md"}>
-          <div className={"bg-black rounded-md p-5 mb-10 text-white"}>입력할 수 없어요</div>
-        </div>
-        <SnippetEditor content={snippetContent} onSnippetChange={onSnippetChange} editorDisabled={editorDisabled} tempContent={tempContent} />
+              />
+            </div>
+          </div>
+        </main>
       </div>
     </div>
-  </div>
-}
-
-type snippetEditorType = {
-  content: string,
-  onSnippetChange: (value: string) => void;
-  editorDisabled: boolean;
-  tempContent: string;
-}
-
-const SnippetEditor = ({ content, onSnippetChange, editorDisabled, tempContent }: snippetEditorType) => {
-  return <div className={`w-full h-full border-[1px] border-gray-300 rounded-2xl ${editorDisabled ? "opacity-30" : ""}`}>
-    <Editor content={content} contentChange={onSnippetChange} disabled={editorDisabled} tempContent={tempContent} />
-  </div>
-}
+  );
+};
