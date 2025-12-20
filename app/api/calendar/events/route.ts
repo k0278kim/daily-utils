@@ -3,6 +3,8 @@ import { getAuthenticatedGoogleClient } from "@/utils/googleAuth";
 import { google } from "googleapis";
 import { requireAuth } from "@/utils/supabase/auth";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
     try {
         await requireAuth(); // Ensure user is logged in to the app
@@ -50,6 +52,63 @@ export async function GET(req: NextRequest) {
 
         const allEventsArrays = await Promise.all(eventsPromises);
         const allEvents = allEventsArrays.flat();
+
+        // [NEW] Fetch profiles for attendees from Supabase
+        const emails = new Set<string>();
+        allEvents.forEach((event: any) => {
+            event.attendees?.forEach((att: any) => {
+                if (att.email) emails.add(att.email.toLowerCase());
+            });
+        });
+
+        if (emails.size > 0) {
+            const { createClient } = await import("@supabase/supabase-js");
+
+            // Use Service Role to bypass RLS
+            const supabaseAdmin = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!,
+                {
+                    auth: {
+                        autoRefreshToken: false,
+                        persistSession: false,
+                    },
+                }
+            );
+
+            // Query 'profiles' table with admin privileges
+            const { data: profiles, error } = await supabaseAdmin
+                .from('profiles')
+                .select('email, avatar_url, name')
+                .in('email', Array.from(emails));
+
+            if (error) {
+                console.error("[API] Profile Fetch Error:", error);
+            }
+
+            console.log(`[API] Emails to fetch: ${emails.size}, Profiles found: ${profiles?.length || 0}`);
+
+            if (profiles) {
+                // Normalize keys to lowercase for matching
+                const profileMap = new Map(profiles.map((p: any) => [p.email.toLowerCase(), p]));
+
+                let enrichedCount = 0;
+                allEvents.forEach((event: any) => {
+                    event.attendees?.forEach((att: any) => {
+                        if (!att.email) return;
+
+                        const profile = profileMap.get(att.email.toLowerCase());
+                        if (profile) {
+                            att.avatarUrl = profile.avatar_url;
+                            if (profile.avatar_url) enrichedCount++;
+                            // Optional: Use profile name if Google displayName is missing
+                            if (!att.displayName) att.displayName = profile.name;
+                        }
+                    });
+                });
+                console.log(`[API] Total enriched attendees with avatars: ${enrichedCount}`);
+            }
+        }
 
         console.log(`[API] Total events found: ${allEvents.length}`);
 

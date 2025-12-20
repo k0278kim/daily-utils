@@ -20,7 +20,7 @@ import {
     differenceInMinutes
 } from "date-fns";
 import { ko } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, RefreshCw, X, Clock, MapPin, AlignLeft, Trash2, ListTodo, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, RefreshCw, X, Clock, MapPin, AlignLeft, Trash2, ListTodo, FileText, Users, CheckCircle2, XCircle, HelpCircle } from "lucide-react";
 
 import { useSupabaseClient } from "@/context/SupabaseProvider";
 import { Todo } from "@/model/Todo";
@@ -43,6 +43,13 @@ interface CalendarEvent {
     htmlLink?: string;
     colorId?: string;
     calendarId?: string; // Added for multi-calendar support
+    attendees?: {
+        email: string;
+        responseStatus?: string;
+        self?: boolean;
+        displayName?: string;
+        avatarUrl?: string; // Fetched from Supabase
+    }[];
 }
 
 interface CalendarInfo {
@@ -174,9 +181,11 @@ const CalendarPage = () => {
             const timeMax = endOfDay(currentDate).toISOString();
 
             try {
-                // Build calendarIds param
+                // Build calendarIdsParam
                 const calendarIdsParam = selectedCalendarIds.join(',');
-                const res = await fetch(`/api/calendar/events?timeMin=${timeMin}&timeMax=${timeMax}&calendarIds=${encodeURIComponent(calendarIdsParam)}`);
+                const res = await fetch(`/api/calendar/events?timeMin=${timeMin}&timeMax=${timeMax}&calendarIds=${encodeURIComponent(calendarIdsParam)}`, {
+                    cache: 'no-store'
+                });
 
                 if (res.ok) {
                     const data = await res.json();
@@ -444,6 +453,57 @@ const CalendarPage = () => {
             fetchAvailableTodos();
         }
     }, [isImporting]);
+
+    // RSVP Handler (Optimistic UI)
+    const handleRSVP = async (status: string) => {
+        if (!selectedEvent) return;
+
+        // 1. Snapshot previous state for rollback
+        const previousSelectedEvent = { ...selectedEvent };
+        const previousEvents = [...events];
+
+        // 2. Optimistic Update
+        const updateEventState = (eventToUpdate: CalendarEvent) => ({
+            ...eventToUpdate,
+            attendees: eventToUpdate.attendees?.map(att =>
+                att.self ? { ...att, responseStatus: status } : att
+            )
+        });
+
+        const optimisticallyUpdatedEvent = updateEventState(selectedEvent);
+
+        // Update UI immediately
+        setSelectedEvent(optimisticallyUpdatedEvent);
+        setEvents(prev => prev.map(e =>
+            e.id === selectedEvent.id ? optimisticallyUpdatedEvent : e
+        ));
+
+        // 3. Background Request
+        try {
+            const res = await fetch('/api/calendar/events/rsvp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    calendarId: selectedEvent.calendarId || 'primary',
+                    eventId: selectedEvent.id,
+                    responseStatus: status
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || "Update failed");
+            }
+            // Success: State is already consistent. 
+            // We can optionally silent-refresh or just leave it.
+        } catch (e: any) {
+            console.error(e);
+            alert("상태 업데이트 실패. 원래 상태로 되돌립니다.\n" + e.message);
+            // 4. Rollback on failure
+            setSelectedEvent(previousSelectedEvent);
+            setEvents(previousEvents);
+        }
+    };
 
 
     // Drag Handlers
@@ -997,6 +1057,61 @@ const CalendarPage = () => {
                                                 </a>
                                             );
                                         })()}
+
+                                        {/* Attendees */}
+                                        {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
+                                            <div className="flex items-start gap-2 px-2 py-2 rounded-md hover:bg-slate-50 group transition-colors">
+                                                <Users size={14} className="text-slate-400 shrink-0 mt-1" />
+                                                <span className="text-sm text-slate-500 w-14 shrink-0 mt-0.5">참석자</span>
+                                                <div className="flex-1 space-y-2">
+                                                    {selectedEvent.attendees.map((att, i) => {
+                                                        const status = att.responseStatus;
+                                                        const isAccepted = status === 'accepted';
+                                                        const isDeclined = status === 'declined';
+                                                        const isNeedsAction = status === 'needsAction' || status === 'tentative';
+
+                                                        const name = att.displayName || att.email.split('@')[0];
+                                                        const initial = name.charAt(0).toUpperCase();
+
+                                                        return (
+                                                            <div key={i} className="flex items-center justify-between text-sm">
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    {att.avatarUrl ? (
+                                                                        <img src={att.avatarUrl} alt={name} className="w-5 h-5 rounded-full object-cover bg-slate-100 shrink-0" />
+                                                                    ) : (
+                                                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-slate-700 shrink-0 ${AVATAR_COLORS[(name.charCodeAt(0) || 0) % AVATAR_COLORS.length]}`}>
+                                                                            {initial}
+                                                                        </div>
+                                                                    )}
+                                                                    <span className="truncate text-slate-700" title={att.email}>{name}</span>
+                                                                </div>
+                                                                <div className="shrink-0 ml-2" title={status}>
+                                                                    {att.self ? (
+                                                                        <div className="flex items-center gap-1">
+                                                                            <button onClick={() => handleRSVP('accepted')} className={`p-1 rounded-full hover:bg-slate-100 transition-colors ${status === 'accepted' ? 'text-green-600 bg-green-50' : 'text-slate-300'}`} title="수락">
+                                                                                <CheckCircle2 size={16} />
+                                                                            </button>
+                                                                            <button onClick={() => handleRSVP('declined')} className={`p-1 rounded-full hover:bg-slate-100 transition-colors ${status === 'declined' ? 'text-red-600 bg-red-50' : 'text-slate-300'}`} title="거절">
+                                                                                <XCircle size={16} />
+                                                                            </button>
+                                                                            <button onClick={() => handleRSVP('tentative')} className={`p-1 rounded-full hover:bg-slate-100 transition-colors ${status === 'tentative' ? 'text-slate-600 bg-slate-100' : 'text-slate-300'}`} title="미정">
+                                                                                <HelpCircle size={16} />
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <>
+                                                                            {isAccepted && <CheckCircle2 size={14} className="text-green-500" />}
+                                                                            {isDeclined && <XCircle size={14} className="text-red-500" />}
+                                                                            {(isNeedsAction || !status) && <HelpCircle size={14} className="text-slate-300" />}
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Description */}
@@ -1088,15 +1203,28 @@ const CalendarPage = () => {
                                     {sortedEvents.allDay.length > 0 && (
                                         <div className="mb-4">
                                             <p className="text-xs font-medium text-slate-400 mb-2">종일</p>
-                                            {sortedEvents.allDay.map(ev => (
-                                                <button
-                                                    key={ev.id}
-                                                    onClick={() => setSelectedEvent(ev)}
-                                                    className="w-full text-left px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium mb-1 hover:bg-blue-100 transition-colors truncate"
-                                                >
-                                                    {ev.summary || '(제목 없음)'}
-                                                </button>
-                                            ))}
+                                            {sortedEvents.allDay.map(ev => {
+                                                const self = ev.attendees?.find(a => a.self);
+                                                const isDeclined = self?.responseStatus === 'declined';
+                                                const isTentative = self?.responseStatus === 'tentative' || self?.responseStatus === 'needsAction';
+
+                                                let styleClass = 'bg-blue-50 text-blue-700 hover:bg-blue-100';
+                                                if (isDeclined) {
+                                                    styleClass = 'bg-white border border-slate-200 text-slate-400 line-through hover:bg-slate-50';
+                                                } else if (isTentative) {
+                                                    styleClass = 'bg-white border border-dashed border-slate-300 text-slate-600 hover:bg-slate-50';
+                                                }
+
+                                                return (
+                                                    <button
+                                                        key={ev.id}
+                                                        onClick={() => setSelectedEvent(ev)}
+                                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium mb-1 transition-colors truncate ${styleClass}`}
+                                                    >
+                                                        {ev.summary || '(제목 없음)'}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     )}
 
@@ -1125,6 +1253,11 @@ const CalendarPage = () => {
                                                     <p className="text-xs text-slate-500">{startTime} - {endTime}</p>
                                                     {ev.location && (
                                                         <p className="text-xs text-slate-400 truncate mt-0.5">📍 {ev.location}</p>
+                                                    )}
+                                                    {ev.attendees && ev.attendees.length > 1 && (
+                                                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                                                            <Users size={12} /> {ev.attendees.length}명 참여
+                                                        </p>
                                                     )}
                                                 </div>
                                             </button>
@@ -1192,6 +1325,9 @@ const CurrentTimeIndicator = () => {
     );
 };
 
+// Avatar Colors
+const AVATAR_COLORS = ['bg-red-200', 'bg-blue-200', 'bg-green-200', 'bg-yellow-200', 'bg-purple-200', 'bg-pink-200', 'bg-indigo-200', 'bg-orange-200', 'bg-lime-200', 'bg-cyan-200'];
+
 // Sub-component for Event Block
 const TimeEventBlock = ({
     event,
@@ -1227,7 +1363,18 @@ const TimeEventBlock = ({
     // Hash id
     const colorIndex = (event.id.charCodeAt(0) + (event.id.charCodeAt(event.id.length - 1) || 0)) % styles.length;
     const styleSet = event.colorId ? styles[0] : styles[colorIndex];
-    const colorClass = (isHovered || isSelected) ? styleSet.hover : styleSet.normal;
+    let colorClass = (isHovered || isSelected) ? styleSet.hover : styleSet.normal;
+
+    // Override style if declined or tentative
+    const self = event.attendees?.find(a => a.self);
+    const isDeclined = self?.responseStatus === 'declined';
+    const isTentative = self?.responseStatus === 'tentative' || self?.responseStatus === 'needsAction';
+
+    if (isDeclined) {
+        colorClass = "bg-white border-slate-200 text-slate-400 line-through hover:bg-slate-50";
+    } else if (isTentative) {
+        colorClass = "bg-white border-dashed border-slate-300 text-slate-600 hover:bg-slate-50";
+    }
 
     // Layout styles: Greedy Overlay
     // colIndex 0 = bottom, widest.
@@ -1251,7 +1398,7 @@ const TimeEventBlock = ({
                 e.stopPropagation(); // Prevent trigger from parent
                 onClick?.();
             }}
-            className={`absolute rounded-md border text-xs overflow-hidden hover:z-[60] hover:shadow-xl transition-all cursor-pointer pointer-events-auto flex flex-col px-2 py-1 ${colorClass} ${(isSelected || isHovered) ? 'ring-2 ring-offset-1 ring-blue-500 z-[60] shadow-lg scale-[1.02]' : ''}`}
+            className={`absolute rounded-md border text-xs overflow-hidden hover:z-[60] hover:shadow-xl transition-all cursor-pointer pointer-events-auto flex flex-col px-2 py-1 pr-6 ${colorClass} ${(isSelected || isHovered) ? 'ring-2 ring-offset-1 ring-blue-500 z-[60] shadow-lg scale-[1.02]' : ''}`}
             style={{
                 top: `${startMinutes}px`,
                 height: `${duration}px`,
@@ -1266,6 +1413,49 @@ const TimeEventBlock = ({
                 {isLinkedTodo && <FileText size={10} className="shrink-0 opacity-70" />}
                 <span className="truncate">{event.summary || '(제목 없음)'}</span>
             </div>
+
+            {/* Attendee Avatars Group */}
+            {event.attendees && event.attendees.length > 1 && (
+                <div className="absolute top-1 right-1 flex -space-x-1.5 pointer-events-none">
+                    {event.attendees
+                        .slice(0, 3)
+                        .map((attendee, i) => {
+                            const name = attendee.displayName || attendee.email.split('@')[0] || '?';
+                            const initial = name.charAt(0).toUpperCase();
+
+                            if (attendee.avatarUrl) {
+                                return (
+                                    <div
+                                        key={i}
+                                        className="w-4 h-4 rounded-full border border-white overflow-hidden shadow-sm bg-white"
+                                        title={attendee.displayName || attendee.email}
+                                    >
+                                        <img src={attendee.avatarUrl} alt={name} className="w-full h-full object-cover" />
+                                    </div>
+                                );
+                            }
+
+                            const colorHash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                            const bg = AVATAR_COLORS[colorHash % AVATAR_COLORS.length];
+
+                            return (
+                                <div
+                                    key={i}
+                                    className={`w-4 h-4 rounded-full border border-white flex items-center justify-center text-[7px] font-bold text-slate-700 shadow-sm ${bg}`}
+                                    title={attendee.displayName || attendee.email}
+                                >
+                                    {initial}
+                                </div>
+                            );
+                        })}
+                    {event.attendees.length > 3 && (
+                        <div className="w-4 h-4 rounded-full border border-white flex items-center justify-center text-[7px] font-bold bg-slate-100 text-slate-500 shadow-sm">
+                            +{event.attendees.length - 3}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {duration > 30 && (
                 <div className="opacity-80 text-[10px] truncate mt-0.5">
                     {format(start, 'HH:mm')} - {format(end, 'HH:mm')}
