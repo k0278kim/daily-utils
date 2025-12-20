@@ -4,4 +4,6 @@ export interface Project {
     created_at?: string;
     user_id?: string;
     icon?: string;
+    visibility?: 'public' | 'private';
+    currentUserRole?: 'owner' | 'editor' | 'viewer';
 }

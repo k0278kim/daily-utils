@@ -2,18 +2,19 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Folder, FolderOpen, Pencil, Trash2, LayoutGrid } from 'lucide-react';
+import { Plus, Folder, FolderOpen, Pencil, Trash2, LayoutGrid, Lock, Globe, Settings } from 'lucide-react';
 import { Project } from '@/model/Project';
 import dynamic from 'next/dynamic';
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
+import ProjectSettingsModal from './ProjectSettingsModal';
 
 interface ProjectSidebarProps {
     selectedProjectId: string | null;
     onSelectProject: (projectId: string | null) => void;
     projects: Project[];
-    onCreateProject: (name: string, icon?: string) => Promise<void>;
-    onRenameProject: (project: Project, newName: string, newIcon?: string) => Promise<void>;
+    onCreateProject: (name: string, icon?: string, visibility?: 'public' | 'private') => Promise<void>;
+    onRenameProject: (project: Project, newName: string, newIcon?: string, newVisibility?: 'public' | 'private') => Promise<void>;
     onDeleteProject: (projectId: string) => Promise<void>;
 }
 
@@ -29,17 +30,13 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     const [isCreating, setIsCreating] = useState(false);
     const [newProjectName, setNewProjectName] = useState('');
     const [newProjectIcon, setNewProjectIcon] = useState('📁'); // Default Icon
-
-    // Rename State
-    const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-    const [editProjectName, setEditProjectName] = useState('');
-    const [editProjectIcon, setEditProjectIcon] = useState('');
+    const [newProjectVisibility, setNewProjectVisibility] = useState<'public' | 'private'>('private');
 
     // Emoji Picker State
     const [showPicker, setShowPicker] = useState(false);
-    const [pickerType, setPickerType] = useState<'create' | 'edit'>('create');
     const [pickerPosition, setPickerPosition] = useState({ top: 0, left: 0 });
     const pickerRef = useRef<HTMLDivElement>(null);
+    const [projectForSettings, setProjectForSettings] = useState<Project | null>(null);
 
     // Close picker on outside click
     useEffect(() => {
@@ -54,15 +51,12 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
         };
     }, []);
 
-    const openPicker = (e: React.MouseEvent, type: 'create' | 'edit') => {
+    const openPicker = (e: React.MouseEvent) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        // Calculate position: align left with button, display below
-        // Ensure it doesn't go off-screen (basic check could be added if needed)
         setPickerPosition({
             top: rect.bottom + 8,
             left: rect.left
         });
-        setPickerType(type);
         setShowPicker(true);
     };
 
@@ -70,29 +64,13 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
         e.preventDefault();
         if (!newProjectName.trim()) return;
 
-        await onCreateProject(newProjectName, newProjectIcon);
+        await onCreateProject(newProjectName, newProjectIcon, newProjectVisibility);
         setNewProjectName('');
         setNewProjectIcon('📁');
+        setNewProjectVisibility('private');
         setIsCreating(false);
     };
 
-    const handleStartRename = (project: Project, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setEditingProjectId(project.id);
-        setEditProjectName(project.name);
-        setEditProjectIcon(project.icon || '📁');
-    };
-
-    const handleRenameSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!editProjectName.trim() || !editingProjectId) return;
-
-        const project = projects.find(p => p.id === editingProjectId);
-        if (project) {
-            await onRenameProject(project, editProjectName, editProjectIcon);
-        }
-        setEditingProjectId(null);
-    };
 
     const handleDeleteProject = async (projectId: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -114,8 +92,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                 >
                     <EmojiPicker
                         onEmojiClick={(emojiData) => {
-                            if (pickerType === 'create') setNewProjectIcon(emojiData.emoji);
-                            else setEditProjectIcon(emojiData.emoji);
+                            setNewProjectIcon(emojiData.emoji);
                             setShowPicker(false);
                         }}
                         width={300}
@@ -150,7 +127,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                         <div className="flex items-center gap-2 px-3 py-2 bg-white border border-blue-500 shadow-sm rounded-lg">
                             <button
                                 type="button"
-                                onClick={(e) => openPicker(e, 'create')}
+                                onClick={(e) => openPicker(e)}
                                 className="text-lg hover:bg-gray-50 rounded p-0.5 transition-colors"
                             >
                                 {newProjectIcon}
@@ -166,6 +143,14 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                                     if (e.key === 'Escape') setIsCreating(false);
                                 }}
                             />
+                            <select
+                                className="text-[10px] bg-gray-50 border-none outline-none rounded p-1 text-gray-500 font-medium cursor-pointer"
+                                value={newProjectVisibility}
+                                onChange={(e) => setNewProjectVisibility(e.target.value as 'public' | 'private')}
+                            >
+                                <option value="private">Private</option>
+                                <option value="public">Public</option>
+                            </select>
                         </div>
                     </form>
                 )}
@@ -174,61 +159,51 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                 {projects.map(project => (
                     <div
                         key={project.id}
-                        onClick={() => !editingProjectId && onSelectProject(project.id)}
+                        onClick={() => onSelectProject(project.id)}
                         className={`group relative flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer text-sm transition-all duration-200
                             ${selectedProjectId === project.id
                                 ? 'bg-white text-gray-900 shadow-sm ring-1 ring-black/5 font-medium'
                                 : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                             }`}
                     >
-                        {editingProjectId === project.id ? (
-                            <form onSubmit={handleRenameSubmit} className="flex-1 flex gap-2 items-center" onClick={e => e.stopPropagation()}>
-                                <button
-                                    type="button"
-                                    onClick={(e) => openPicker(e, 'edit')}
-                                    className="text-lg hover:bg-gray-50 rounded p-0.5"
-                                >
-                                    {editProjectIcon}
-                                </button>
-                                <input
-                                    autoFocus
-                                    type="text"
-                                    className="flex-1 text-sm bg-white border border-blue-500 rounded px-2 py-0.5 outline-none"
-                                    value={editProjectName}
-                                    onChange={(e) => setEditProjectName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Escape') setEditingProjectId(null);
-                                    }}
-                                />
-                            </form>
-                        ) : (
-                            <>
-                                <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <span className={`text-base transition-colors duration-200 ${selectedProjectId === project.id ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}>
-                                        {project.icon || (selectedProjectId === project.id ? <FolderOpen size={18} className="text-blue-500" strokeWidth={2.5} /> : <Folder size={18} />)}
-                                    </span>
-                                    <span className="truncate tracking-tight">{project.name}</span>
-                                </div>
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <span className={`text-base transition-colors duration-200 ${selectedProjectId === project.id ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}>
+                                {project.icon || (selectedProjectId === project.id ? <FolderOpen size={18} className="text-blue-500" strokeWidth={2.5} /> : <Folder size={18} />)}
+                            </span>
+                            <span className="truncate tracking-tight">{project.name}</span>
+                            {project.visibility === 'private' ? (
+                                <Lock size={10} className="text-gray-400 shrink-0 ml-1" />
+                            ) : (
+                                <Globe size={10} className="text-blue-400 shrink-0 ml-1" />
+                            )}
+                        </div>
 
-                                {/* Hover Actions */}
-                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                                    <button
-                                        onClick={(e) => handleStartRename(project, e)}
-                                        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-md"
-                                    >
-                                        <Pencil size={12} />
-                                    </button>
-                                    <button
-                                        onClick={(e) => handleDeleteProject(project.id, e)}
-                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
-                                    >
-                                        <Trash2 size={12} />
-                                    </button>
-                                </div>
-                            </>
+                        {/* Hover Actions */}
+                        {project.currentUserRole === 'owner' && (
+                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setProjectForSettings(project); }}
+                                    className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md"
+                                    title="Project Settings"
+                                >
+                                    <Settings size={12} />
+                                </button>
+                            </div>
                         )}
                     </div>
                 ))}
+
+                {projectForSettings && (
+                    <ProjectSettingsModal
+                        project={projectForSettings}
+                        onClose={() => setProjectForSettings(null)}
+                        onUpdate={(updated) => {
+                            onRenameProject(updated, updated.name, updated.icon, updated.visibility);
+                            setProjectForSettings(null);
+                        }}
+                        onDelete={onDeleteProject}
+                    />
+                )}
 
                 {/* Empty State */}
                 {projects.length === 0 && !isCreating && (

@@ -23,42 +23,57 @@ function TodosContent() {
     }, [searchParams]);
 
     const fetchProjects = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
         const { data, error } = await supabase
             .from('projects')
-            .select('*')
+            .select('*, project_members(user_id, role)')
             .order('created_at', { ascending: true });
 
         if (error) {
             console.error('Error fetching projects:', error);
         } else {
-            setProjects(data || []);
+            // Transform data to include currentUserRole
+            const projectsWithRole = (data || []).map((p: any) => ({
+                ...p,
+                currentUserRole: p.project_members?.find((m: any) => m.user_id === user.id)?.role
+            }));
+            setProjects(projectsWithRole);
         }
     };
 
-    const handleCreateProject = async (name: string, icon?: string) => {
+    const handleCreateProject = async (name: string, icon?: string, visibility: 'public' | 'private' = 'private') => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
         const { data, error } = await supabase
             .from('projects')
-            .insert([{ name, icon }])
+            .insert([{ name, icon, visibility, user_id: user.id }])
             .select()
             .single();
 
         if (error) {
             alert('프로젝트 생성 실패');
         } else if (data) {
-            setProjects([...projects, data]);
+            const newProject = { ...data, currentUserRole: 'owner' as const };
+            setProjects([...projects, newProject]);
             setSelectedProjectId(data.id);
         }
     };
 
-    const handleRenameProject = async (project: Project, newName: string, newIcon?: string) => {
+    const handleRenameProject = async (project: Project, newName: string, newIcon?: string, newVisibility?: 'public' | 'private') => {
+        const updateData: any = { name: newName, icon: newIcon };
+        if (newVisibility) updateData.visibility = newVisibility;
+
         const { error } = await supabase
             .from('projects')
-            .update({ name: newName, icon: newIcon })
+            .update(updateData)
             .eq('id', project.id);
 
         if (!error) {
             setProjects(projects.map(p =>
-                p.id === project.id ? { ...p, name: newName, icon: newIcon } : p
+                p.id === project.id ? { ...p, name: newName, icon: newIcon, visibility: newVisibility || p.visibility } : p
             ));
         }
     };
