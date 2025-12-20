@@ -24,6 +24,7 @@ export async function PATCH(req: NextRequest) {
 
         if (start) eventPatch.start = start;
         if (end) eventPatch.end = end;
+        if (body.attendees) eventPatch.attendees = body.attendees;
 
         const response = await calendar.events.patch({
             calendarId: 'primary',

@@ -99,6 +99,14 @@ const CalendarPage = () => {
     // Hover Interaction State
     const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
 
+    // Attendee Search State
+    const [searchResults, setSearchResults] = useState<any[]>([]); // simplified type
+    const [isSearching, setIsSearching] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [newAttendeeEmail, setNewAttendeeEmail] = useState("");
+    const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+    const [isAttendeeInputFocused, setIsAttendeeInputFocused] = useState(false);
+
     // Read date from URL params on mount
     useEffect(() => {
         const dateParam = searchParams.get('date');
@@ -143,6 +151,48 @@ const CalendarPage = () => {
         });
         return () => subscription.unsubscribe();
     }, [supabase]);
+
+    // Fetch Current User Email
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user?.email) {
+                setCurrentUserEmail(user.email);
+            }
+        };
+        fetchUser();
+    }, [supabase]);
+
+    // Search Users
+    useEffect(() => {
+        const searchUsers = async () => {
+            let query = supabase
+                .from('profiles')
+                .select('*')
+                .limit(20);
+
+            if (newAttendeeEmail && newAttendeeEmail.trim().length > 0) {
+                query = query.or(`email.ilike.%${newAttendeeEmail}%,name.ilike.%${newAttendeeEmail}%,nickname.ilike.%${newAttendeeEmail}%`);
+            }
+
+            setIsSearching(true);
+            try {
+                const { data, error } = await query;
+
+                if (data) {
+                    setSearchResults(data);
+                    setShowSuggestions(true);
+                }
+            } catch (err) {
+                console.error("Failed to search profiles", err);
+            } finally {
+                setIsSearching(false);
+            }
+        };
+
+        const timer = setTimeout(searchUsers, 300); // 300ms debounce
+        return () => clearTimeout(timer);
+    }, [newAttendeeEmail, supabase]);
 
     // Fetch available calendars on mount
     useEffect(() => {
@@ -249,7 +299,8 @@ const CalendarPage = () => {
             description: selectedEvent.description,
             location: selectedEvent.location,
             start: selectedEvent.start,
-            end: selectedEvent.end
+            end: selectedEvent.end,
+            attendees: selectedEvent.attendees ? selectedEvent.attendees.map(a => ({ ...a })) : []
         });
         setIsEditing(true);
         setIsCreating(false);
@@ -270,7 +321,8 @@ const CalendarPage = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     eventId: selectedEvent.id,
-                    ...editForm
+                    ...editForm,
+                    attendees: editForm.attendees?.map(a => ({ email: a.email }))
                 })
             });
 
@@ -337,7 +389,8 @@ const CalendarPage = () => {
                     description: editForm.description,
                     location: editForm.location,
                     start: editForm.start,
-                    end: editForm.end
+                    end: editForm.end,
+                    attendees: editForm.attendees?.map(a => ({ email: a.email }))
                 })
             });
 
@@ -952,6 +1005,185 @@ const CalendarPage = () => {
                                                 className="flex-1 text-sm text-slate-700 bg-transparent border-none p-0 focus:ring-0 outline-none placeholder:text-slate-400 min-h-[80px] resize-none leading-relaxed"
                                                 placeholder="추가..."
                                             />
+                                        </div>
+                                    </div>
+
+                                    {/* Attendees Management */}
+                                    <div className="mt-4 border-t border-slate-100 pt-3 px-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Users size={14} className="text-slate-400" />
+                                            <span className="text-xs font-semibold text-slate-500">참석자</span>
+                                        </div>
+
+                                        {/* List Existing */}
+                                        <div className="space-y-1 mb-2">
+                                            {editForm.attendees?.map((att, i) => {
+                                                const name = att.displayName || att.email.split('@')[0] || '?';
+                                                const initial = name.charAt(0).toUpperCase();
+                                                const colorHash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                                                const bg = AVATAR_COLORS[colorHash % AVATAR_COLORS.length];
+
+                                                return (
+                                                    <div key={i} className="flex items-center justify-between gap-2 group/att px-2 py-1.5 hover:bg-slate-50 rounded">
+                                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                            {/* Avatar */}
+                                                            <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-slate-100 bg-slate-100 flex items-center justify-center">
+                                                                {att.avatarUrl ? (
+                                                                    <img src={att.avatarUrl} alt={name} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <span className={`text-xs font-bold text-slate-700 ${bg}`}>
+                                                                        {initial}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {/* Info */}
+                                                            <div className="flex flex-col min-w-0">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="text-sm font-medium text-slate-700 truncate">
+                                                                        {att.displayName || att.email.split('@')[0]}
+                                                                    </span>
+                                                                </div>
+                                                                <span className="text-xs text-slate-400 truncate">{att.email}</span>
+                                                            </div>
+                                                        </div>
+                                                        {/* Remove Button */}
+                                                        <button
+                                                            onClick={() => {
+                                                                const newAttendees = editForm.attendees?.filter((_, idx) => idx !== i);
+                                                                setEditForm({ ...editForm, attendees: newAttendees });
+                                                            }}
+                                                            className="text-slate-300 hover:text-red-500 opacity-0 group-hover/att:opacity-100 transition-opacity shrink-0"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Add New */}
+                                        <div className="relative z-50">
+                                            <div className="flex items-center gap-2 px-2">
+                                                <input
+                                                    type="email"
+                                                    placeholder="이메일 추가..."
+                                                    className="flex-1 text-sm bg-transparent border-b border-slate-200 focus:border-blue-500 outline-none py-1 placeholder:text-slate-300"
+                                                    value={newAttendeeEmail}
+                                                    onChange={e => setNewAttendeeEmail(e.target.value)}
+                                                    onFocus={() => setIsAttendeeInputFocused(true)}
+                                                    onBlur={() => setTimeout(() => setIsAttendeeInputFocused(false), 200)}
+                                                    onKeyDown={e => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            if (newAttendeeEmail && newAttendeeEmail.includes('@')) {
+                                                                const updatedAttendees = [...(editForm.attendees || [])];
+
+                                                                // If list is empty and we have current user email, add self first
+                                                                if (updatedAttendees.length === 0 && currentUserEmail) {
+                                                                    updatedAttendees.push({ email: currentUserEmail, responseStatus: 'accepted', self: true });
+                                                                }
+
+                                                                // Prevent duplicate addition
+                                                                if (!updatedAttendees.some(a => a.email.toLowerCase() === newAttendeeEmail.toLowerCase())) {
+                                                                    updatedAttendees.push({ email: newAttendeeEmail });
+                                                                }
+
+                                                                setEditForm({
+                                                                    ...editForm,
+                                                                    attendees: updatedAttendees
+                                                                });
+                                                                setNewAttendeeEmail("");
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        if (newAttendeeEmail && newAttendeeEmail.includes('@')) {
+                                                            const updatedAttendees = [...(editForm.attendees || [])];
+
+                                                            // If list is empty and we have current user email, add self first
+                                                            if (updatedAttendees.length === 0 && currentUserEmail) {
+                                                                updatedAttendees.push({ email: currentUserEmail, responseStatus: 'accepted', self: true });
+                                                            }
+
+                                                            // Prevent duplicate addition
+                                                            if (!updatedAttendees.some(a => a.email.toLowerCase() === newAttendeeEmail.toLowerCase())) {
+                                                                updatedAttendees.push({ email: newAttendeeEmail });
+                                                            }
+
+                                                            setEditForm({
+                                                                ...editForm,
+                                                                attendees: updatedAttendees
+                                                            });
+                                                            setNewAttendeeEmail("");
+                                                        }
+                                                    }}
+                                                    className="text-xs text-blue-500 hover:text-blue-600 font-medium px-2"
+                                                >
+                                                    추가
+                                                </button>
+
+
+                                                {isAttendeeInputFocused && showSuggestions && searchResults.length > 0 && (
+                                                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden z-50 max-h-60 overflow-y-auto">
+                                                        {searchResults.map((profile) => (
+                                                            <button
+                                                                key={profile.id}
+                                                                className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-3 transition-colors border-b border-slate-50 last:border-none"
+                                                                onClick={() => {
+                                                                    const updatedAttendees = [...(editForm.attendees || [])];
+
+                                                                    // If list is empty and we have current user email, add self first
+                                                                    if (updatedAttendees.length === 0 && currentUserEmail) {
+                                                                        updatedAttendees.push({ email: currentUserEmail, responseStatus: 'accepted', self: true });
+                                                                    }
+
+                                                                    // Prevent duplicate addition
+                                                                    if (!updatedAttendees.some(a => a.email.toLowerCase() === profile.email.toLowerCase())) {
+                                                                        updatedAttendees.push({
+                                                                            email: profile.email,
+                                                                            displayName: profile.nickname || profile.name,
+                                                                            avatarUrl: profile.avatar_url
+                                                                        });
+                                                                    }
+
+                                                                    setEditForm({
+                                                                        ...editForm,
+                                                                        attendees: updatedAttendees
+                                                                    });
+                                                                    setNewAttendeeEmail("");
+                                                                    setSearchResults([]);
+                                                                    setShowSuggestions(false);
+                                                                }}
+                                                            >
+                                                                {/* Avatar */}
+                                                                <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-slate-100 bg-slate-100 flex items-center justify-center">
+                                                                    {profile.avatar_url ? (
+                                                                        <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
+                                                                    ) : (
+                                                                        <span className="text-xs font-bold text-slate-400">
+                                                                            {(profile.nickname || profile.name || '?').charAt(0).toUpperCase()}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {/* Info */}
+                                                                <div className="flex flex-col min-w-0">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-sm font-medium text-slate-700 truncate">
+                                                                            {profile.nickname || profile.name}
+                                                                        </span>
+                                                                        {profile.nickname && profile.name && (
+                                                                            <span className="text-xs text-slate-400">({profile.name})</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="text-xs text-slate-400 truncate">{profile.email}</span>
+                                                                </div>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 

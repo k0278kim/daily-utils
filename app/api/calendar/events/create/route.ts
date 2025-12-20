@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
             location,
             start,
             end,
+            attendees: body.attendees || [],
         };
 
         const response = await calendar.events.insert({
