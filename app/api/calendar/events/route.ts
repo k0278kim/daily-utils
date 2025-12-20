@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const timeMin = searchParams.get("timeMin");
         const timeMax = searchParams.get("timeMax");
+        const calendarIds = searchParams.get("calendarIds"); // Comma-separated list of calendar IDs
 
         if (!timeMin || !timeMax) {
             return NextResponse.json({ error: "Missing time range parameters" }, { status: 400 });
@@ -18,19 +19,41 @@ export async function GET(req: NextRequest) {
         const oauth2Client = await getAuthenticatedGoogleClient();
         const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
-        console.log(`[API] Fetching Google Calendar events: ${timeMin} ~ ${timeMax}`);
+        // Parse calendar IDs, default to primary
+        const calendarsToFetch = calendarIds
+            ? calendarIds.split(',').map(id => id.trim())
+            : ["primary"];
 
-        const response = await calendar.events.list({
-            calendarId: "primary",
-            timeMin: timeMin,
-            timeMax: timeMax,
-            singleEvents: true,
-            orderBy: "startTime",
+        console.log(`[API] Fetching events from calendars: ${calendarsToFetch.join(', ')}`);
+
+        // Fetch events from all specified calendars in parallel
+        const eventsPromises = calendarsToFetch.map(async (calId) => {
+            try {
+                const response = await calendar.events.list({
+                    calendarId: calId,
+                    timeMin: timeMin,
+                    timeMax: timeMax,
+                    singleEvents: true,
+                    orderBy: "startTime",
+                });
+
+                // Add calendarId to each event for color coding
+                return (response.data.items || []).map(event => ({
+                    ...event,
+                    calendarId: calId
+                }));
+            } catch (err) {
+                console.error(`Failed to fetch calendar ${calId}:`, err);
+                return []; // Return empty for this calendar if it fails
+            }
         });
 
-        console.log(`[API] Events found: ${response.data.items?.length || 0}`);
+        const allEventsArrays = await Promise.all(eventsPromises);
+        const allEvents = allEventsArrays.flat();
 
-        return NextResponse.json(response.data.items || []);
+        console.log(`[API] Total events found: ${allEvents.length}`);
+
+        return NextResponse.json(allEvents);
 
     } catch (err: any) {
         console.error("Calendar API Error:", err);

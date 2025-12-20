@@ -42,8 +42,18 @@ interface CalendarEvent {
     };
     htmlLink?: string;
     colorId?: string;
+    calendarId?: string; // Added for multi-calendar support
 }
 
+interface CalendarInfo {
+    id: string;
+    summary: string;
+    description?: string;
+    backgroundColor?: string;
+    foregroundColor?: string;
+    primary: boolean;
+    accessRole: string;
+}
 
 
 const CalendarPage = () => {
@@ -64,6 +74,11 @@ const CalendarPage = () => {
     const [isLoadingTodos, setIsLoadingTodos] = useState(false);
     const [pendingTodoId, setPendingTodoId] = useState<string | null>(null);
 
+    // Multi-calendar State
+    const [availableCalendars, setAvailableCalendars] = useState<CalendarInfo[]>([]);
+    const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>(['primary']);
+    const [showCalendarSelector, setShowCalendarSelector] = useState(false);
+
     // Edit & Create State
     const [isEditing, setIsEditing] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
@@ -73,6 +88,9 @@ const CalendarPage = () => {
     // Drag Interaction State
     const [dragStart, setDragStart] = useState<number | null>(null);
     const [dragCurrent, setDragCurrent] = useState<number | null>(null);
+
+    // Hover Interaction State
+    const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
 
     // Read date from URL params on mount
     useEffect(() => {
@@ -119,6 +137,32 @@ const CalendarPage = () => {
         return () => subscription.unsubscribe();
     }, [supabase]);
 
+    // Fetch available calendars on mount
+    useEffect(() => {
+        const fetchCalendarList = async () => {
+            try {
+                const res = await fetch('/api/calendar/list');
+                if (res.ok) {
+                    const data = await res.json();
+                    setAvailableCalendars(data);
+                    // Initially select primary calendar
+                    const primaryCal = data.find((c: CalendarInfo) => c.primary);
+                    if (primaryCal) {
+                        setSelectedCalendarIds([primaryCal.id]);
+                    }
+                } else {
+                    const err = await res.json();
+                    if (res.status === 401 || res.status === 403 || err.error?.includes("insufficient")) {
+                        setNeedsAuth(true);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to fetch calendar list:', e);
+            }
+        };
+        fetchCalendarList();
+    }, [refreshKey]);
+
     // Fetch Events for the selected day
     useEffect(() => {
         const fetchEvents = async () => {
@@ -130,12 +174,13 @@ const CalendarPage = () => {
             const timeMax = endOfDay(currentDate).toISOString();
 
             try {
-                const res = await fetch(`/api/calendar/events?timeMin=${timeMin}&timeMax=${timeMax}`);
+                // Build calendarIds param
+                const calendarIdsParam = selectedCalendarIds.join(',');
+                const res = await fetch(`/api/calendar/events?timeMin=${timeMin}&timeMax=${timeMax}&calendarIds=${encodeURIComponent(calendarIdsParam)}`);
 
                 if (res.ok) {
                     const data = await res.json();
                     setEvents(data);
-                    setNeedsAuth(false);
 
                     // Update selected event reference if it exists in new data
                     if (selectedEvent) {
@@ -167,7 +212,7 @@ const CalendarPage = () => {
         };
 
         fetchEvents();
-    }, [currentDate, refreshKey]);
+    }, [currentDate, refreshKey, selectedCalendarIds]);
 
     // Handlers
     const handlePrevMonth = () => setViewMonth(subMonths(viewMonth, 1));
@@ -183,7 +228,7 @@ const CalendarPage = () => {
                     access_type: 'offline',
                     prompt: 'consent'
                 },
-                scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file' // Updated scope for write access
+                scopes: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.file' // Full calendar access + drive
             }
         });
     };
@@ -580,12 +625,40 @@ const CalendarPage = () => {
                     <div className="flex items-center justify-between text-xs text-slate-400 mb-4">
                         <span>내 캘린더</span>
                     </div>
-                    {/* Dummy Legend for now */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                            <div className="w-2.5 h-2.5 rounded bg-blue-500"></div>
-                            <span>기본 캘린더</span>
-                        </div>
+                    {/* Calendar Selector */}
+                    <div className="space-y-2">
+                        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">캘린더</h3>
+                        {availableCalendars.length === 0 ? (
+                            <div className="text-xs text-slate-400">캘린더를 불러오는 중...</div>
+                        ) : (
+                            <div className="space-y-1.5">
+                                {availableCalendars.map(cal => (
+                                    <label
+                                        key={cal.id}
+                                        className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 px-2 py-1.5 -mx-2 rounded transition-colors"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedCalendarIds.includes(cal.id)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setSelectedCalendarIds(prev => [...prev, cal.id]);
+                                                } else {
+                                                    setSelectedCalendarIds(prev => prev.filter(id => id !== cal.id));
+                                                }
+                                            }}
+                                            className="rounded border-slate-300 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                                        />
+                                        <div
+                                            className="w-2.5 h-2.5 rounded shrink-0"
+                                            style={{ backgroundColor: cal.backgroundColor || '#3b82f6' }}
+                                        />
+                                        <span className="truncate text-slate-600">{cal.summary}</span>
+                                        {cal.primary && <span className="text-[10px] text-slate-400">(기본)</span>}
+                                    </label>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -735,6 +808,7 @@ const CalendarPage = () => {
                                     event={ev}
                                     onClick={() => setSelectedEvent(ev)}
                                     isSelected={selectedEvent?.id === ev.id}
+                                    isHovered={hoveredEventId === ev.id}
                                 />
                             ))}
                         </div>
@@ -970,28 +1044,123 @@ const CalendarPage = () => {
                         </div>
                     </>
                 ) : (
-                    // Empty State
-                    <div className="flex flex-col items-center justify-center h-full text-slate-400 p-8 text-center select-none">
-                        <CalendarIcon size={48} className="mb-4 opacity-20" />
-                        <p className="text-sm">타임라인을 드래그하여<br />새 일정을 만드세요.</p>
-                        <button
-                            onClick={() => {
-                                const start = new Date(currentDate);
-                                start.setHours(9, 0, 0, 0); // Default 9 AM
-                                const end = new Date(currentDate);
-                                end.setHours(10, 0, 0, 0);
-                                setEditForm({
-                                    summary: "",
-                                    start: { dateTime: start.toISOString() },
-                                    end: { dateTime: end.toISOString() }
-                                });
-                                setIsCreating(true);
-                                setSelectedEvent(null);
-                            }}
-                            className="mt-6 text-xs text-blue-500 font-bold hover:underline"
-                        >
-                            + 직접 만들기
-                        </button>
+                    // Daily Summary View
+                    <div className="flex flex-col h-full">
+                        {/* Header */}
+                        <div className="h-12 px-4 flex items-center justify-between border-b border-slate-50 shrink-0">
+                            <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">오늘 일정</span>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-5">
+                            {/* Date Header */}
+                            <div className="mb-6">
+                                <h2 className="text-2xl font-bold text-slate-800">{format(currentDate, 'M월 d일')}</h2>
+                                <p className="text-sm text-slate-500">{format(currentDate, 'EEEE', { locale: ko })}</p>
+                            </div>
+
+                            {/* Events Summary */}
+                            {events.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <CalendarIcon size={40} className="mx-auto mb-3 text-slate-200" />
+                                    <p className="text-sm text-slate-400">오늘 일정이 없습니다</p>
+                                    <button
+                                        onClick={() => {
+                                            const start = new Date(currentDate);
+                                            start.setHours(9, 0, 0, 0);
+                                            const end = new Date(currentDate);
+                                            end.setHours(10, 0, 0, 0);
+                                            setEditForm({
+                                                summary: "",
+                                                start: { dateTime: start.toISOString() },
+                                                end: { dateTime: end.toISOString() }
+                                            });
+                                            setIsCreating(true);
+                                            setSelectedEvent(null);
+                                        }}
+                                        className="mt-4 text-xs text-blue-500 font-medium hover:underline"
+                                    >
+                                        + 일정 추가하기
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {/* All-day events */}
+                                    {sortedEvents.allDay.length > 0 && (
+                                        <div className="mb-4">
+                                            <p className="text-xs font-medium text-slate-400 mb-2">종일</p>
+                                            {sortedEvents.allDay.map(ev => (
+                                                <button
+                                                    key={ev.id}
+                                                    onClick={() => setSelectedEvent(ev)}
+                                                    className="w-full text-left px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium mb-1 hover:bg-blue-100 transition-colors truncate"
+                                                >
+                                                    {ev.summary || '(제목 없음)'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Timed events */}
+                                    {sortedEvents.timed.map(ev => {
+                                        const startTime = ev.start.dateTime ? format(new Date(ev.start.dateTime), 'a h:mm', { locale: ko }) : '';
+                                        const endTime = ev.end.dateTime ? format(new Date(ev.end.dateTime), 'a h:mm', { locale: ko }) : '';
+                                        const calColor = availableCalendars.find(c => c.id === ev.calendarId)?.backgroundColor || '#3b82f6';
+
+                                        return (
+                                            <button
+                                                key={ev.id}
+                                                onClick={() => setSelectedEvent(ev)}
+                                                onMouseEnter={() => setHoveredEventId(ev.id)}
+                                                onMouseLeave={() => setHoveredEventId(null)}
+                                                className={`w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors group ${hoveredEventId === ev.id ? 'bg-blue-50/70' : 'hover:bg-slate-50'}`}
+                                            >
+                                                <div
+                                                    className="w-1 h-full min-h-[40px] rounded-full shrink-0"
+                                                    style={{ backgroundColor: calColor }}
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-slate-800 truncate group-hover:text-blue-600">
+                                                        {ev.summary || '(제목 없음)'}
+                                                    </p>
+                                                    <p className="text-xs text-slate-500">{startTime} - {endTime}</p>
+                                                    {ev.location && (
+                                                        <p className="text-xs text-slate-400 truncate mt-0.5">📍 {ev.location}</p>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+
+                                    {/* Quick add button */}
+                                    <button
+                                        onClick={() => {
+                                            const start = new Date(currentDate);
+                                            start.setHours(9, 0, 0, 0);
+                                            const end = new Date(currentDate);
+                                            end.setHours(10, 0, 0, 0);
+                                            setEditForm({
+                                                summary: "",
+                                                start: { dateTime: start.toISOString() },
+                                                end: { dateTime: end.toISOString() }
+                                            });
+                                            setIsCreating(true);
+                                            setSelectedEvent(null);
+                                        }}
+                                        className="w-full text-left px-3 py-2 text-xs text-slate-400 hover:text-blue-500 hover:bg-slate-50 rounded-lg transition-colors"
+                                    >
+                                        + 일정 추가하기
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer Stats */}
+                        <div className="px-5 py-4 border-t border-slate-50 bg-slate-50/50 shrink-0">
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                                <span>총 {events.length}개 일정</span>
+                                <span>{selectedCalendarIds.length}개 캘린더</span>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
@@ -1027,11 +1196,13 @@ const CurrentTimeIndicator = () => {
 const TimeEventBlock = ({
     event,
     onClick,
-    isSelected
+    isSelected,
+    isHovered
 }: {
     event: CalendarEvent & { colIndex?: number; totalCols?: number },
     onClick?: () => void,
-    isSelected?: boolean
+    isSelected?: boolean,
+    isHovered?: boolean
 }) => {
     if (!event.start.dateTime || !event.end.dateTime) return null;
 
@@ -1047,15 +1218,16 @@ const TimeEventBlock = ({
 
     // Color logic
     const styles = [
-        "bg-blue-50/90 text-blue-700 border-blue-200",
-        "bg-emerald-50/90 text-emerald-700 border-emerald-200",
-        "bg-violet-50/90 text-violet-700 border-violet-200",
-        "bg-orange-50/90 text-orange-700 border-orange-200",
-        "bg-rose-50/90 text-rose-700 border-rose-200",
+        { normal: "bg-blue-50/90 text-blue-700 border-blue-200", hover: "bg-blue-100 text-blue-900 border-blue-400 ring-1 ring-blue-400" },
+        { normal: "bg-emerald-50/90 text-emerald-700 border-emerald-200", hover: "bg-emerald-100 text-emerald-900 border-emerald-400 ring-1 ring-emerald-400" },
+        { normal: "bg-violet-50/90 text-violet-700 border-violet-200", hover: "bg-violet-100 text-violet-900 border-violet-400 ring-1 ring-violet-400" },
+        { normal: "bg-orange-50/90 text-orange-700 border-orange-200", hover: "bg-orange-100 text-orange-900 border-orange-400 ring-1 ring-orange-400" },
+        { normal: "bg-rose-50/90 text-rose-700 border-rose-200", hover: "bg-rose-100 text-rose-900 border-rose-400 ring-1 ring-rose-400" },
     ];
     // Hash id
     const colorIndex = (event.id.charCodeAt(0) + (event.id.charCodeAt(event.id.length - 1) || 0)) % styles.length;
-    const colorClass = event.colorId ? styles[0] : styles[colorIndex];
+    const styleSet = event.colorId ? styles[0] : styles[colorIndex];
+    const colorClass = (isHovered || isSelected) ? styleSet.hover : styleSet.normal;
 
     // Layout styles: Greedy Overlay
     // colIndex 0 = bottom, widest.
@@ -1079,14 +1251,14 @@ const TimeEventBlock = ({
                 e.stopPropagation(); // Prevent trigger from parent
                 onClick?.();
             }}
-            className={`absolute rounded-md border text-xs overflow-hidden hover:z-[60] hover:shadow-xl transition-all cursor-pointer pointer-events-auto flex flex-col px-2 py-1 ${colorClass} ${isSelected ? 'ring-2 ring-offset-1 ring-blue-500 z-[60] shadow-lg' : ''}`}
+            className={`absolute rounded-md border text-xs overflow-hidden hover:z-[60] hover:shadow-xl transition-all cursor-pointer pointer-events-auto flex flex-col px-2 py-1 ${colorClass} ${(isSelected || isHovered) ? 'ring-2 ring-offset-1 ring-blue-500 z-[60] shadow-lg scale-[1.02]' : ''}`}
             style={{
                 top: `${startMinutes}px`,
                 height: `${duration}px`,
                 left: `${indentPercent}%`,
                 width: `${100 - indentPercent}%`,
-                zIndex: isSelected ? 60 : 10 + colIndex,
-                boxShadow: (colIndex > 0 || isSelected) ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' : 'none'
+                zIndex: (isSelected || isHovered) ? 60 : 10 + colIndex,
+                boxShadow: (colIndex > 0 || isSelected || isHovered) ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' : 'none'
             }}
             title={`${event.summary}\n${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`}
         >
