@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useImperativeHandle, forwardRef } from "react";
+import React, { useEffect, useMemo, useImperativeHandle, forwardRef, memo, useRef } from "react";
 import "@blocknote/core/fonts/inter.css";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -20,8 +20,16 @@ export interface BlockEditorHandle {
     getJSON: () => string;
 }
 
-const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(
+const BlockEditor = memo(forwardRef<BlockEditorHandle, BlockEditorProps>(
     ({ initialContent, onChange, editable = true }, ref) => {
+        // Use a ref for onChange to keep the dependency stable for the editor listener
+        const onChangeRef = useRef(onChange);
+        useEffect(() => {
+            onChangeRef.current = onChange;
+        }, [onChange]);
+
+        // Debounce timer ref
+        const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
         // 1. Memoize parsing of initial JSON content.
         const initialBlocks = useMemo(() => {
             if (!initialContent) return undefined;
@@ -71,16 +79,26 @@ const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(
                     editable={editable}
                     theme={"light"}
                     onChange={() => {
-                        if (onChange) {
-                            onChange(JSON.stringify(editor.document));
+                        // Clear existing timer
+                        if (debounceTimerRef.current) {
+                            clearTimeout(debounceTimerRef.current);
                         }
+
+                        // Set a new timer to debounce the state update in parent. 
+                        // This gives the IME (Input Method Editor) time to finish character composition 
+                        // before the parent triggers a re-render.
+                        debounceTimerRef.current = setTimeout(() => {
+                            if (onChangeRef.current) {
+                                onChangeRef.current(JSON.stringify(editor.document));
+                            }
+                        }, 400); // 400ms is usually enough for Korean composition
                     }}
                     className=""
                 />
             </div>
         );
     }
-);
+));
 
 BlockEditor.displayName = "BlockEditor";
 

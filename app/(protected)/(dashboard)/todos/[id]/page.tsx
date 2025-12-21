@@ -23,13 +23,12 @@ const TodoDetailPage = () => {
     const [content, setContent] = useState(""); // For 'content' (long form)
     const [description, setDescription] = useState(""); // For 'description' (summary)
     const [localTitle, setLocalTitle] = useState("");
+    const [editorInitialContent, setEditorInitialContent] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [assigneeDropdownOpen, setAssigneeDropdownOpen] = useState(false);
     const [exporting, setExporting] = useState(false);
-    // Add a key to force Editor re-mount when server content explicitly changes
-    const [editorVersion, setEditorVersion] = useState(0);
     const [linkedEvents, setLinkedEvents] = useState<{ id: string; summary: string; start: string }[]>([]);
     const [loadingEvents, setLoadingEvents] = useState(false);
 
@@ -89,7 +88,6 @@ const TodoDetailPage = () => {
 
                 setContent(prev => {
                     if (prev !== serverContent) {
-                        setEditorVersion(v => v + 1);
                         return serverContent;
                     }
                     return prev;
@@ -101,6 +99,11 @@ const TodoDetailPage = () => {
                     }
                     return prev;
                 });
+
+                // Set initial content for the uncontrolled editor only if not already set
+                if (editorInitialContent === null) {
+                    setEditorInitialContent(serverContent);
+                }
             }
         }
 
@@ -113,8 +116,9 @@ const TodoDetailPage = () => {
 
     // 1. Initial Fetch
     useEffect(() => {
+        setEditorInitialContent(null); // Reset when ID changes
         fetchData();
-    }, [fetchData]);
+    }, [id]); // fetchData is stable enough, but we mainly care about id change
 
     // 2. Realtime Sync Subscription
     useEffect(() => {
@@ -258,6 +262,12 @@ const TodoDetailPage = () => {
             isSavingRef.current = false;
         }
     }, [todo, canEdit, saving, localTitle, content, description, id, supabase]);
+
+    // Stable callback for BlockEditor to prevent redundant re-renders
+    const handleEditorChange = React.useCallback((val: string) => {
+        setContent(val);
+        lastLocalEdit.current = Date.now();
+    }, []);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -713,16 +723,14 @@ const TodoDetailPage = () => {
 
                 {/* Editor Area - Notion Style */}
                 <div className="flex-1 w-full min-h-[500px]">
-                    {/* Add key to force re-mounting when switching todos OR when server content changes */}
-                    <Editor
-                        key={`${id}-${editorVersion}`}
-                        initialContent={content}
-                        onChange={(val) => {
-                            setContent(val);
-                            lastLocalEdit.current = Date.now();
-                        }}
-                        editable={canEdit}
-                    />
+                    {editorInitialContent !== null && (
+                        <Editor
+                            key={id as string}
+                            initialContent={editorInitialContent}
+                            onChange={handleEditorChange}
+                            editable={canEdit}
+                        />
+                    )}
                 </div>
             </div>
         </div>
