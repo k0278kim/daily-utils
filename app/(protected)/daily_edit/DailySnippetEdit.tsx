@@ -215,21 +215,8 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps) => 
                   key={event.id}
                   onClick={() => {
                     if (editorRef.current) {
-                      const isEmpty = editorRef.current.isEmpty();
-                      let nextIdx = 1;
-
-                      if (!isEmpty) {
-                        const markdown = editorRef.current.getMarkdown();
-                        // Find all number patterns (including our invisible \u200B prefix)
-                        const matches = markdown.match(/(\d+)\.\s/g);
-                        if (matches) {
-                          const numbers = matches.map(m => parseInt(m.match(/\d+/)![0]));
-                          nextIdx = Math.max(...numbers) + 1;
-                        }
-                      }
-
-                      // \u200B is a Zero-Width Space to bypass Tiptap auto-list (prevents nesting)
-                      const summary = `\u200B${nextIdx}. [${timeRange}] ${event.summary}`;
+                      // Use - for bullet style, and wrap in <p> to ensure new line (block)
+                      const summary = `<p>- [${timeRange}] ${event.summary}</p>`;
                       editorRef.current.insertContent(summary);
                     }
                   }}
