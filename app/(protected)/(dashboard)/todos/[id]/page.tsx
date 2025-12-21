@@ -22,6 +22,7 @@ const TodoDetailPage = () => {
     const [profiles, setProfiles] = useState<Profile[]>([]); // All users
     const [content, setContent] = useState(""); // For 'content' (long form)
     const [description, setDescription] = useState(""); // For 'description' (summary)
+    const [localTitle, setLocalTitle] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -31,6 +32,10 @@ const TodoDetailPage = () => {
     const [editorVersion, setEditorVersion] = useState(0);
     const [linkedEvents, setLinkedEvents] = useState<{ id: string; summary: string; start: string }[]>([]);
     const [loadingEvents, setLoadingEvents] = useState(false);
+
+    // Refs for synchronization guards
+    const lastLocalEdit = React.useRef<number>(0);
+    const isSavingRef = React.useRef<boolean>(false);
 
     // Reusable Fetch Function
     // Wrapped in useCallback to be safe for useEffect dependencies
@@ -67,34 +72,36 @@ const TodoDetailPage = () => {
             const assignees = todoData.todo_assignees?.map((ta: any) => ta.profiles).filter(Boolean) || [];
             const finalTodo: Todo = { ...todoData, assignees };
 
-            setTodo(finalTodo);
+            // Synchronization Guard: Only update if not currently saving AND some time has passed since last edit
+            const isSafeToUpdate = !isSavingRef.current && (Date.now() - lastLocalEdit.current > 2000);
 
-            // Sync Content & Description (Real-time)
-            // We update local state to match server. 
-            // NOTE: If user is typing, this might overwrite. 
-            // In a pro app we'd check if (saving) or use CRDTs. 
-            // But per user request "Must be updated", we prioritize latest server state.
+            if (isSafeToUpdate) {
+                setTodo(finalTodo);
 
-            const serverContent = todoData.content || "";
-            const serverDesc = todoData.description || "";
+                const serverContent = todoData.content || "";
+                const serverDesc = todoData.description || "";
+                const serverTitle = todoData.title || "";
 
-            setContent(prev => {
-                if (prev !== serverContent) {
-                    // Content changed from outside?
-                    // Use a simple check: if we are updated from server, update.
-                    // Let's update and bump version to force Editor refresh to show new content
-                    setEditorVersion(v => v + 1);
-                    return serverContent;
-                }
-                return prev;
-            });
+                setLocalTitle(prev => {
+                    if (prev !== serverTitle) return serverTitle;
+                    return prev;
+                });
 
-            setDescription(prev => {
-                if (prev !== serverDesc) {
-                    return serverDesc;
-                }
-                return prev;
-            });
+                setContent(prev => {
+                    if (prev !== serverContent) {
+                        setEditorVersion(v => v + 1);
+                        return serverContent;
+                    }
+                    return prev;
+                });
+
+                setDescription(prev => {
+                    if (prev !== serverDesc) {
+                        return serverDesc;
+                    }
+                    return prev;
+                });
+            }
         }
 
         if (profilesData) {
@@ -182,48 +189,87 @@ const TodoDetailPage = () => {
     const isAssignee = !!(user && todo?.assignees?.some(a => a.id === user.id));
     const canEdit = !hasAssignees || isAssignee;
 
-    // 3. Auto-save CONTENT
+    // 3. Consolidated Consolidated Auto-save (Title, Content, Description)
     useEffect(() => {
         if (!todo || loading || !canEdit) return;
-        if (content === (todo.content || "")) return;
+
+        // Check if anything actually changed from the source of truth
+        const isTitleChanged = localTitle !== (todo.title || "");
+        const isContentChanged = content !== (todo.content || "");
+        const isDescChanged = description !== (todo.description || "");
+
+        if (!isTitleChanged && !isContentChanged && !isDescChanged) return;
 
         const timer = setTimeout(async () => {
             setSaving(true);
+            isSavingRef.current = true;
+            try {
+                const { error } = await supabase
+                    .from("todos")
+                    .update({
+                        title: localTitle,
+                        content: content,
+                        description: description,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq("id", id);
+
+                if (!error) {
+                    setLastSaved(new Date());
+                    setTodo(prev => prev ? ({ ...prev, title: localTitle, content, description }) : null);
+                }
+            } catch (err) {
+                console.error("Auto-save failed:", err);
+            } finally {
+                setSaving(false);
+                isSavingRef.current = false;
+            }
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [localTitle, content, description, todo, id, supabase, loading, canEdit]);
+
+    // 6. Manual Save Shortcut (Ctrl+S / Cmd+S)
+    const handleManualSave = React.useCallback(async () => {
+        if (!todo || !canEdit || saving) return;
+
+        setSaving(true);
+        isSavingRef.current = true;
+
+        try {
             const { error } = await supabase
                 .from("todos")
-                .update({ content: content, updated_at: new Date().toISOString() })
+                .update({
+                    title: localTitle,
+                    content: content,
+                    description: description,
+                    updated_at: new Date().toISOString()
+                })
                 .eq("id", id);
 
             if (!error) {
                 setLastSaved(new Date());
-                setTodo(prev => prev ? ({ ...prev, content }) : null);
+                setTodo(prev => prev ? ({ ...prev, title: localTitle, content, description }) : null);
             }
+        } catch (e) {
+            console.error("Manual save failed:", e);
+        } finally {
             setSaving(false);
-        }, 1000);
+            isSavingRef.current = false;
+        }
+    }, [todo, canEdit, saving, localTitle, content, description, id, supabase]);
 
-        return () => clearTimeout(timer);
-    }, [content, todo, id, supabase, loading, canEdit]);
-
-    // 4. Auto-save DESCRIPTION
     useEffect(() => {
-        if (!todo || loading || !canEdit) return;
-        if (description === (todo.description || "")) return;
-
-        const timer = setTimeout(async () => {
-            setSaving(true);
-            const { error } = await supabase
-                .from("todos")
-                .update({ description: description, updated_at: new Date().toISOString() })
-                .eq("id", id);
-
-            if (!error) {
-                setLastSaved(new Date());
-                setTodo(prev => prev ? ({ ...prev, description }) : null);
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                handleManualSave();
             }
-            setSaving(false);
-        }, 1000);
-        return () => clearTimeout(timer);
-    }, [description, todo, id, supabase, loading, canEdit]);
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleManualSave]);
 
     if (loading) {
         return (
@@ -347,11 +393,10 @@ const TodoDetailPage = () => {
                 <div className="mb-4">
                     <input
                         className="w-full text-4xl font-bold text-slate-900 placeholder:text-slate-300 border-none focus:ring-0 p-0 bg-transparent mb-2 disabled:opacity-70 disabled:cursor-not-allowed outline-none focus:outline-none ring-0 focus:ring-offset-0"
-                        value={todo.title}
+                        value={localTitle}
                         onChange={(e) => {
-                            const newTitle = e.target.value;
-                            setTodo({ ...todo, title: newTitle });
-                            supabase.from("todos").update({ title: newTitle }).eq("id", id).then();
+                            setLocalTitle(e.target.value);
+                            lastLocalEdit.current = Date.now();
                         }}
                         placeholder="Untitled"
                         disabled={!canEdit}
@@ -641,6 +686,7 @@ const TodoDetailPage = () => {
                                 value={description}
                                 onChange={(e) => {
                                     setDescription(e.target.value);
+                                    lastLocalEdit.current = Date.now();
                                     // Auto-resize immediately on change
                                     e.target.style.height = 'auto';
                                     e.target.style.height = `${e.target.scrollHeight}px`;
@@ -671,7 +717,10 @@ const TodoDetailPage = () => {
                     <Editor
                         key={`${id}-${editorVersion}`}
                         initialContent={content}
-                        onChange={setContent}
+                        onChange={(val) => {
+                            setContent(val);
+                            lastLocalEdit.current = Date.now();
+                        }}
                         editable={canEdit}
                     />
                 </div>

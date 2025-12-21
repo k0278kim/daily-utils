@@ -70,6 +70,11 @@ const BlockEditor = forwardRef<BlockEditorHandle, BlockEditorProps>(
                     editor={editor}
                     editable={editable}
                     theme={"light"}
+                    onChange={() => {
+                        if (onChange) {
+                            onChange(JSON.stringify(editor.document));
+                        }
+                    }}
                     className=""
                 />
             </div>
