@@ -97,23 +97,21 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps) => 
 
   // Update tempContent (Yesterday's Snippet) whenever selectedDate or snippets change
   useEffect(() => {
-    // Only if we are on "Today" (latest available date) and have no content yet
-    const availableDates = dailySnippetAvailableDate();
-    const isToday = selectedDate === availableDates[availableDates.length - 1]; // Simply checking if it's the latest date
+    if (!selectedDate) {
+      setTempContent("");
+      return;
+    }
 
-    if (isToday) {
-      // Find yesterday's date
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      const yesterdayStr = formatDate(yesterday);
+    // Parse selectedDate (YYYY-MM-DD) to Local Date to avoid Timezone issues
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const targetDate = new Date(y, m - 1, d);
+    targetDate.setDate(targetDate.getDate() - 1);
+    const targetDateStr = formatDate(targetDate);
 
-      const yesterdaySnippet = snippets.find(s => s.snippet_date === yesterdayStr);
-      if (yesterdaySnippet) {
-        setTempContent(yesterdaySnippet.content);
-      } else {
-        setTempContent("");
-      }
+    const prevSnippet = snippets.find(s => s.snippet_date === targetDateStr);
+
+    if (prevSnippet) {
+      setTempContent(prevSnippet.content);
     } else {
       setTempContent("");
     }
