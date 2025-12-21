@@ -748,11 +748,21 @@ const Board: React.FC<{ projectId: string; currentUserRole?: 'owner' | 'editor' 
                         </div>
                     </div>
 
+                    {/* Search Trigger Button (Visible when search is hidden) */}
+                    {!isSearchVisible && (
+                        <button
+                            onClick={() => setIsSearchVisible(true)}
+                            className="absolute top-4 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-full hover:bg-slate-100 z-10"
+                            title="검색 (Ctrl+F)"
+                        >
+                            <Search size={20} />
+                        </button>
+                    )}
+
                     {/* Search Bar (Floating) - Moved to bottom for stacking context safety */}
                     {isSearchVisible && (
                         <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[9999] w-full max-w-md px-4 transition-all animate-in fade-in slide-in-from-top-4 duration-200">
                             <div className="relative shadow-xl rounded-full">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                 <input
                                     ref={searchInputRef}
                                     type="text"
@@ -761,6 +771,7 @@ const Board: React.FC<{ projectId: string; currentUserRole?: 'owner' | 'editor' 
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-full pl-12 pr-10 py-3.5 bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-full text-base text-slate-700 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-300 transition-all"
                                 />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={18} />
                                 {searchQuery && (
                                     <button
                                         onClick={() => setSearchQuery("")}
