@@ -16,3 +16,11 @@ CREATE POLICY "Authenticated users can upload to editor-uploads" ON storage.obje
         bucket_id = 'editor-uploads' AND
         auth.role() = 'authenticated'
     );
+
+-- 3. Allow authenticated users to delete (CRITICAL FOR CLEANUP)
+DROP POLICY IF EXISTS "Authenticated users can delete editor-uploads" ON storage.objects;
+CREATE POLICY "Authenticated users can delete editor-uploads" ON storage.objects
+    FOR DELETE USING (
+        bucket_id = 'editor-uploads' AND
+        auth.role() = 'authenticated'
+    );

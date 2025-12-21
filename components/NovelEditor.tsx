@@ -12,6 +12,7 @@ import {
     Command,
     renderItems,
     handleCommandNavigation,
+    JSONContent,
 } from "novel";
 import { suggestionItems } from "./slash-command";
 
@@ -24,7 +25,8 @@ import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import Typography from "@tiptap/extension-typography";
 // import Image from "@tiptap/extension-image";
 import Image from "@tiptap/extension-image";
-import { uploadImage } from "@/lib/upload_image";
+import { uploadImage, deleteImage } from "@/lib/upload_image";
+import { createBrowserClient } from "@supabase/ssr";
 
 // Define Props
 interface NovelEditorProps {
@@ -76,6 +78,120 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
     ({ initialContent = "", onChange, editable = true, onKeyDown, suggestionText }, ref) => {
         const [editorInstance, setEditorInstance] = useState<EditorInstance | null>(null);
         const [isEmpty, setIsEmpty] = useState(true);
+
+        // Track all images that have ever been part of this session to detect deletions
+        const knownImageUrls = React.useRef<Set<string>>(new Set());
+
+        // Better Strategy:
+        // maintain 'lastContentJson' ref to robustly track image nodes
+        const lastContentJsonRef = React.useRef<JSONContent | null>(null);
+
+        // Store access token for authenticated deletion on unmount
+        const accessTokenRef = React.useRef<string | undefined>(undefined);
+
+        // Fetch session on mount and keep token updated
+        React.useEffect(() => {
+            const supabase = createBrowserClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+
+            // Initial get
+            supabase.auth.getSession().then(({ data }) => {
+                if (data.session?.access_token) {
+                    accessTokenRef.current = data.session.access_token;
+                }
+            });
+
+            // Listen for changes (refreshes, sign-outs)
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+                if (session?.access_token) {
+                    accessTokenRef.current = session.access_token;
+                } else {
+                    accessTokenRef.current = undefined;
+                }
+            });
+
+            return () => {
+                subscription.unsubscribe();
+            };
+        }, []);
+
+        // Helper to extract image URLs from TipTap JSON
+        const extractImagesFromJson = (content: JSONContent): Set<string> => {
+            const images = new Set<string>();
+
+            const traverse = (node: JSONContent) => {
+                if (node.type === 'image' && node.attrs?.src) {
+                    images.add(node.attrs.src);
+                }
+                if (node.content) {
+                    node.content.forEach(traverse);
+                }
+            };
+
+            if (content) traverse(content);
+            return images;
+        };
+
+        // Cleanup on unmount/unload: Find orphaned images and delete them
+        React.useEffect(() => {
+            let isCleanedUp = false;
+
+            const cleanup = () => {
+                if (isCleanedUp) return;
+                isCleanedUp = true;
+
+                // console.log("[NovelEditor] Cleanup Triggered");
+                try {
+                    const finalJson = lastContentJsonRef.current;
+                    if (!finalJson) {
+                        // console.log("[NovelEditor] No final JSON to cleanup");
+                        return;
+                    }
+
+                    const finalImages = extractImagesFromJson(finalJson);
+                    // console.log("[NovelEditor] Final Images:", Array.from(finalImages));
+                    // console.log("[NovelEditor] Known Images:", Array.from(knownImageUrls.current));
+
+                    // Identify orphaned images
+                    const orphaned = Array.from(knownImageUrls.current).filter(url => !finalImages.has(url));
+
+                    if (orphaned.length > 0) {
+                        console.log("[NovelEditor] Cleaning up orphaned images:", orphaned);
+                        const token = accessTokenRef.current;
+                        orphaned.forEach(url => {
+                            console.log(`[NovelEditor] Deleting: ${url}`);
+                            // Fire and forget; custom fetch with keepalive handles the rest
+                            deleteImage(url, token).catch(e => console.error("[NovelEditor] Delete failed:", e));
+                        });
+                    } else {
+                        // console.log("[NovelEditor] No orphaned images found.");
+                    }
+                } catch (e) {
+                    console.error("[NovelEditor] Failed to cleanup images:", e);
+                }
+            };
+
+            // Handle Component Unmount (SPA navigation)
+            const onUnmount = () => {
+                // console.log("[NovelEditor] Component Unmount");
+                cleanup();
+            };
+
+            // Handle Tab/Window Close (Browser exit/Refresh)
+            const onBeforeUnload = () => {
+                // console.log("[NovelEditor] Window Before Unload");
+                cleanup();
+            };
+
+            window.addEventListener('beforeunload', onBeforeUnload);
+
+            return () => {
+                window.removeEventListener('beforeunload', onBeforeUnload);
+                onUnmount();
+            };
+        }, []);
 
         // Keep onChange stable via ref
         const onChangeRef = React.useRef(onChange);
@@ -190,6 +306,10 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
 
                                             uploadImage(file).then((url) => {
                                                 if (url) {
+                                                    // Track this new image
+                                                    // console.log('[NovelEditor] New image tracked:', url);
+                                                    knownImageUrls.current.add(url);
+
                                                     // Use ProseMirror transaction directly to avoid stale editorInstance issues
                                                     // and ensure we are operating on the current view state.
                                                     const { schema } = view.state;
@@ -261,13 +381,18 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
                             // Update local empty state
                             setIsEmpty(editor.isEmpty);
 
+                            // Update last content ref immediately to catch deletions before unmount
+                            const json = editor.getJSON();
+                            lastContentJsonRef.current = json;
+
                             // Trigger onChange with debouncing
                             if (debounceTimerRef.current) {
                                 clearTimeout(debounceTimerRef.current);
                             }
                             debounceTimerRef.current = setTimeout(() => {
                                 if (onChangeRef.current) {
-                                    const markdown = htmlToMarkdown(editor.getHTML());
+                                    const html = editor.getHTML(); // Keep using HTML for outside change prop if needed, or use Markdown
+                                    const markdown = htmlToMarkdown(html);
                                     onChangeRef.current(markdown);
                                 }
                             }, 400);
@@ -275,6 +400,14 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
                         onCreate={({ editor }) => {
                             setEditorInstance(editor as EditorInstance);
                             setIsEmpty(editor.isEmpty);
+
+                            // Initialize known images from initial content
+                            const json = editor.getJSON();
+                            lastContentJsonRef.current = json;
+
+                            const initialImages = extractImagesFromJson(json);
+                            console.log("[NovelEditor] Initial Images Tracked:", Array.from(initialImages));
+                            initialImages.forEach(url => knownImageUrls.current.add(url));
                         }}
                     >
                         <EditorCommand className="z-50 h-auto max-h-[330px] w-72 overflow-y-auto rounded-md border border-muted bg-background px-1 py-2 shadow-md transition-all">
