@@ -101,19 +101,73 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
         }
     };
 
+    const compressImage = (file: File): Promise<Blob> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 512;
+                    const MAX_HEIGHT = 512;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob(
+                        (blob) => {
+                            if (blob) {
+                                resolve(blob);
+                            } else {
+                                reject(new Error('Canvas to Blob conversion failed'));
+                            }
+                        },
+                        'image/webp',
+                        0.85
+                    );
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
+    };
+
     const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setIsLoading(true);
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${project.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+            // Compress image before upload
+            const compressedBlob = await compressImage(file);
+
+            // Generate a random name with .webp extension since we compressed to WebP
+            const fileName = `${project.id}-${Math.random().toString(36).substring(2)}.webp`;
             const filePath = `icons/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('project-icons')
-                .upload(filePath, file);
+                .upload(filePath, compressedBlob, {
+                    contentType: 'image/webp',
+                    upsert: true
+                });
 
             if (uploadError) throw uploadError;
 
@@ -126,7 +180,7 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
             fetchIconHistory();
         } catch (error) {
             console.error('Error uploading icon:', error);
-            alert('아이콘 업로드에 실패했습니다.');
+            alert('아이콘 업로드 및 압축에 실패했습니다.');
         } finally {
             setIsLoading(false);
         }
