@@ -128,27 +128,50 @@ function TodosContent() {
                         currentUserRole={projects.find(p => p.id === selectedProjectId)?.currentUserRole}
                     />
                 ) : (
-                    <div className="h-full overflow-y-auto p-8">
-                        <div className="max-w-4xl mx-auto">
-                            <h2 className="text-2xl font-bold text-gray-900 mb-6">프로젝트 선택</h2>
+                    <div className="h-full overflow-y-auto px-6 py-12 md:px-12 md:py-20 bg-slate-50/30">
+                        <div className="max-w-5xl mx-auto space-y-12">
+                            <div className="space-y-2">
+                                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">프로젝트 선택</h2>
+                                <p className="text-gray-500 text-sm md:text-base font-medium">관리할 프로젝트를 선택하여 할 일을 확인하세요.</p>
+                            </div>
+
                             {projects.length === 0 ? (
-                                <div className="text-center py-20 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                                    <p className="text-gray-500">생성된 프로젝트가 없습니다.</p>
-                                    <p className="text-gray-400 text-sm mt-1">사이드바에서 새 프로젝트를 만들어보세요.</p>
+                                <div className="flex flex-col items-center justify-center py-24 px-8 bg-white/50 backdrop-blur-sm rounded-[32px] border border-gray-100 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                    <div className="w-20 h-20 bg-blue-50 rounded-[28px] flex items-center justify-center text-blue-500 mb-8 ring-8 ring-blue-50/50">
+                                        <Folder size={32} />
+                                    </div>
+                                    <div className="text-center space-y-2 max-w-sm">
+                                        <h3 className="text-xl font-bold text-gray-900">참여 중인 프로젝트가 없습니다</h3>
+                                        <p className="text-gray-500 text-sm leading-relaxed">
+                                            아직 생성하거나 초대받은 프로젝트가 없네요.<br />
+                                            사이드바 상단의 '+' 버튼을 눌러 첫 프로젝트를 만들어보세요!
+                                        </p>
+                                    </div>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                                     {projects.map((project) => (
                                         <button
                                             key={project.id}
                                             onClick={() => setSelectedProjectId(project.id)}
-                                            className="group flex flex-col p-6 bg-white border border-gray-200 rounded-xl hover:shadow-md hover:border-blue-500/30 hover:ring-1 hover:ring-blue-500/30 transition-all duration-200 text-left"
+                                            className="group relative flex flex-col p-8 bg-white border border-gray-100 rounded-[32px] hover:border-blue-500/30 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] transition-all duration-500 text-left"
                                         >
-                                            <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform duration-200 text-xl">
-                                                {project.icon || <Folder size={20} />}
+                                            <div className="h-14 w-14 bg-gray-50 rounded-[22px] flex items-center justify-center text-gray-400 mb-8 group-hover:bg-blue-50 group-hover:text-blue-500 group-hover:scale-110 transition-all duration-500 text-2xl ring-4 ring-transparent group-hover:ring-blue-50/50">
+                                                {project.icon || <Folder size={24} />}
                                             </div>
-                                            <h3 className="font-semibold text-gray-900 mb-1 truncate w-full">{project.name}</h3>
-                                            <p className="text-xs text-gray-400">클릭하여 할 일 보기</p>
+                                            <div className="space-y-1">
+                                                <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300 truncate w-full">{project.name}</h3>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${project.visibility === 'public' ? 'bg-blue-400' : 'bg-amber-400'}`} />
+                                                    <p className="text-xs text-gray-400 font-medium">{project.visibility === 'public' ? '공개 워크스페이스' : '프라이빗'}</p>
+                                                </div>
+                                            </div>
+                                            <div className="absolute bottom-8 right-8 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-500 text-blue-500">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                                </svg>
+                                            </div>
                                         </button>
                                     ))}
                                 </div>

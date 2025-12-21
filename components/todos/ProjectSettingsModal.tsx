@@ -20,6 +20,7 @@ interface Profile {
     id: string;
     email: string;
     name: string;
+    nickname?: string;
     avatar_url: string;
 }
 
@@ -76,12 +77,13 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
     };
 
     const handleSearch = async () => {
-        if (!searchQuery.trim()) return;
+        const query = searchQuery.trim().replace(/^@/, '');
+        if (!query) return;
         setIsLoading(true);
         const { data, error } = await supabase
             .from('profiles')
             .select('*')
-            .or(`email.ilike.%${searchQuery}%,name.ilike.%${searchQuery}%`)
+            .or(`email.ilike.%${query}%,name.ilike.%${query}%,nickname.ilike.%${query}%`)
             .limit(5);
 
         if (!error && data) {
@@ -190,8 +192,15 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
                                 </div>
                             )}
                         </div>
-                        <div className="space-y-1">
-                            <h2 className="text-2xl font-semibold tracking-tight text-gray-900">프로젝트 설정</h2>
+                        <div className="space-y-1 group/header">
+                            <input
+                                type="text"
+                                className={`text-2xl font-semibold tracking-tight text-gray-900 bg-transparent border-none p-0 outline-none focus:ring-0 placeholder:text-gray-200 w-full ${isOwner ? 'cursor-text' : 'cursor-default'}`}
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                disabled={!isOwner}
+                                placeholder="프로젝트 이름"
+                            />
                             <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
                                 <span className={`flex items-center gap-1.5 ${visibility === 'public' ? 'text-blue-500/80' : ''}`}>
                                     {visibility === 'private' ? <Lock size={12} /> : <Globe size={12} />}
@@ -238,47 +247,47 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
                         <div className="space-y-12 animate-in fade-in slide-in-from-bottom-3 duration-500">
                             {/* General Info */}
                             <div className="space-y-6">
-                                <section className="space-y-2 px-1">
-                                    <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em]">프로젝트 식별 정보</h3>
-                                    <input
-                                        type="text"
-                                        className="w-full py-4 bg-transparent text-xl font-medium border-b border-gray-100 focus:border-gray-900 focus:outline-none transition-all duration-500 placeholder:text-gray-200"
-                                        placeholder="프로젝트 이름을 입력하세요..."
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        disabled={!isOwner}
-                                    />
-                                </section>
-
-                                <section className="space-y-4 pt-4">
+                                <section className="space-y-4">
                                     <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em] px-1">공개 설정</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <button
-                                            onClick={() => setVisibility('private')}
-                                            className={`flex flex-col items-start gap-4 p-6 rounded-3xl border transition-all duration-500 ${visibility === 'private' ? 'bg-gray-50 border-transparent shadow-inner' : 'bg-white border-gray-100 hover:border-gray-400'}`}
-                                            disabled={!isOwner}
-                                        >
-                                            <div className={`w-10 h-10 flex items-center justify-center rounded-2xl ${visibility === 'private' ? 'bg-gray-900 text-white shadow-lg shadow-gray-900/10' : 'bg-gray-50 text-gray-400'}`}>
-                                                <Lock size={18} />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="text-sm font-bold text-gray-900">비공개</p>
-                                                <p className="text-[11px] text-gray-400 font-medium">초대한 멤버만</p>
-                                            </div>
-                                        </button>
-                                        <button
-                                            onClick={() => setVisibility('public')}
-                                            className={`flex flex-col items-start gap-4 p-6 rounded-3xl border transition-all duration-500 ${visibility === 'public' ? 'bg-blue-50/30 border-transparent shadow-inner' : 'bg-white border-gray-100 hover:border-gray-400'}`}
-                                            disabled={!isOwner}
-                                        >
-                                            <div className={`w-10 h-10 flex items-center justify-center rounded-2xl ${visibility === 'public' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/10' : 'bg-gray-50 text-gray-400'}`}>
-                                                <Globe size={18} />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="text-sm font-bold text-gray-900">공개</p>
-                                                <p className="text-[11px] text-gray-400 font-medium">워크스페이스에 공개</p>
-                                            </div>
-                                        </button>
+                                    <div className="p-1.5 bg-gray-50/50 rounded-[24px] border border-gray-100/50">
+                                        <div className="grid grid-cols-2 gap-1.5">
+                                            <button
+                                                onClick={() => setVisibility('private')}
+                                                className={`relative flex flex-col items-center gap-3 p-5 rounded-[20px] transition-all duration-500 group/vis ${visibility === 'private' ? 'bg-white shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] border border-gray-100' : 'hover:bg-white/50 border border-transparent'}`}
+                                                disabled={!isOwner}
+                                            >
+                                                <div className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-500 ${visibility === 'private' ? 'bg-black text-white' : 'bg-gray-100 text-gray-400 group-hover/vis:text-gray-600'}`}>
+                                                    <Lock size={18} />
+                                                </div>
+                                                <div className="text-center space-y-1">
+                                                    <p className={`text-[13px] font-bold transition-colors duration-500 ${visibility === 'private' ? 'text-gray-900' : 'text-gray-400'}`}>비공개</p>
+                                                    <p className={`text-[10px] font-medium transition-colors duration-500 ${visibility === 'private' ? 'text-gray-500' : 'text-gray-300'}`}>초대한 멤버 전용</p>
+                                                </div>
+                                                {visibility === 'private' && (
+                                                    <div className="absolute top-3 right-3 w-5 h-5 bg-black text-white rounded-full flex items-center justify-center animate-in zoom-in duration-300">
+                                                        <Check size={10} strokeWidth={3} />
+                                                    </div>
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => setVisibility('public')}
+                                                className={`relative flex flex-col items-center gap-3 p-5 rounded-[20px] transition-all duration-500 group/vis ${visibility === 'public' ? 'bg-white shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] border border-gray-100' : 'hover:bg-white/50 border border-transparent'}`}
+                                                disabled={!isOwner}
+                                            >
+                                                <div className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-500 ${visibility === 'public' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400 group-hover/vis:text-blue-400'}`}>
+                                                    <Globe size={18} />
+                                                </div>
+                                                <div className="text-center space-y-1">
+                                                    <p className={`text-[13px] font-bold transition-colors duration-500 ${visibility === 'public' ? 'text-blue-600' : 'text-gray-400'}`}>공개</p>
+                                                    <p className={`text-[10px] font-medium transition-colors duration-500 ${visibility === 'public' ? 'text-blue-400' : 'text-gray-300'}`}>워크스페이스 공유</p>
+                                                </div>
+                                                {visibility === 'public' && (
+                                                    <div className="absolute top-3 right-3 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center animate-in zoom-in duration-300">
+                                                        <Check size={10} strokeWidth={3} />
+                                                    </div>
+                                                )}
+                                            </button>
+                                        </div>
                                     </div>
                                 </section>
                             </div>
@@ -314,7 +323,7 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
                                         <input
                                             type="text"
                                             className="w-full pl-12 pr-4 py-4 bg-gray-50 border-transparent focus:bg-white focus:ring-2 focus:ring-gray-900/5 transition-all duration-500 rounded-3xl text-sm placeholder:text-gray-300 outline-none"
-                                            placeholder="이름이나 이메일로 멤버 검색..."
+                                            placeholder="이름, 이메일 또는 @닉네임으로 검색..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
                                             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -324,23 +333,33 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
 
                                     {/* Real-time search result feel */}
                                     {searchResults.length > 0 && (
-                                        <div className="p-2 space-y-1 bg-gray-50 rounded-[28px] animate-in fade-in zoom-in-95 duration-300">
+                                        <div className="p-1 space-y-1 bg-gray-50/50 rounded-[20px] animate-in fade-in zoom-in-95 duration-500">
                                             {searchResults.map((profile) => (
-                                                <div key={profile.id} className="flex items-center justify-between p-3 bg-white rounded-2xl border border-transparent hover:border-gray-100 transition-all duration-300">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center text-[11px] font-bold text-gray-600 uppercase">
-                                                            {profile.name?.[0] || profile.email[0]}
+                                                <div key={profile.id} className="flex items-center justify-between p-2 bg-white rounded-[16px] border border-gray-100/50 hover:border-gray-200 transition-all duration-300 group/item">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center text-[10px] font-bold text-gray-500 overflow-hidden ring-2 ring-gray-100/50">
+                                                            {profile.avatar_url ? (
+                                                                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <span className="uppercase">{profile.name?.[0] || profile.email[0]}</span>
+                                                            )}
                                                         </div>
-                                                        <div>
-                                                            <div className="text-xs font-bold text-gray-900">{profile.name || '알 수 없음'}</div>
-                                                            <div className="text-[10px] text-gray-400 font-medium">{profile.email}</div>
+                                                        <div className="flex flex-col">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-[12px] font-bold text-gray-900 leading-none">{profile.name || '알 수 없음'}</span>
+                                                                {profile.nickname && (
+                                                                    <span className="text-[9px] text-gray-400 font-medium leading-none">@{profile.nickname}</span>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-[9px] text-gray-400 font-medium mt-0.5 leading-none opacity-80">{profile.email}</div>
                                                         </div>
                                                     </div>
                                                     <button
                                                         onClick={() => handleInvite(profile)}
-                                                        className="p-2.5 bg-gray-50 hover:bg-gray-900 text-gray-400 hover:text-white rounded-xl transition-all duration-300"
+                                                        className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all duration-300 active:scale-95"
+                                                        title="초대하기"
                                                     >
-                                                        <UserPlus size={16} />
+                                                        <UserPlus size={14} />
                                                     </button>
                                                 </div>
                                             ))}
@@ -352,34 +371,39 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
                             {/* Refined Members Management */}
                             <div className="space-y-4">
                                 <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em] px-1">워크스페이스 멤버</h3>
-                                <div className="space-y-3">
+                                <div className="space-y-1.5">
                                     {members.map((member) => (
-                                        <div key={member.user_id} className="flex items-center justify-between p-5 bg-white border border-gray-50 hover:border-gray-100 rounded-[28px] group transition-all duration-500">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-11 h-11 rounded-[18px] flex items-center justify-center text-xs font-bold text-gray-500 uppercase overflow-hidden ring-4 ring-gray-50/50">
+                                        <div key={member.user_id} className="flex items-center justify-between p-2.5 bg-white border border-gray-100 hover:border-gray-200 rounded-[18px] group/member transition-all duration-300">
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-gray-500 uppercase overflow-hidden ring-2 ring-gray-100/50">
                                                     {member.profiles.avatar_url ? (
                                                         <img src={member.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
                                                     ) : (
-                                                        <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                                        <div className="w-full h-full bg-gray-50 flex items-center justify-center text-[10px]">
                                                             {member.profiles.name?.[0] || member.profiles.email[0]}
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-sm font-bold text-gray-900">{member.profiles.name || '동료'}</span>
-                                                        {member.user_id === currentUser?.id && <span className="text-[9px] px-1.5 py-0.5 bg-gray-900 text-white rounded-full font-bold">나</span>}
+                                                <div className="flex flex-col">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[13px] font-bold text-gray-900 tracking-tight">{member.profiles.name || '동료'}</span>
+                                                        {member.profiles.nickname && (
+                                                            <span className="text-[9px] text-gray-400 font-medium px-1.5 py-0.5 bg-gray-50 rounded-lg">@{member.profiles.nickname}</span>
+                                                        )}
+                                                        {member.user_id === currentUser?.id && (
+                                                            <span className="text-[7px] px-1.5 py-0.5 bg-blue-600 text-white rounded-md font-black uppercase tracking-widest leading-none">ME</span>
+                                                        )}
                                                     </div>
-                                                    <p className="text-[10px] text-gray-400 font-medium">{member.profiles.email}</p>
+                                                    <p className="text-[9px] text-gray-400 font-medium opacity-70">{member.profiles.email}</p>
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-2">
                                                 {isOwner && member.user_id !== currentUser?.id ? (
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="relative">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className="relative group/select">
                                                             <select
-                                                                className="appearance-none pl-3 pr-8 py-2 bg-gray-50 text-[11px] font-bold text-gray-600 rounded-xl outline-none hover:bg-gray-100 transition-colors cursor-pointer"
+                                                                className="appearance-none pl-3 pr-8 py-1.5 bg-gray-50 border border-transparent hover:border-gray-200 hover:bg-white text-[10px] font-bold text-gray-700 rounded-lg outline-none transition-all cursor-pointer focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500/30 shadow-none hover:shadow-sm"
                                                                 value={member.role}
                                                                 onChange={(e) => handleUpdateRole(member.user_id, e.target.value as any)}
                                                             >
@@ -387,21 +411,22 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
                                                                 <option value="editor">편집자</option>
                                                                 <option value="viewer">조회자</option>
                                                             </select>
-                                                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-300">
-                                                                <Check size={12} className="rotate-90 hidden" />
+                                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 transition-transform group-hover/select:scale-110">
+                                                                <ChevronRight size={10} className="rotate-90" />
                                                             </div>
                                                         </div>
                                                         <button
                                                             onClick={() => handleRemoveMember(member.user_id)}
-                                                            className="p-2 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 duration-300"
+                                                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                            title="멤버 삭제"
                                                         >
-                                                            <X size={16} />
+                                                            <X size={14} />
                                                         </button>
                                                     </div>
                                                 ) : (
-                                                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${member.role === 'owner' ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-400'}`}>
-                                                        {member.role === 'owner' && <Shield size={10} />}
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider">{member.role === 'owner' ? '소유자' : member.role === 'editor' ? '편집자' : '조회자'}</span>
+                                                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg ${member.role === 'owner' ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-gray-50 text-gray-500 border border-gray-100'}`}>
+                                                        {member.role === 'owner' && <Shield size={9} />}
+                                                        <span className="text-[9px] font-bold uppercase tracking-wider">{member.role === 'owner' ? '소유자' : member.role === 'editor' ? '편집자' : '조회자'}</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -421,7 +446,7 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
                     >
                         뒤로
                     </button>
-                    {isOwner && activeTab === 'general' && (
+                    {isOwner && (
                         <button
                             onClick={handleSaveGeneral}
                             className="group relative px-10 py-4 bg-gray-900 text-white rounded-[22px] font-bold text-sm shadow-[0_20px_40px_-12px_rgba(0,0,0,0.4)] hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-300 flex items-center gap-2 active:scale-95"
