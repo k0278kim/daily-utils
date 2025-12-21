@@ -185,18 +185,34 @@ button {
 }
 
 /* Tiptap Task List Styling */
-.tiptap ul[data-type="taskList"] {
-  list-style: none;
-  padding-left: 0;
+.tiptap ul[data-type="taskList"],
+.prose ul[data-type="taskList"] {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin-left: 0 !important;
 }
 
 .tiptap ul[data-type="taskList"] li,
-.tiptap li[data-type="taskItem"] {
+.tiptap li[data-type="taskItem"],
+.prose ul[data-type="taskList"] li {
   display: flex !important;
   align-items: flex-start !important;
-  gap: 0.75rem !important;
+  gap: 0.5rem !important;
   margin-bottom: 0.25rem !important;
   list-style-type: none !important;
+  padding-left: 0 !important;
+}
+
+.tiptap ul[data-type="taskList"] li::marker,
+.prose ul[data-type="taskList"] li::marker {
+  content: none !important;
+  display: none !important;
+}
+
+.tiptap ul[data-type="taskList"] li::before,
+.prose ul[data-type="taskList"] li::before {
+  content: none !important;
+  display: none !important;
 }
 
 .tiptap ul[data-type="taskList"] li>label,
