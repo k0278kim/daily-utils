@@ -115,11 +115,17 @@ const TodoDetailPage = () => {
         setLoading(false);
     }, [id, user, supabase, router]);
 
-    // 1. Initial Fetch
+    // 1. Reset state when ID changes
     useEffect(() => {
-        setEditorInitialContent(null); // Reset when ID changes
+        setEditorInitialContent(null);
+        setLoading(true); // Ensure loading state resets on ID change
+        setTodo(null); // Clear previous todo
+    }, [id]);
+
+    // 2. Initial Fetch
+    useEffect(() => {
         fetchData();
-    }, [id, fetchData]); // fetchData is stable via useCallback and depends on user.
+    }, [fetchData]);
 
     // 2. Realtime Sync Subscription
     useEffect(() => {

@@ -22,6 +22,9 @@ import TaskItem from "@tiptap/extension-task-item";
 import Placeholder from "@tiptap/extension-placeholder";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import Typography from "@tiptap/extension-typography";
+// import Image from "@tiptap/extension-image";
+import Image from "@tiptap/extension-image";
+import { uploadImage } from "@/lib/upload_image";
 
 // Define Props
 interface NovelEditorProps {
@@ -64,6 +67,9 @@ const extensions = [
     }),
     HorizontalRule,
     slashCommand,
+    Image.configure({
+        allowBase64: true, // Allow for immediate preview/pasting if we want? No, let's stick to uploading.
+    }),
 ];
 
 const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
@@ -94,7 +100,7 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
 
                 // Only update if content is meaningfully different to avoid cursor jumps.
                 // CRITICAL: Skip while composing to avoid character disappearance (IME issue).
-                if (currentHtml !== targetHtml && (editorInstance.isEmpty || !editable) && !isComposingRef.current) {
+                if (currentHtml !== targetHtml && editorInstance.isEmpty && !isComposingRef.current) {
                     editorInstance.commands.setContent(targetHtml);
                 }
             }
@@ -172,6 +178,33 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
                         extensions={extensions as any}
                         editorProps={{
                             handleDOMEvents: {
+                                paste: (view, event) => {
+                                    if (event.clipboardData && event.clipboardData.files.length > 0) {
+                                        const file = event.clipboardData.files[0];
+                                        if (file.type.startsWith("image/")) {
+                                            event.preventDefault(); // Prevent default paste behavior
+
+                                            // Optional: Insert a placeholder or loading state? 
+                                            // For simplicity, we just upload and then insert.
+                                            // Ideally we show a loading toast.
+
+                                            uploadImage(file).then((url) => {
+                                                if (url) {
+                                                    // Use ProseMirror transaction directly to avoid stale editorInstance issues
+                                                    // and ensure we are operating on the current view state.
+                                                    const { schema } = view.state;
+                                                    const imageNode = schema.nodes.image?.create({ src: url });
+                                                    if (imageNode) {
+                                                        const transaction = view.state.tr.replaceSelectionWith(imageNode);
+                                                        view.dispatch(transaction);
+                                                    }
+                                                }
+                                            });
+                                            return true; // We handled it
+                                        }
+                                    }
+                                    return false; // Let default handler proceed
+                                },
                                 keydown: (_view, event) => {
                                     // 0. Handle Tab for Suggestion
                                     if (event.key === 'Tab' && editorInstance?.isEmpty && suggestionText && !event.isComposing) {
