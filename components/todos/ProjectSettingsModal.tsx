@@ -249,14 +249,18 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
                             <div className="space-y-6">
                                 <section className="space-y-4">
                                     <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em] px-1">공개 설정</h3>
-                                    <div className="p-1.5 bg-gray-50/50 rounded-[24px] border border-gray-100/50">
-                                        <div className="grid grid-cols-2 gap-1.5">
+                                    <div className="relative p-1 bg-gray-50/50 rounded-[24px] border border-gray-100/50 flex items-stretch">
+                                        <div
+                                            className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-[20px] shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] border border-gray-100 transition-all duration-500 ease-out z-0"
+                                            style={{ left: visibility === 'public' ? 'calc(50% + 2px)' : '4px' }}
+                                        />
+                                        <div className="relative grid grid-cols-2 gap-1 w-full z-10">
                                             <button
                                                 onClick={() => setVisibility('private')}
-                                                className={`relative flex flex-col items-center gap-3 p-5 rounded-[20px] transition-all duration-500 group/vis ${visibility === 'private' ? 'bg-white shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] border border-gray-100' : 'hover:bg-white/50 border border-transparent'}`}
+                                                className={`relative flex flex-col items-center gap-3 p-5 rounded-[20px] transition-all duration-500 group/vis disabled:opacity-50`}
                                                 disabled={!isOwner}
                                             >
-                                                <div className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-500 ${visibility === 'private' ? 'bg-black text-white' : 'bg-gray-100 text-gray-400 group-hover/vis:text-gray-600'}`}>
+                                                <div className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-500 ${visibility === 'private' ? 'bg-black text-white' : 'bg-gray-100/50 text-gray-400 group-hover/vis:text-gray-600'}`}>
                                                     <Lock size={18} />
                                                 </div>
                                                 <div className="text-center space-y-1">
@@ -271,10 +275,10 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
                                             </button>
                                             <button
                                                 onClick={() => setVisibility('public')}
-                                                className={`relative flex flex-col items-center gap-3 p-5 rounded-[20px] transition-all duration-500 group/vis ${visibility === 'public' ? 'bg-white shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] border border-gray-100' : 'hover:bg-white/50 border border-transparent'}`}
+                                                className={`relative flex flex-col items-center gap-3 p-5 rounded-[20px] transition-all duration-500 group/vis disabled:opacity-50`}
                                                 disabled={!isOwner}
                                             >
-                                                <div className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-500 ${visibility === 'public' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400 group-hover/vis:text-blue-400'}`}>
+                                                <div className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-500 ${visibility === 'public' ? 'bg-blue-500 text-white' : 'bg-gray-100/50 text-gray-400 group-hover/vis:text-blue-400'}`}>
                                                     <Globe size={18} />
                                                 </div>
                                                 <div className="text-center space-y-1">
@@ -449,10 +453,10 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
                     {isOwner && (
                         <button
                             onClick={handleSaveGeneral}
-                            className="group relative px-10 py-4 bg-gray-900 text-white rounded-[22px] font-bold text-sm shadow-[0_20px_40px_-12px_rgba(0,0,0,0.4)] hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-300 flex items-center gap-2 active:scale-95"
+                            className="px-10 py-3.5 bg-black text-white rounded-2xl font-bold text-[13px] hover:bg-gray-800 transition-all duration-300 flex items-center gap-2.5 active:scale-[0.98] shadow-lg shadow-black/5"
                         >
-                            변경 사항 저장
-                            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
+                            <span>변경 사항 저장</span>
+                            <div className="w-1 h-1 bg-blue-500 rounded-full" />
                         </button>
                     )}
                 </div>
