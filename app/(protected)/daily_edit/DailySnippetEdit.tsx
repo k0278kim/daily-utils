@@ -95,6 +95,30 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps) => 
     }
   }, [selectedDate, snippets]);
 
+  // Update tempContent (Yesterday's Snippet) whenever selectedDate or snippets change
+  useEffect(() => {
+    // Only if we are on "Today" (latest available date) and have no content yet
+    const availableDates = dailySnippetAvailableDate();
+    const isToday = selectedDate === availableDates[availableDates.length - 1]; // Simply checking if it's the latest date
+
+    if (isToday) {
+      // Find yesterday's date
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const yesterdayStr = formatDate(yesterday);
+
+      const yesterdaySnippet = snippets.find(s => s.snippet_date === yesterdayStr);
+      if (yesterdaySnippet) {
+        setTempContent(yesterdaySnippet.content);
+      } else {
+        setTempContent("");
+      }
+    } else {
+      setTempContent("");
+    }
+  }, [selectedDate, snippets]);
+
   // Fetch calendar events
   useEffect(() => {
     const fetchEvents = async () => {
@@ -324,13 +348,10 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps) => 
                 ref={editorRef}
                 initialContent={snippetContent}
                 editable={!editorDisabled}
+                suggestionText={tempContent}
                 onKeyDown={(e) => {
                   if (e.isComposing || e.keyCode === 229) return;
-                  if (e.key === "Enter" && editorRef.current?.isEmpty() && !editorRef.current?.isComposing() && tempContent) {
-                    if (window.confirm("어제 기록을 가져올까요?")) {
-                      editorRef.current.setContent(tempContent);
-                    }
-                  }
+                  // Old prompt logic removed in favor of Tab autocomplete
                 }}
               />
             </div>

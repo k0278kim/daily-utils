@@ -29,6 +29,7 @@ interface NovelEditorProps {
     onChange?: (content: string) => void;
     editable?: boolean;
     onKeyDown?: (event: KeyboardEvent) => boolean | void;
+    suggestionText?: string;
 }
 
 // Define methods exposed via ref
@@ -53,7 +54,7 @@ const slashCommand = Command.configure({
 const extensions = [
     StarterKit,
     Placeholder.configure({
-        placeholder: "이곳에 오늘의 기록을 남겨보세요...",
+        placeholder: "",
         emptyEditorClass: "is-editor-empty",
     }),
     Typography,
@@ -66,8 +67,9 @@ const extensions = [
 ];
 
 const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
-    ({ initialContent = "", onChange, editable = true, onKeyDown }, ref) => {
+    ({ initialContent = "", onChange, editable = true, onKeyDown, suggestionText }, ref) => {
         const [editorInstance, setEditorInstance] = useState<EditorInstance | null>(null);
+        const [isEmpty, setIsEmpty] = useState(true);
 
         // Keep onChange stable via ref
         const onChangeRef = React.useRef(onChange);
@@ -149,8 +151,21 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
 
         const isComposingRef = React.useRef(false);
 
+        // Convert suggestionText to HTML for display if needed (though we might just display text)
+        // Use local state 'isEmpty' to reactively hide suggestion
+        const showSuggestion = isEmpty && suggestionText && !initialContent;
+
         return (
-            <div className="w-full h-full min-h-[500px]">
+            <div className="w-full h-full min-h-[500px] relative group">
+                {showSuggestion && (
+                    <div className="absolute top-[48px] left-[32px] right-[32px] pointer-events-none z-10 text-muted-foreground/50 select-none font-default prose prose-lg dark:prose-invert">
+                        <div className="flex items-center gap-2 mb-2 text-xs font-medium text-blue-500/70">
+                            <span>Tab으로 자동완성</span>
+                        </div>
+                        {/* Display suggestion text preserving newlines */}
+                        <div className="whitespace-pre-wrap">{suggestionText}</div>
+                    </div>
+                )}
                 <EditorRoot>
                     <EditorContent
                         initialContent={parsedContent}
@@ -158,6 +173,14 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
                         editorProps={{
                             handleDOMEvents: {
                                 keydown: (_view, event) => {
+                                    // 0. Handle Tab for Suggestion
+                                    if (event.key === 'Tab' && editorInstance?.isEmpty && suggestionText && !event.isComposing) {
+                                        event.preventDefault();
+                                        editorInstance.commands.setContent(markdownToHtml(suggestionText));
+                                        setIsEmpty(false); // Force update to hide placeholder immediately
+                                        return true;
+                                    }
+
                                     // 1. Guard: If IME is composing, allow the browser/editor to handle it normally.
                                     // We return false to allow the default newline behavior and character commit.
                                     if (event.isComposing || event.keyCode === 229) {
@@ -202,8 +225,8 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
                             },
                         }}
                         onUpdate={({ editor }) => {
-                            // Skip while composing to avoid character disappearance (IME issue)
-                            if (isComposingRef.current) return;
+                            // Update local empty state
+                            setIsEmpty(editor.isEmpty);
 
                             // Trigger onChange with debouncing
                             if (debounceTimerRef.current) {
@@ -218,6 +241,7 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
                         }}
                         onCreate={({ editor }) => {
                             setEditorInstance(editor as EditorInstance);
+                            setIsEmpty(editor.isEmpty);
                         }}
                     >
                         <EditorCommand className="z-50 h-auto max-h-[330px] w-72 overflow-y-auto rounded-md border border-muted bg-background px-1 py-2 shadow-md transition-all">
