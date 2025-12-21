@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
+import { Search, X } from 'lucide-react';
 import Column from './Column';
 import { Todo } from '@/model/Todo';
 import { createClient } from "@/utils/supabase/supabaseClient";
@@ -22,6 +23,48 @@ const Board: React.FC<{ projectId: string; currentUserRole?: 'owner' | 'editor' 
 
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isSearchVisible, setIsSearchVisible] = useState(false);
+    const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+    const filterTodos = (list: Todo[]) => {
+        if (!searchQuery.trim()) return list;
+
+        // Normalize: Lowercase and limit spaces/special chars if needed, 
+        // but user specifically requested "removing spaces" to find loosely.
+        // Strategy: Remove ALL spaces from query and target text for comparison.
+        const normalizedQuery = searchQuery.replace(/\s+/g, '').toLowerCase();
+
+        return list.filter(t => {
+            const normalizedTitle = t.title.replace(/\s+/g, '').toLowerCase();
+            const normalizedDesc = (t.description || '').replace(/\s+/g, '').toLowerCase();
+
+            return normalizedTitle.includes(normalizedQuery) || normalizedDesc.includes(normalizedQuery);
+        });
+    };
+
+    // Handle Ctrl+F / Cmd+F & Escape
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+                e.preventDefault(); // Prevent browser find
+                setIsSearchVisible(prev => !prev);
+            }
+            if (e.key === 'Escape') {
+                setIsSearchVisible(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    // Auto-focus when visible
+    useEffect(() => {
+        if (isSearchVisible && searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+    }, [isSearchVisible]);
 
     useEffect(() => {
         const getUser = async () => {
@@ -218,9 +261,9 @@ const Board: React.FC<{ projectId: string; currentUserRole?: 'owner' | 'editor' 
         if (!todoId) return;
 
         // Verify relevance before fetching all (optional optimization)
-        // Since we can't easily check project_id without fetching the todo, 
-        // we might just fetchTodos() if the current list contains the todo, 
-        // but it's safer to just fetch. 
+        // Since we can't easily check project_id without fetching the todo,
+        // we might just fetchTodos() if the current list contains the todo,
+        // but it's safer to just fetch.
         // To avoid excessive fetches from other projects, we can try to fetch the single todo checks.
 
         // But for now, let's just fetchTodos() to be absolutely sure.
@@ -419,7 +462,7 @@ const Board: React.FC<{ projectId: string; currentUserRole?: 'owner' | 'editor' 
                 const isAssignedToMe = movedItem.assignees && movedItem.assignees.some(a => a.id === user?.id);
 
                 // If moving to Done, and not assigned to me, BLOCK it.
-                // Exception: Logic below was auto-assigning me. 
+                // Exception: Logic below was auto-assigning me.
                 // BUT user requested STRICT blocking. "Must be assigned to complete".
                 // If I am not assigned, I cannot complete it. Even if I want to claim it, I should claim it (move to My Tasks) first?
                 // Or does dragging to done count as "Claim & Complete"?
@@ -653,53 +696,82 @@ const Board: React.FC<{ projectId: string; currentUserRole?: 'owner' | 'editor' 
     return (
         <>
             <DragDropContext onDragEnd={onDragEnd}>
-                <div className="flex h-full w-full gap-8 p-8 bg-white">
-                    <div className="flex-1 h-full min-w-[320px]">
-                        <Column
-                            droppableId="backlog"
-                            title="백로그 (할 일)"
-                            todos={columns['backlog']}
-                            onAddTodo={isViewer ? undefined : addTodo}
-                            onEditTodo={setEditingTodo}
-                            enableDateFilter={true}
-                            projectId={projectId}
-                            onToggleStatus={handleToggleStatus}
-                            onDeleteTodo={deleteTodo}
-                            currentUserId={currentUser?.id}
-                            isLoading={isLoading}
-                            currentUserRole={currentUserRole}
-                        />
+                <div className="relative flex flex-col h-full w-full bg-white">
+
+
+                    <div className="flex flex-1 gap-8 p-8 overflow-x-auto min-h-0">
+                        <div className="flex-1 h-full min-w-[320px]">
+                            <Column
+                                droppableId="backlog"
+                                title="백로그 (할 일)"
+                                todos={filterTodos(columns['backlog'])}
+                                onAddTodo={isViewer ? undefined : addTodo}
+                                onEditTodo={setEditingTodo}
+                                enableDateFilter={true}
+                                projectId={projectId}
+                                onToggleStatus={handleToggleStatus}
+                                onDeleteTodo={deleteTodo}
+                                currentUserId={currentUser?.id}
+                                isLoading={isLoading}
+                                currentUserRole={currentUserRole}
+                            />
+                        </div>
+                        <div className="flex-1 h-full min-w-[300px]">
+                            <Column
+                                droppableId="my-tasks"
+                                title="내 할 일 (진행 중)"
+                                todos={filterTodos(columns['my-tasks'])}
+                                onEditTodo={setEditingTodo}
+                                enableStatusFilter={true}
+                                projectId={projectId}
+                                onToggleStatus={handleToggleStatus}
+                                onDeleteTodo={deleteTodo}
+                                currentUserId={currentUser?.id}
+                                isLoading={isLoading}
+                                currentUserRole={currentUserRole}
+                            />
+                        </div>
+                        <div className="flex-1 h-full min-w-[300px]">
+                            <Column
+                                droppableId="done"
+                                title="완료한 일"
+                                todos={filterTodos(columns['done'])}
+                                onEditTodo={setEditingTodo}
+                                projectId={projectId}
+                                onToggleStatus={handleToggleStatus}
+                                onDeleteTodo={deleteTodo}
+                                currentUserId={currentUser?.id}
+                                isLoading={isLoading}
+                                enableDateGrouping={true}
+                                currentUserRole={currentUserRole}
+                            />
+                        </div>
                     </div>
-                    <div className="flex-1 h-full min-w-[300px]">
-                        <Column
-                            droppableId="my-tasks"
-                            title="내 할 일 (진행 중)"
-                            todos={columns['my-tasks']}
-                            onEditTodo={setEditingTodo}
-                            enableStatusFilter={true}
-                            projectId={projectId}
-                            onToggleStatus={handleToggleStatus}
-                            onDeleteTodo={deleteTodo}
-                            currentUserId={currentUser?.id}
-                            isLoading={isLoading}
-                            currentUserRole={currentUserRole}
-                        />
-                    </div>
-                    <div className="flex-1 h-full min-w-[300px]">
-                        <Column
-                            droppableId="done"
-                            title="완료한 일"
-                            todos={columns['done']}
-                            onEditTodo={setEditingTodo}
-                            projectId={projectId}
-                            onToggleStatus={handleToggleStatus}
-                            onDeleteTodo={deleteTodo}
-                            currentUserId={currentUser?.id}
-                            isLoading={isLoading}
-                            enableDateGrouping={true}
-                            currentUserRole={currentUserRole}
-                        />
-                    </div>
+
+                    {/* Search Bar (Floating) - Moved to bottom for stacking context safety */}
+                    {isSearchVisible && (
+                        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[9999] w-full max-w-md px-4 transition-all animate-in fade-in slide-in-from-top-4 duration-200">
+                            <div className="relative shadow-xl rounded-full">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    placeholder="무엇을 찾고 계신가요?"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-12 pr-10 py-3.5 bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-full text-base text-slate-700 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-300 transition-all"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery("")}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </DragDropContext>
 
