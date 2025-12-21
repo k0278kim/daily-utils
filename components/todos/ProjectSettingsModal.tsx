@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Lock, Globe, Users, Trash2, Shield, Search, UserPlus, Check, ChevronRight, Image as ImageIcon, Upload, Plus } from 'lucide-react';
 import { createClient } from '@/utils/supabase/supabaseClient';
+import { compressImage } from '@/lib/upload_image';
 import { Project } from '@/model/Project';
 import { ProjectMember } from '@/model/ProjectMember';
 import { User } from '@supabase/supabase-js';
@@ -46,6 +47,8 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
     const fileInputRef = useRef<HTMLInputElement>(null);
 
 
+    const portalRef = useRef<HTMLDivElement>(null);
+
     // Sync state with props if they change externally (Real-time sync)
     useEffect(() => {
         setName(project.name);
@@ -58,7 +61,11 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
         fetchMembers();
 
         const handleClickOutside = (event: MouseEvent) => {
-            if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+            // Check if click is inside the main dropdown OR inside the portal picker
+            const isInsideMain = emojiPickerRef.current?.contains(event.target as Node);
+            const isInsidePortal = portalRef.current?.contains(event.target as Node);
+
+            if (!isInsideMain && !isInsidePortal) {
                 setShowIconMenu(false);
                 setShowSubEmojiPicker(false);
             }
@@ -99,54 +106,6 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
         } catch (error) {
             console.error('Error fetching icon history:', error);
         }
-    };
-
-    const compressImage = (file: File): Promise<Blob> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target?.result as string;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 512;
-                    const MAX_HEIGHT = 512;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height) {
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
-                    } else {
-                        if (height > MAX_HEIGHT) {
-                            width *= MAX_HEIGHT / height;
-                            height = MAX_HEIGHT;
-                        }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx?.drawImage(img, 0, 0, width, height);
-                    canvas.toBlob(
-                        (blob) => {
-                            if (blob) {
-                                resolve(blob);
-                            } else {
-                                reject(new Error('Canvas to Blob conversion failed'));
-                            }
-                        },
-                        'image/webp',
-                        0.85
-                    );
-                };
-                img.onerror = (err) => reject(err);
-            };
-            reader.onerror = (err) => reject(err);
-        });
     };
 
     const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -413,6 +372,7 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
                                     {/* Sub-menu for Emoji Picker - Rendered via Portal to avoid overflow-hidden clipping */}
                                     {showSubEmojiPicker && typeof document !== 'undefined' && createPortal(
                                         <div
+                                            ref={portalRef}
                                             className="fixed z-[10002] bg-white rounded-[28px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-left-4 duration-300"
                                             style={{
                                                 top: subEmojiPickerPosition.top,

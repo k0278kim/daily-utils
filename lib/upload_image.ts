@@ -7,16 +7,81 @@ const getSupabaseClient = () => {
     );
 };
 
+// Image compression configuration
+const COMPRESSION_CONFIG = {
+    maxWidth: 1200, // Reasonable max width for editor content
+    maxHeight: 1200,
+    quality: 0.8,
+    type: 'image/webp' as const
+};
+
+export const compressImage = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Caclulate new dimensions properly maintaining aspect ratio
+                if (width > height) {
+                    if (width > COMPRESSION_CONFIG.maxWidth) {
+                        height = Math.round(height * (COMPRESSION_CONFIG.maxWidth / width));
+                        width = COMPRESSION_CONFIG.maxWidth;
+                    }
+                } else {
+                    if (height > COMPRESSION_CONFIG.maxHeight) {
+                        width = Math.round(width * (COMPRESSION_CONFIG.maxHeight / height));
+                        height = COMPRESSION_CONFIG.maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+                canvas.toBlob(
+                    (blob) => {
+                        if (blob) {
+                            resolve(blob);
+                        } else {
+                            reject(new Error('Canvas to Blob conversion failed'));
+                        }
+                    },
+                    COMPRESSION_CONFIG.type,
+                    COMPRESSION_CONFIG.quality
+                );
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+};
+
 export const uploadImage = async (file: File): Promise<string | null> => {
     try {
-        const supabase = getSupabaseClient();
-        const fileExt = file.name.split('.').pop();
+        // Compress image before upload
+        // If it's not an image (e.g. SVG/GIF that we might want to preserve, or if compression fails),
+        // we could fallback to original. But user asked for compression.
+        // Let's wrap compression in try/catch to be safe, or just enforce it.
+        const encodedBlob = await compressImage(file);
+
+        // Re-create a file-like object or upload blob directly
+        const fileExt = 'webp'; // We convert to webp
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         const filePath = `${fileName}`;
 
+        const supabase = getSupabaseClient();
         const { error: uploadError } = await supabase.storage
             .from('editor-uploads')
-            .upload(filePath, file);
+            .upload(filePath, encodedBlob, {
+                contentType: 'image/webp',
+                upsert: true
+            });
 
         if (uploadError) {
             console.error('Error uploading image:', uploadError);
