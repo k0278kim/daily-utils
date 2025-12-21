@@ -156,8 +156,12 @@ function TodosContent() {
                                             onClick={() => setSelectedProjectId(project.id)}
                                             className="group relative flex flex-col p-8 bg-white border border-gray-100 rounded-[32px] hover:border-blue-500/30 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] transition-all duration-500 text-left"
                                         >
-                                            <div className="h-14 w-14 bg-gray-50 rounded-[22px] flex items-center justify-center text-gray-400 mb-8 group-hover:bg-blue-50 group-hover:text-blue-500 group-hover:scale-110 transition-all duration-500 text-2xl ring-4 ring-transparent group-hover:ring-blue-50/50">
-                                                {project.icon || <Folder size={24} />}
+                                            <div className="h-14 w-14 bg-gray-50 rounded-[22px] flex items-center justify-center text-gray-400 mb-8 group-hover:bg-blue-50 group-hover:text-blue-500 group-hover:scale-110 transition-all duration-500 text-2xl ring-4 ring-transparent group-hover:ring-blue-50/50 overflow-hidden">
+                                                {project.icon && project.icon.startsWith('http') ? (
+                                                    <img src={project.icon} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    project.icon || <Folder size={24} />
+                                                )}
                                             </div>
                                             <div className="space-y-1">
                                                 <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300 truncate w-full">{project.name}</h3>

@@ -167,8 +167,12 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                             }`}
                     >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <span className={`text-base transition-colors duration-200 ${selectedProjectId === project.id ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}>
-                                {project.icon || (selectedProjectId === project.id ? <FolderOpen size={18} className="text-blue-500" strokeWidth={2.5} /> : <Folder size={18} />)}
+                            <span className={`flex items-center justify-center w-5 h-5 transition-colors duration-200 ${selectedProjectId === project.id ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}>
+                                {project.icon && project.icon.startsWith('http') ? (
+                                    <img src={project.icon} alt="" className="w-full h-full rounded-md object-cover shadow-sm border border-gray-100" />
+                                ) : (
+                                    project.icon || (selectedProjectId === project.id ? <FolderOpen size={18} className="text-blue-500" strokeWidth={2.5} /> : <Folder size={18} />)
+                                )}
                             </span>
                             <span className="truncate tracking-tight">{project.name}</span>
                             {project.visibility === 'private' ? (

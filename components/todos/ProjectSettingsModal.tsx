@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Lock, Globe, Users, Trash2, Shield, Search, UserPlus, Check, ChevronRight } from 'lucide-react';
+import { X, Lock, Globe, Users, Trash2, Shield, Search, UserPlus, Check, ChevronRight, Image as ImageIcon, Upload, Plus } from 'lucide-react';
 import { createClient } from '@/utils/supabase/supabaseClient';
 import { Project } from '@/model/Project';
 import { ProjectMember } from '@/model/ProjectMember';
@@ -37,8 +37,14 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
     const [searchResults, setSearchResults] = useState<Profile[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showIconMenu, setShowIconMenu] = useState(false);
+    const [showSubEmojiPicker, setShowSubEmojiPicker] = useState(false);
+    const [subEmojiPickerPosition, setSubEmojiPickerPosition] = useState({ top: 0, left: 0 });
+    const [iconHistory, setIconHistory] = useState<string[]>([]);
     const emojiPickerRef = useRef<HTMLDivElement>(null);
+    const subEmojiTriggerRef = useRef<HTMLButtonElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
 
     // Sync state with props if they change externally (Real-time sync)
     useEffect(() => {
@@ -53,12 +59,102 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
 
         const handleClickOutside = (event: MouseEvent) => {
             if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
-                setShowEmojiPicker(false);
+                setShowIconMenu(false);
+                setShowSubEmojiPicker(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [project.id]);
+
+    useEffect(() => {
+        if (showIconMenu) {
+            fetchIconHistory();
+        }
+    }, [showIconMenu]);
+
+    const fetchIconHistory = async () => {
+        try {
+            const { data, error } = await supabase.storage
+                .from('project-icons')
+                .list('icons', {
+                    limit: 20,
+                    offset: 0,
+                    sortBy: { column: 'created_at', order: 'desc' }
+                });
+
+            if (error) throw error;
+
+            if (data) {
+                const urls = data
+                    .filter(file => file.name.startsWith(project.id))
+                    .map(file => {
+                        const { data: { publicUrl } } = supabase.storage
+                            .from('project-icons')
+                            .getPublicUrl(`icons/${file.name}`);
+                        return publicUrl;
+                    });
+                setIconHistory(urls);
+            }
+        } catch (error) {
+            console.error('Error fetching icon history:', error);
+        }
+    };
+
+    const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsLoading(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${project.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `icons/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('project-icons')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('project-icons')
+                .getPublicUrl(filePath);
+
+            setIcon(publicUrl);
+            setShowIconMenu(false);
+            fetchIconHistory();
+        } catch (error) {
+            console.error('Error uploading icon:', error);
+            alert('아이콘 업로드에 실패했습니다.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteIconHistory = async (url: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm('이 아이콘을 삭제하시겠습니까?')) return;
+
+        try {
+            // Extract file name from URL
+            const fileName = url.split('/').pop();
+            if (!fileName) return;
+
+            const { error } = await supabase.storage
+                .from('project-icons')
+                .remove([`icons/${fileName}`]);
+
+            if (error) throw error;
+
+            // If deleted icon was the current icon, reset to default or just keep current state
+            // Refresh history
+            fetchIconHistory();
+        } catch (error) {
+            console.error('Error deleting icon:', error);
+            alert('아이콘 삭제에 실패했습니다.');
+        }
+    };
 
     const fetchCurrentUser = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -170,25 +266,118 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ project, on
                     <div className="flex items-center gap-5">
                         <div className="relative group" ref={emojiPickerRef}>
                             <button
-                                onClick={() => isOwner && setShowEmojiPicker(!showEmojiPicker)}
-                                className={`w-16 h-16 flex items-center justify-center bg-gray-50 rounded-[22px] text-3xl transition-all duration-300 ${isOwner ? 'hover:scale-105 hover:bg-white hover:shadow-xl hover:shadow-blue-500/10 cursor-pointer active:scale-95' : 'cursor-default'}`}
+                                onClick={() => isOwner && setShowIconMenu(!showIconMenu)}
+                                className={`w-16 h-16 flex items-center justify-center bg-gray-50 rounded-[22px] overflow-hidden transition-all duration-400 ${isOwner ? 'hover:scale-105 hover:bg-white hover:shadow-2xl hover:shadow-blue-500/10 cursor-pointer active:scale-95 ring-2 ring-transparent hover:ring-blue-50' : 'cursor-default'}`}
                                 disabled={!isOwner}
                             >
-                                {icon}
+                                {icon && icon.startsWith('http') ? (
+                                    <img src={icon} alt="icon" className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-3xl filter drop-shadow-sm">{icon}</span>
+                                )}
                             </button>
-                            {showEmojiPicker && (
-                                <div className="absolute top-20 left-0 z-[10001] animate-in zoom-in-95 duration-300 slide-in-from-top-4">
-                                    <div className="shadow-2xl rounded-3xl border border-gray-100 overflow-hidden bg-white">
-                                        <EmojiPicker
-                                            onEmojiClick={(emojiData) => {
-                                                setIcon(emojiData.emoji);
-                                                setShowEmojiPicker(false);
+
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleIconUpload}
+                                className="hidden"
+                                accept="image/*"
+                            />
+
+                            {showIconMenu && (
+                                <div className="absolute top-20 left-0 z-[10001] w-64 bg-white rounded-[28px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] border border-gray-100 p-2 animate-in zoom-in-95 duration-300 slide-in-from-top-4 origin-top-left">
+                                    <div className="space-y-1">
+                                        <button
+                                            ref={subEmojiTriggerRef}
+                                            onClick={() => {
+                                                if (subEmojiTriggerRef.current) {
+                                                    const rect = subEmojiTriggerRef.current.getBoundingClientRect();
+                                                    setSubEmojiPickerPosition({
+                                                        top: rect.top,
+                                                        left: rect.right + 12
+                                                    });
+                                                }
+                                                setShowSubEmojiPicker(!showSubEmojiPicker);
                                             }}
-                                            width={320}
-                                            height={400}
-                                            previewConfig={{ showPreview: false }}
-                                        />
+                                            className={`w-full flex items-center gap-3 p-3.5 hover:bg-blue-50 text-gray-700 hover:text-blue-600 rounded-[20px] transition-all duration-300 group/menu ${showSubEmojiPicker ? 'bg-blue-50 text-blue-600' : ''}`}
+                                        >
+                                            <div className="w-9 h-9 bg-gray-50 rounded-2xl flex items-center justify-center group-hover/menu:bg-white group-hover/menu:shadow-md transition-all">
+                                                <span className="text-lg">😊</span>
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-[13px] font-bold">이모지 선택</p>
+                                                <p className="text-[10px] text-gray-400 font-medium tracking-tight">라이브러리에서 선택</p>
+                                            </div>
+                                            <div className={`ml-auto transition-transform duration-300 ${showSubEmojiPicker ? 'rotate-90' : ''}`}>
+                                                <ChevronRight size={14} className="opacity-40" />
+                                            </div>
+                                        </button>
+
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="w-full flex items-center gap-3 p-3.5 hover:bg-blue-50 text-gray-700 hover:text-blue-600 rounded-[20px] transition-all duration-300 group/menu"
+                                        >
+                                            <div className="w-9 h-9 bg-gray-50 rounded-2xl flex items-center justify-center group-hover/menu:bg-white group-hover/menu:shadow-md transition-all">
+                                                <Upload size={16} />
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-[13px] font-bold">이미지 업로드</p>
+                                                <p className="text-[10px] text-gray-400 font-medium">나만의 아이콘 추가</p>
+                                            </div>
+                                        </button>
                                     </div>
+
+                                    {/* Icon History Section */}
+                                    {iconHistory.length > 0 && (
+                                        <div className="mt-2 pt-2 border-t border-gray-50 px-2 pb-2">
+                                            <p className="text-[10px] font-bold text-gray-300 uppercase tracking-wider pl-2 mb-2">최근 사용</p>
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {iconHistory.map((url, i) => (
+                                                    <div key={i} className="relative group/icon-item">
+                                                        <button
+                                                            onClick={() => {
+                                                                setIcon(url);
+                                                                setShowIconMenu(false);
+                                                            }}
+                                                            className="w-full aspect-square rounded-[14px] overflow-hidden border border-gray-50 bg-gray-50 hover:border-blue-200 transition-all hover:scale-105"
+                                                        >
+                                                            <img src={url} alt="" className="w-full h-full object-cover" />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => handleDeleteIconHistory(url, e)}
+                                                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white shadow-md border border-gray-100 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:scale-110 opacity-0 group-hover/icon-item:opacity-100 transition-all z-10"
+                                                        >
+                                                            <X size={10} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Sub-menu for Emoji Picker - Rendered via Portal to avoid overflow-hidden clipping */}
+                                    {showSubEmojiPicker && typeof document !== 'undefined' && createPortal(
+                                        <div
+                                            className="fixed z-[10002] bg-white rounded-[28px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-left-4 duration-300"
+                                            style={{
+                                                top: subEmojiPickerPosition.top,
+                                                left: subEmojiPickerPosition.left
+                                            }}
+                                        >
+                                            <EmojiPicker
+                                                onEmojiClick={(emojiData) => {
+                                                    setIcon(emojiData.emoji);
+                                                    setShowIconMenu(false);
+                                                    setShowSubEmojiPicker(false);
+                                                }}
+                                                width={320}
+                                                height={400}
+                                                previewConfig={{ showPreview: false }}
+                                            />
+                                        </div>,
+                                        document.body
+                                    )}
                                 </div>
                             )}
                         </div>
