@@ -4,6 +4,7 @@ import Column from './Column';
 import { Todo } from '@/model/Todo';
 import { createClient } from "@/utils/supabase/supabaseClient";
 import EditTodoModal from './EditTodoModal';
+import { deleteImage, extractImagesFromContent } from "@/lib/upload_image";
 
 // Define Columns type for better type safety
 type Columns = {
@@ -589,9 +590,52 @@ const Board: React.FC<{ projectId: string; currentUserRole?: 'owner' | 'editor' 
         }
     };
 
+
     const deleteTodo = async (todoId: string) => {
         if (isViewer) return;
         if (!confirm('정말 삭제하시겠습니까?')) return;
+
+        // Cleanup images associated with this todo
+        try {
+            console.log(`[deleteTodo] Starting cleanup for todo: ${todoId}`);
+            const { data: todoData, error: fetchError } = await supabase
+                .from('todos')
+                .select('content')
+                .eq('id', todoId)
+                .single();
+
+            if (fetchError) {
+                console.error("[deleteTodo] Failed to fetch todo content:", fetchError);
+            }
+
+            console.log(`[deleteTodo] Raw content type:`, typeof todoData?.content);
+            // console.log(`[deleteTodo] Raw content:`, todoData?.content);
+
+            if (todoData?.content) {
+                // Pass raw content (string or object) directly to robust extractor
+                const images = extractImagesFromContent(todoData.content);
+                console.log(`[deleteTodo] Extracted images count: ${images.size}`, Array.from(images));
+
+                if (images.size > 0) {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const token = session?.access_token;
+                    console.log(`[deleteTodo] Got session token:`, !!token);
+
+                    await Promise.all(
+                        Array.from(images).map(async url => {
+                            console.log(`[deleteTodo] Deleting image: ${url}`);
+                            const result = await deleteImage(url, token);
+                            console.log(`[deleteTodo] Delete result for ${url}:`, result);
+                            return result;
+                        })
+                    );
+                }
+            } else {
+                console.log(`[deleteTodo] No content found.`);
+            }
+        } catch (e) {
+            console.error("[deleteTodo] Error cleaning up images:", e);
+        }
 
         const { error } = await supabase
             .from('todos')

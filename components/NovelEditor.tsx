@@ -25,8 +25,9 @@ import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import Typography from "@tiptap/extension-typography";
 // import Image from "@tiptap/extension-image";
 import Image from "@tiptap/extension-image";
-import { uploadImage, deleteImage } from "@/lib/upload_image";
+import { uploadImage, deleteImage, extractImagesFromContent } from "@/lib/upload_image";
 import { createBrowserClient } from "@supabase/ssr";
+
 
 // Define Props
 interface NovelEditorProps {
@@ -117,22 +118,6 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
             };
         }, []);
 
-        // Helper to extract image URLs from TipTap JSON
-        const extractImagesFromJson = (content: JSONContent): Set<string> => {
-            const images = new Set<string>();
-
-            const traverse = (node: JSONContent) => {
-                if (node.type === 'image' && node.attrs?.src) {
-                    images.add(node.attrs.src);
-                }
-                if (node.content) {
-                    node.content.forEach(traverse);
-                }
-            };
-
-            if (content) traverse(content);
-            return images;
-        };
 
         // Cleanup on unmount/unload: Find orphaned images and delete them
         React.useEffect(() => {
@@ -150,7 +135,7 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
                         return;
                     }
 
-                    const finalImages = extractImagesFromJson(finalJson);
+                    const finalImages = extractImagesFromContent(finalJson);
                     // console.log("[NovelEditor] Final Images:", Array.from(finalImages));
                     // console.log("[NovelEditor] Known Images:", Array.from(knownImageUrls.current));
 
@@ -405,7 +390,7 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
                             const json = editor.getJSON();
                             lastContentJsonRef.current = json;
 
-                            const initialImages = extractImagesFromJson(json);
+                            const initialImages = extractImagesFromContent(json);
                             console.log("[NovelEditor] Initial Images Tracked:", Array.from(initialImages));
                             initialImages.forEach(url => knownImageUrls.current.add(url));
                         }}

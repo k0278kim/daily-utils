@@ -101,3 +101,45 @@ export const deleteImage = async (url: string, accessToken?: string): Promise<bo
         return false;
     }
 };
+
+export const extractImagesFromContent = (content: any): Set<string> => {
+    const images = new Set<string>();
+
+    if (typeof content === 'string') {
+        // 1. Try to parse as JSON first (in case it's a stringified JSON object)
+        try {
+            const parsed = JSON.parse(content);
+            if (parsed && typeof parsed === 'object') {
+                return extractImagesFromContent(parsed);
+            }
+        } catch (e) {
+            // Not JSON, continue as string
+        }
+
+        // 2. Extract from HTML (e.g. <img src="...">)
+        const htmlRegex = /<img[^>]+src=["']([^"']+)["']/g;
+        let match;
+        while ((match = htmlRegex.exec(content)) !== null) {
+            images.add(match[1]);
+        }
+
+        // 3. Extract from Markdown (e.g. ![alt](src))
+        const markdownRegex = /!\[.*?\]\((.*?)\)/g;
+        while ((match = markdownRegex.exec(content)) !== null) {
+            images.add(match[1]);
+        }
+    } else if (typeof content === 'object' && content !== null) {
+        // Traverse JSON structure (TipTap)
+        const traverse = (node: any) => {
+            if (node.type === 'image' && node.attrs?.src) {
+                images.add(node.attrs.src);
+            }
+            if (node.content && Array.isArray(node.content)) {
+                node.content.forEach(traverse);
+            }
+        };
+        traverse(content);
+    }
+
+    return images;
+};
