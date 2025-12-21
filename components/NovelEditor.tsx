@@ -383,7 +383,7 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
                             }, 400);
                         }}
                         onCreate={({ editor }) => {
-                            setEditorInstance(editor as EditorInstance);
+                            setEditorInstance(editor as unknown as EditorInstance);
                             setIsEmpty(editor.isEmpty);
 
                             // Initialize known images from initial content

@@ -83,7 +83,7 @@ export const suggestionItems = createSuggestionItems([
         searchTerms: ["todo", "task", "list", "check", "checkbox"],
         icon: <CheckSquare size={18} />,
         command: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).toggleTaskList().run();
+            (editor.chain().focus().deleteRange(range) as any).toggleTaskList().run();
         },
     },
     {
@@ -92,7 +92,7 @@ export const suggestionItems = createSuggestionItems([
         searchTerms: ["unordered", "point"],
         icon: <List size={18} />,
         command: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).toggleBulletList().run();
+            (editor.chain().focus().deleteRange(range) as any).toggleBulletList().run();
         },
     },
     {
@@ -101,7 +101,7 @@ export const suggestionItems = createSuggestionItems([
         searchTerms: ["ordered"],
         icon: <ListOrdered size={18} />,
         command: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).toggleOrderedList().run();
+            (editor.chain().focus().deleteRange(range) as any).toggleOrderedList().run();
         },
     },
     {
@@ -110,10 +110,10 @@ export const suggestionItems = createSuggestionItems([
         searchTerms: ["quote", "blockquote"],
         icon: <Quote size={18} />,
         command: ({ editor, range }) => {
-            editor
+            (editor
                 .chain()
                 .focus()
-                .deleteRange(range)
+                .deleteRange(range) as any)
                 .toggleBlockquote()
                 .run();
         },
@@ -124,6 +124,6 @@ export const suggestionItems = createSuggestionItems([
         searchTerms: ["codeblock"],
         icon: <Code size={18} />,
         command: ({ editor, range }) =>
-            editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
+            (editor.chain().focus().deleteRange(range) as any).toggleCodeBlock().run(),
     },
 ]);
