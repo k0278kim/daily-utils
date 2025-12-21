@@ -9,8 +9,8 @@ import dynamic from "next/dynamic";
 import { ArrowLeft, Calendar, Save, Lock, User, Check, Tag, FileText, Loader2, CalendarDays } from "lucide-react";
 import { CategoryCombobox } from "@/components/todos/CategoryCombobox";
 
-// Dynamically import BlockEditor to avoid SSR issues
-const Editor = dynamic(() => import("@/components/BlockEditor"), { ssr: false });
+// Dynamically import NovelEditor to avoid SSR issues
+const Editor = dynamic(() => import("@/components/NovelEditor"), { ssr: false });
 
 const TodoDetailPage = () => {
     const { id } = useParams();
@@ -24,6 +24,7 @@ const TodoDetailPage = () => {
     const [description, setDescription] = useState(""); // For 'description' (summary)
     const [localTitle, setLocalTitle] = useState("");
     const [editorInitialContent, setEditorInitialContent] = useState<string | null>(null);
+    const editorRef = React.useRef<any>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -118,7 +119,7 @@ const TodoDetailPage = () => {
     useEffect(() => {
         setEditorInitialContent(null); // Reset when ID changes
         fetchData();
-    }, [id]); // fetchData is stable enough, but we mainly care about id change
+    }, [id, fetchData]); // fetchData is stable via useCallback and depends on user.
 
     // 2. Realtime Sync Subscription
     useEffect(() => {
@@ -726,6 +727,7 @@ const TodoDetailPage = () => {
                     {editorInitialContent !== null && (
                         <Editor
                             key={id as string}
+                            ref={editorRef}
                             initialContent={editorInitialContent}
                             onChange={handleEditorChange}
                             editable={canEdit}

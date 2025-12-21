@@ -1,5 +1,5 @@
 async function fetchPersonalPraise(uuid: string) {
-  const res = await fetch("api/praise/fetch_personal_praise?uuid=" + uuid, {
+  const res = await fetch("/api/praise/fetch_personal_praise?uuid=" + uuid, {
     method: "GET",
     headers: { "Content-Type": "application/json", "Api-Key": process.env.NEXT_PUBLIC_API_KEY as string, },
   });

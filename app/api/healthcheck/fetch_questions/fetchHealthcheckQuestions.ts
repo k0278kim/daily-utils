@@ -1,7 +1,7 @@
 import {HealthcheckQuestions} from "@/model/healthcheckQuestions";
 
 async function fetchHealthcheckQuestions(teamName: string, id?: number) {
-  const res = await fetch("api/healthcheck/fetch_questions?team_name=" + teamName, {
+  const res = await fetch("/api/healthcheck/fetch_questions?team_name=" + teamName, {
     method: "GET",
     headers: { "Content-Type": "application/json", "Api-Key": process.env.NEXT_PUBLIC_API_KEY as string, },
   });

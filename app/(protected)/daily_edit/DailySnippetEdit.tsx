@@ -325,7 +325,8 @@ export const DailySnippetEdit = ({ setSelectedArea }: dailySnippetEditProps) => 
                 initialContent={snippetContent}
                 editable={!editorDisabled}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && editorRef.current?.isEmpty() && tempContent) {
+                  if (e.isComposing || e.keyCode === 229) return;
+                  if (e.key === "Enter" && editorRef.current?.isEmpty() && !editorRef.current?.isComposing() && tempContent) {
                     if (window.confirm("어제 기록을 가져올까요?")) {
                       editorRef.current.setContent(tempContent);
                     }

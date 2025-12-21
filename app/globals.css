@@ -183,3 +183,87 @@ button {
 .tiptap p.is-empty {
   position: relative !important;
 }
+
+/* Tiptap Task List Styling */
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tiptap ul[data-type="taskList"] li,
+.tiptap li[data-type="taskItem"] {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 0.75rem !important;
+  margin-bottom: 0.25rem !important;
+  list-style-type: none !important;
+}
+
+.tiptap ul[data-type="taskList"] li>label,
+.tiptap li[data-type="taskItem"]>label {
+  flex: 0 0 auto !important;
+  user-select: none !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  padding-top: 0.25rem !important;
+  /* Visual baseline centering */
+}
+
+.tiptap ul[data-type="taskList"] li>div,
+.tiptap li[data-type="taskItem"]>div {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+/* CRITICAL: Remove prose margin from p tags inside task items */
+.tiptap li[data-type="taskItem"]>div>p,
+.tiptap ul[data-type="taskList"] li>div>p {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: inherit !important;
+}
+
+/* Checkbox styling */
+.tiptap ul[data-type="taskList"] li input[type="checkbox"] {
+  appearance: none;
+  background-color: #fff;
+  margin: 0;
+  font: inherit;
+  color: #3b82f6;
+  width: 1.15em;
+  height: 1.15em;
+  border: 0.15em solid #cbd5e1;
+  border-radius: 0.35em;
+  transform: translateY(-0.075em);
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tiptap ul[data-type="taskList"] li input[type="checkbox"]::before {
+  content: "";
+  width: 0.65em;
+  height: 0.65em;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em #fff;
+  background-color: CanvasText;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.tiptap ul[data-type="taskList"] li input[type="checkbox"]:checked {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.tiptap ul[data-type="taskList"] li input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+.tiptap ul[data-type="taskList"] li[data-checked="true"]>div {
+  text-decoration: line-through;
+  color: #94a3b8;
+}

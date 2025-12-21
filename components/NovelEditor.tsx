@@ -26,6 +26,7 @@ import Typography from "@tiptap/extension-typography";
 // Define Props
 interface NovelEditorProps {
     initialContent?: string;
+    onChange?: (content: string) => void;
     editable?: boolean;
     onKeyDown?: (event: KeyboardEvent) => boolean | void;
 }
@@ -38,6 +39,7 @@ export interface NovelEditorHandle {
     setContent: (content: string) => void;
     insertContent: (content: string) => void;
     isEmpty: () => boolean;
+    isComposing: () => boolean;
 }
 
 // Slash Command Config
@@ -64,8 +66,16 @@ const extensions = [
 ];
 
 const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
-    ({ initialContent = "", editable = true, onKeyDown }, ref) => {
+    ({ initialContent = "", onChange, editable = true, onKeyDown }, ref) => {
         const [editorInstance, setEditorInstance] = useState<EditorInstance | null>(null);
+
+        // Keep onChange stable via ref
+        const onChangeRef = React.useRef(onChange);
+        React.useEffect(() => {
+            onChangeRef.current = onChange;
+        }, [onChange]);
+
+        const debounceTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
         // Reactively update editable state
         React.useEffect(() => {
@@ -80,8 +90,9 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
                 const currentHtml = editorInstance.getHTML();
                 const targetHtml = markdownToHtml(initialContent);
 
-                // Only update if content is meaningfully different to avoid cursor jumps
-                if (currentHtml !== targetHtml && (editorInstance.isEmpty || !editable)) {
+                // Only update if content is meaningfully different to avoid cursor jumps.
+                // CRITICAL: Skip while composing to avoid character disappearance (IME issue).
+                if (currentHtml !== targetHtml && (editorInstance.isEmpty || !editable) && !isComposingRef.current) {
                     editorInstance.commands.setContent(targetHtml);
                 }
             }
@@ -120,6 +131,9 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
             isEmpty: () => {
                 if (!editorInstance) return true;
                 return editorInstance.isEmpty;
+            },
+            isComposing: () => {
+                return isComposingRef.current;
             }
         }));
 
@@ -133,6 +147,8 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
             }
         }, [initialContent]);
 
+        const isComposingRef = React.useRef(false);
+
         return (
             <div className="w-full h-full min-h-[500px]">
                 <EditorRoot>
@@ -142,16 +158,63 @@ const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
                         editorProps={{
                             handleDOMEvents: {
                                 keydown: (_view, event) => {
+                                    // 1. Guard: If IME is composing, allow the browser/editor to handle it normally.
+                                    // We return false to allow the default newline behavior and character commit.
+                                    if (event.isComposing || event.keyCode === 229) {
+                                        return false;
+                                    }
+
+                                    // 2. Prevent custom onKeyDown and handleCommandNavigation during composition
+                                    // (including the brief cooldown period after compositionend).
+                                    if (isComposingRef.current) {
+                                        return false;
+                                    }
+
                                     if (onKeyDown) onKeyDown(event);
                                     return handleCommandNavigation(event);
                                 },
+                                compositionstart: () => {
+                                    isComposingRef.current = true;
+                                    return false;
+                                },
+                                compositionend: (view) => {
+                                    // Delay resetting the ref to cover the trailing 'Enter' keydown (keyCode 13)
+                                    // which often happens immediately after compositionend.
+                                    setTimeout(() => {
+                                        isComposingRef.current = false;
+                                    }, 150);
+
+                                    // Trigger a final update after composition ends
+                                    if (debounceTimerRef.current) {
+                                        clearTimeout(debounceTimerRef.current);
+                                    }
+                                    debounceTimerRef.current = setTimeout(() => {
+                                        if (onChangeRef.current) {
+                                            const html = view.dom.innerHTML;
+                                            onChangeRef.current(htmlToMarkdown(html));
+                                        }
+                                    }, 400);
+                                    return false;
+                                }
                             },
                             attributes: {
                                 class: "tiptap prose prose-lg dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-full min-h-[500px] px-8 py-12",
                             },
                         }}
                         onUpdate={({ editor }) => {
-                            setEditorInstance(editor as EditorInstance);
+                            // Skip while composing to avoid character disappearance (IME issue)
+                            if (isComposingRef.current) return;
+
+                            // Trigger onChange with debouncing
+                            if (debounceTimerRef.current) {
+                                clearTimeout(debounceTimerRef.current);
+                            }
+                            debounceTimerRef.current = setTimeout(() => {
+                                if (onChangeRef.current) {
+                                    const markdown = htmlToMarkdown(editor.getHTML());
+                                    onChangeRef.current(markdown);
+                                }
+                            }, 400);
                         }}
                         onCreate={({ editor }) => {
                             setEditorInstance(editor as EditorInstance);
@@ -195,39 +258,53 @@ NovelEditor.displayName = "NovelEditor";
 function htmlToMarkdown(html: string): string {
     let markdown = html;
 
-    markdown = markdown.replace(/<p><\/p>/g, "\n");
-    markdown = markdown.replace(/<h1>(.*?)<\/h1>/g, "# $1\n");
-    markdown = markdown.replace(/<h2>(.*?)<\/h2>/g, "## $1\n");
-    markdown = markdown.replace(/<h3>(.*?)<\/h3>/g, "### $1\n");
-    markdown = markdown.replace(/<strong>(.*?)<\/strong>/g, "**$1**");
-    markdown = markdown.replace(/<em>(.*?)<\/em>/g, "*$1*");
-
-    markdown = markdown.replace(/<ul>([\s\S]*?)<\/ul>/g, (_: string, content: string) => {
-        return content.replace(/<li>(.*?)<\/li>/g, "- $1\n");
-    });
-    markdown = markdown.replace(/<ol>([\s\S]*?)<\/ol>/g, (_: string, content: string) => {
-        let i = 1;
-        return content.replace(/<li>(.*?)<\/li>/g, () => `${i++}. $1\n`);
-    });
-
-    markdown = markdown.replace(/<ul data-type="taskList">([\s\S]*?)<\/ul>/g, (_: string, content: string) => {
-        return content.replace(/<li data-checked="(true|false)">(.*?)<\/li>/g, (_match: string, checked: string, text: string) => {
+    // Task Lists (Very robust regex to handle any attribute order or extra attributes)
+    markdown = markdown.replace(/<ul[^>]*data-type="taskList"[^>]*>([\s\S]*?)<\/ul>/g, (_: string, content: string) => {
+        return content.replace(/<li[^>]*data-checked="(true|false)"[^>]*>([\s\S]*?)<\/li>/g, (_match: string, checked: string, inner: string) => {
             const check = checked === "true" ? "x" : " ";
-            return `- [${check}] ${text}\n`;
+            const taskText = inner
+                .replace(/<label>[\s\S]*?<\/label>/, "") // Strip checkbox UI
+                .replace(/<div.*?>([\s\S]*?)<\/div>/, "$1") // Unwrap div
+                .replace(/<p.*?>([\s\S]*?)<\/p>/g, "$1\n") // Unwrap p and add newline for multi-line
+                .trim();
+            return `- [${check}] ${taskText}\n`;
         });
     });
 
-    markdown = markdown.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, "```\n$1\n```\n");
-    markdown = markdown.replace(/<code>(.*?)<\/code>/g, "`$1`");
-    markdown = markdown.replace(/<p>(.*?)<\/p>/g, "$1\n\n");
-    markdown = markdown.replace(/<[^>]+>/g, "");
-    markdown = markdown.replace(/\n{3,}/g, "\n\n");
+    // Lists (Grouped, handling any attributes on ul/li)
+    markdown = markdown.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/g, (_: string, content: string) => {
+        // Skip if this content was already processed as a task list (though it should be replaced by now)
+        if (content.includes("- [ ]") || content.includes("- [x]")) return content;
+
+        return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/g, (_, inner) => {
+            const text = inner.replace(/<p.*?>([\s\S]*?)<\/p>/g, "$1").trim();
+            return `- ${text}\n`;
+        }) + "\n";
+    });
+    markdown = markdown.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/g, (_: string, content: string) => {
+        let i = 1;
+        return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/g, (_, inner) => {
+            const text = inner.replace(/<p.*?>([\s\S]*?)<\/p>/g, "$1").trim();
+            return `${i++}. ${text}\n`;
+        }) + "\n";
+    });
+
+    // Basic tags
+    markdown = markdown.replace(/<h1.*?>([\s\S]*?)<\/h1>/g, "# $1\n");
+    markdown = markdown.replace(/<h2.*?>([\s\S]*?)<\/h2>/g, "## $1\n");
+    markdown = markdown.replace(/<h3.*?>([\s\S]*?)<\/h3>/g, "### $1\n");
+    markdown = markdown.replace(/<strong.*?>([\s\S]*?)<\/strong>/g, "**$1**");
+    markdown = markdown.replace(/<em.*?>([\s\S]*?)<\/em>/g, "*$1*");
+    markdown = markdown.replace(/<code.*?>([\s\S]*?)<\/code>/g, "`$1`");
+    markdown = markdown.replace(/<p.*?>([\s\S]*?)<\/p>/g, "$1\n");
+    markdown = markdown.replace(/<br\s*\/?>/g, "\n");
+    markdown = markdown.replace(/&nbsp;/g, " ");
 
     return markdown.trim();
-}
+};
 
 // Simple Markdown to HTML converter
-function markdownToHtml(markdown: string): string {
+const markdownToHtml = (markdown: string): string => {
     if (!markdown) return "";
     let html = markdown;
 
@@ -240,13 +317,25 @@ function markdownToHtml(markdown: string): string {
     html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
     html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
 
-    // Task Lists
-    html = html.replace(/^- \[x\] (.*$)/gm, '<ul data-type="taskList"><li data-checked="true"><label><input type="checkbox" checked><span></span></label><div>$1</div></li></ul>');
-    html = html.replace(/^- \[ \] (.*$)/gm, '<ul data-type="taskList"><li data-checked="false"><label><input type="checkbox"><span></span></label><div>$1</div></li></ul>');
+    // Task Lists (Grouped, Tiptap-aligned HTML)
+    html = html.replace(/(^([- ]+)\[(x| )\] (.*$)\n?)+/gm, (match) => {
+        const items = match.trim().split("\n").map(line => {
+            const isChecked = line.includes("[x]");
+            const text = line.replace(/^([- ]+)\[(x| )\] /, "");
+            return `<li data-checked="${isChecked}" data-type="taskItem"><label><input type="checkbox"${isChecked ? ' checked="checked"' : ""}><span></span></label><div><p>${text}</p></div></li>`;
+        }).join("");
+        return `<ul data-type="taskList">${items}</ul>`;
+    });
 
-    // Lists
-    html = html.replace(/^- (.*$)/gm, "<ul><li>$1</li></ul>");
-    html = html.replace(/^\d+\. (.*$)/gm, "<ol><li>$1</li></ol>");
+    // Lists (Grouped)
+    html = html.replace(/(^[ \t]*[-*] (?!\\[[ x]\])(.*$)\n?)+/gm, (match) => {
+        const items = match.trim().split("\n").map(line => `<li><p>${line.replace(/^[ \t]*[-*] /, "")}</p></li>`).join("");
+        return `<ul>${items}</ul>`;
+    });
+    html = html.replace(/(^[ \t]*\d+\. (.*$)\n?)+/gm, (match) => {
+        const items = match.trim().split("\n").map(line => `<li><p>${line.replace(/^[ \t]*\d+\. /, "")}</p></li>`).join("");
+        return `<ol>${items}</ol>`;
+    });
 
     // Code Blocks
     html = html.replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>");

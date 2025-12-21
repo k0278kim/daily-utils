@@ -1,5 +1,5 @@
 async function fetchPersonalJapdori(uuid: string) {
-  const res = await fetch("api/japdori/fetch_personal_japdori?uuid=" + uuid, {
+  const res = await fetch("/api/japdori/fetch_personal_japdori?uuid=" + uuid, {
     method: "GET",
     headers: { "Content-Type": "application/json", "Api-Key": process.env.NEXT_PUBLIC_API_KEY as string, },
   });

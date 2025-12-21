@@ -9,7 +9,11 @@ type editorProps = {
 }
 
 const Editor = ({ content, contentChange, disabled, tempContent }: editorProps) => {
+  const lastCompositionEndTime = React.useRef(0);
   const handleTabKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Robust IME guard: ignore if composing or if composition JUST ended (within 150ms)
+    // to avoid the trailing Enter (keyCode 13) triggering logic while state is stale.
+    if (e.nativeEvent.isComposing || e.keyCode === 229 || (Date.now() - lastCompositionEndTime.current < 150)) return;
     if (e.key === "Enter" && content == "" && !disabled && tempContent != "") {
       e.preventDefault();
       const target = e.target as HTMLTextAreaElement;
@@ -27,9 +31,9 @@ const Editor = ({ content, contentChange, disabled, tempContent }: editorProps) 
   };
   return (
     <div data-color-mode="light" className={"w-full h-full relative"}>
-      { content == "" && <div className={"w-[48%] h-full absolute top-10 left-4 text-gray-400 select-none pointer-events-none z-10 text-sm"}>
+      {content == "" && <div className={"w-[48%] h-full absolute top-10 left-4 text-gray-400 select-none pointer-events-none z-10 text-sm"}>
         [[Enter를 치면 어제 스니펫이 기입됩니다.]]
-        {tempContent.split("\n").map((s, i) => <p key={i}>{s}</p>)}</div> }
+        {tempContent.split("\n").map((s, i) => <p key={i}>{s}</p>)}</div>}
       <MDEditor
         height={"100%"}
         autoFocus={false}
@@ -39,7 +43,8 @@ const Editor = ({ content, contentChange, disabled, tempContent }: editorProps) 
         className={"max-w-none text-black"}
         textareaProps={{
           disabled: disabled,
-          onKeyDown: handleTabKey
+          onKeyDown: handleTabKey,
+          onCompositionEnd: () => { lastCompositionEndTime.current = Date.now(); }
         }}
       />
     </div>
