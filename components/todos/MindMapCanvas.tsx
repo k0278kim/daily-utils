@@ -21,12 +21,18 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Plus, RotateCcw } from 'lucide-react';
 
+import MindMapNode from './MindMapNode';
+
+const nodeTypes = {
+    mindMap: MindMapNode,
+};
+
 const initialNodes: Node[] = [
     {
         id: '1',
         data: { label: '중심 아이디어' },
         position: { x: 250, y: 250 },
-        type: 'input',
+        type: 'mindMap', // Use custom type
     },
 ];
 
@@ -40,20 +46,31 @@ const MindMapContent: React.FC<MindMapCanvasProps> = ({ initialData, onChange, r
     const [nodes, setNodes] = useState<Node[]>(initialNodes);
     const [edges, setEdges] = useState<Edge[]>([]);
 
-    // Track if the initial data has been loaded to avoid overwriting user changes with stale props?
-    // Actually, we trust initialData updates if they come from the parent (e.g. valid DB load).
-    // But we must NOT trigger onChange if the update came from props.
+    // ... existing setup ...
     const isRemoteUpdate = useRef(false);
 
-    // Load initial data if provided
+    // Initial Data Sync - Important: Remap type to 'mindMap' if needed, or ensure DB saves it correctly
     useEffect(() => {
         if (initialData && initialData.nodes && initialData.nodes.length > 0) {
             isRemoteUpdate.current = true;
-            setNodes(initialData.nodes);
+            // Ensure all nodes use the custom type for consistent UI
+            const processedNodes = initialData.nodes.map(n => ({
+                ...n,
+                type: 'mindMap',
+                data: { ...n.data, onAddNode: readOnly ? undefined : handleAddNodeDirectional } // Inject callback
+            }));
+            setNodes(processedNodes);
             setEdges(initialData.edges || []);
+        } else if (!initialData || !initialData.nodes || initialData.nodes.length === 0) {
+            // Even for default init, inject callbacks
+            setNodes(nds => nds.map(n => ({
+                ...n,
+                data: { ...n.data, onAddNode: readOnly ? undefined : handleAddNodeDirectional }
+            })));
         }
-    }, [initialData]);
+    }, [initialData, readOnly]); // Dependencies need to include handleAddNodeDirectional if not stable? It is defined below.
 
+    // ... notifyChange ... 
     const notifyChange = (newNodes: Node[], newEdges: Edge[]) => {
         if (readOnly) return;
         if (isRemoteUpdate.current) {
@@ -65,62 +82,88 @@ const MindMapContent: React.FC<MindMapCanvasProps> = ({ initialData, onChange, r
         }
     };
 
-    // We use a separate effect to notify parent of changes, 
-    // BUT we must filter out changes caused by 'setNodes' from the effect above.
-    // The problem with standard 'useEffect([nodes, edges])' is it runs on ANY state change.
-    // We use the useRef flag to skip the one caused by props.
+    // Effect to notify parent - kept same
     useEffect(() => {
         if (isRemoteUpdate.current) {
             isRemoteUpdate.current = false;
             return;
         }
-        if (nodes === initialNodes && edges.length === 0) return; // Don't notify generic init if unnecessary
+        if (nodes === initialNodes && edges.length === 0) return;
 
-        // Debounce not strictly needed if parent handles it, but good practice.
-        // For now direct call.
         if (onChange) {
             onChange({ nodes, edges });
         }
     }, [nodes, edges, onChange]);
 
+    // ... React Flow hooks ...
+    const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
+    const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
+    const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), []);
 
-    const onNodesChange = useCallback(
-        (changes: NodeChange[]) => {
-            setNodes((nds) => applyNodeChanges(changes, nds));
-        },
-        []
-    );
+    // Directional Add Logic
+    const handleAddNodeDirectional = useCallback((sourceId: string, direction: 'top' | 'bottom' | 'left' | 'right') => {
+        setNodes((currentNodes) => {
+            const sourceNode = currentNodes.find(n => n.id === sourceId);
+            if (!sourceNode) return currentNodes;
 
-    const onEdgesChange = useCallback(
-        (changes: EdgeChange[]) => {
-            setEdges((eds) => applyEdgeChanges(changes, eds));
-        },
-        []
-    );
+            const offset = 200;
+            let newPos = { ...sourceNode.position };
 
-    const onConnect = useCallback(
-        (params: Connection) => {
-            setEdges((eds) => addEdge(params, eds));
-        },
-        []
-    );
+            // Very simple layout logic: just place at fixed offset
+            switch (direction) {
+                case 'top': newPos.y -= offset; break;
+                case 'bottom': newPos.y += offset; break;
+                case 'left': newPos.x -= offset; break;
+                case 'right': newPos.x += offset; break;
+            }
 
+            const newId = `${new Date().getTime()}`;
+            const newNode: Node = {
+                id: newId,
+                position: newPos,
+                data: { label: '새 아이디어', onAddNode: handleAddNodeDirectional }, // Pass recursive callback
+                type: 'mindMap',
+            };
+
+            // Add Edge
+            const newEdge: Edge = {
+                id: `e${sourceId}-${newId}`,
+                source: sourceId,
+                target: newId,
+                sourceHandle: direction, // Using direction as handle ID if we set specific handle IDs
+                targetHandle: direction === 'top' ? 'bottom' : direction === 'bottom' ? 'top' : direction === 'left' ? 'right' : 'left', // Connect to opposite side
+            };
+
+            // It's cleaner to handle Edge update outside setState of nodes for batching, 
+            // but we can't easily. So we'll use a functional state update for edges separately?
+            // Or just do a separate setEdges call.
+            // React batching handles this well.
+            setTimeout(() => {
+                setEdges((eds) => eds.concat(newEdge));
+            }, 0);
+
+            return currentNodes.concat(newNode);
+        });
+    }, []);
+
+    // Also update existing generic addNode to use custom type
     const addNode = () => {
         const id = `${new Date().getTime()}`;
         const newNode: Node = {
             id,
             position: { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
-            data: { label: '새 아이디어' },
-            type: 'default', // React Flow default node type
+            data: { label: '새 아이디어', onAddNode: handleAddNodeDirectional },
+            type: 'mindMap',
         };
         setNodes((nds) => nds.concat(newNode));
     };
 
     const onReset = () => {
-        setNodes(initialNodes);
+        // Reset with callback injection
+        const resetNodes = initialNodes.map(n => ({ ...n, data: { ...n.data, onAddNode: handleAddNodeDirectional } }));
+        setNodes(resetNodes);
         setEdges([]);
-        // Force notify on reset
-        if (onChange) onChange({ nodes: initialNodes, edges: [] });
+        if (onChange) onChange({ nodes: resetNodes, edges: [] });
     };
 
     return (
@@ -131,6 +174,7 @@ const MindMapContent: React.FC<MindMapCanvasProps> = ({ initialData, onChange, r
                 onNodesChange={readOnly ? undefined : onNodesChange}
                 onEdgesChange={readOnly ? undefined : onEdgesChange}
                 onConnect={readOnly ? undefined : onConnect}
+                nodeTypes={nodeTypes} // Register custom types
                 fitView
                 className="bg-slate-50"
                 nodesDraggable={!readOnly}
