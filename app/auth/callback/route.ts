@@ -36,9 +36,26 @@ export async function GET(request: NextRequest) {
 
       // Popup Success Handling
       if (isPopup) {
+        const { data: { session } } = await supabase.auth.getSession();
         const targetUrl = !userProfile ? `${origin}/complete-signup` : `${origin}${next}`;
+
+        // Serialize session safely
+        const sessionStr = JSON.stringify(session);
+
         return new NextResponse(
-          `<html><body><script>window.opener.postMessage({ type: 'supabase.auth.signin', event: 'SIGNED_IN', url: '${targetUrl}' }, '*'); window.close();</script></body></html>`,
+          `<html><body><script>
+            try {
+                window.opener.postMessage({ 
+                    type: 'supabase.auth.signin', 
+                    event: 'SIGNED_IN', 
+                    url: '${targetUrl}',
+                    session: ${sessionStr}
+                }, '*');
+            } catch (e) {
+                console.error(e);
+            }
+            window.close();
+          </script></body></html>`,
           { headers: { 'Content-Type': 'text/html' } }
         );
       }

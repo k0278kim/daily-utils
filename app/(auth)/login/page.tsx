@@ -69,12 +69,20 @@ const LoginPage = () => {
         `);
 
       // Listen for message from popup
-      const messageHandler = (event: MessageEvent) => {
+      const messageHandler = async (event: MessageEvent) => {
         if (event.origin !== location.origin) return;
 
         if (event.data?.type === 'supabase.auth.signin') {
           console.log("Login Successful!", event.data);
           window.removeEventListener('message', messageHandler);
+
+          // Manual Session Setting for Iframe context
+          if (event.data.session) {
+            const { error } = await supabase.auth.setSession(event.data.session);
+            if (error) {
+              console.error("Failed to set session:", error);
+            }
+          }
 
           // Redirect logic
           if (event.data.url) {
