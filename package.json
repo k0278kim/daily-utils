@@ -24,6 +24,7 @@
     "@tiptap/react": "^2.27.1",
     "@tiptap/starter-kit": "^2.27.1",
     "@uiw/react-md-editor": "^4.0.8",
+    "@xyflow/react": "^12.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

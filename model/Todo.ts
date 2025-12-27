@@ -14,6 +14,7 @@ export interface Todo {
     project_id?: string;
     category_id?: string;
     categories?: Category;
+    mind_map?: any; // JSONB for React Flow nodes/edges
 }
 
 export type ColumnType = 'backlog' | 'in-progress' | 'done';
