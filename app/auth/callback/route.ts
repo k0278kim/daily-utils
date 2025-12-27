@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   // 'next'는 로그인 후 리디렉션할 경로 (옵션)
   const next = searchParams.get('next') ?? '/'
+  const isPopup = searchParams.get('popup') === 'true';
 
   if (code) {
     const supabase = await createClient();
@@ -21,10 +22,26 @@ export async function GET(request: NextRequest) {
 
       if (profileError) {
         console.log(profileError);
+        // Popup mode error handling
+        if (isPopup) {
+          return new NextResponse(
+            `<html><body><script>window.opener.postMessage({ type: 'login_error', message: '프로필 조회 실패' }, '*'); window.close();</script></body></html>`,
+            { headers: { 'Content-Type': 'text/html' } }
+          );
+        }
         throw new Error('프로필 조회 실패');
       }
 
       console.log(origin, next);
+
+      // Popup Success Handling
+      if (isPopup) {
+        const targetUrl = !userProfile ? `${origin}/complete-signup` : `${origin}${next}`;
+        return new NextResponse(
+          `<html><body><script>window.opener.postMessage({ type: 'supabase.auth.signin', event: 'SIGNED_IN', url: '${targetUrl}' }, '*'); window.close();</script></body></html>`,
+          { headers: { 'Content-Type': 'text/html' } }
+        );
+      }
 
       if (!userProfile) {
         return NextResponse.redirect(`${origin}/complete-signup`);
@@ -34,5 +51,11 @@ export async function GET(request: NextRequest) {
   }
 
   // 오류 발생 시 에러 페이지로 리디렉션
+  if (isPopup) {
+    return new NextResponse(
+      `<html><body><script>window.opener.postMessage({ type: 'login_error', message: '인증 실패' }, '*'); window.close();</script></body></html>`,
+      { headers: { 'Content-Type': 'text/html' } }
+    );
+  }
   return NextResponse.redirect(`${origin}/auth/auth-error`)
 }
