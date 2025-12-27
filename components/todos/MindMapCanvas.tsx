@@ -20,14 +20,17 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Plus, RotateCcw } from 'lucide-react';
+import MindMapNodeComponent, { type MindMapNode } from './MindMapNode';
 
-import MindMapNode from './MindMapNode';
-
+// Define Node Types strictly
 const nodeTypes = {
-    mindMap: MindMapNode,
+    mindMap: MindMapNodeComponent,
 };
 
-const initialNodes: Node[] = [
+// Use Union Type for Nodes if you have multiple types, or just MindMapNode if only one custom
+type AppNode = MindMapNode;
+
+const initialNodes: AppNode[] = [
     {
         id: '1',
         data: { label: '중심 아이디어' },
@@ -36,13 +39,19 @@ const initialNodes: Node[] = [
     },
 ];
 
+// ...
+// We need to extend Node for the generic usage in ReactFlow if AppNode is strictly our custom type
+// But ReactFlow component accepts Node union.
+
 interface MindMapCanvasProps {
-    initialData?: { nodes: Node[]; edges: Edge[] } | null;
+    initialData?: { nodes: Node[]; edges: Edge[] } | null; // Keep input generic or cast later
     onChange?: (data: { nodes: Node[]; edges: Edge[] }) => void;
     readOnly?: boolean;
 }
 
 const MindMapContent: React.FC<MindMapCanvasProps> = ({ initialData, onChange, readOnly }) => {
+    // Cast initial state to AppNode[] or just Node[] if mixed. 
+    // Recommended to use Node[] for state to avoid conflicts if generic nodes are added.
     const [nodes, setNodes] = useState<Node[]>(initialNodes);
     const [edges, setEdges] = useState<Edge[]>([]);
 
