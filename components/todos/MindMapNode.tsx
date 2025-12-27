@@ -1,15 +1,18 @@
 import React, { memo } from 'react';
-import { Handle, Position, NodeProps, NodeToolbar } from '@xyflow/react';
+import { Handle, Position, NodeProps, Node, NodeToolbar } from '@xyflow/react';
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Plus } from 'lucide-react';
 
-// Define the data type for our custom node's DATA field
-export type MindMapNodeData = {
+// Define the data interface
+type MindMapData = {
     label: string;
     onAddNode?: (id: string, direction: 'top' | 'bottom' | 'left' | 'right') => void;
 };
 
-// Define props for our custom node component
-const MindMapNode = ({ id, data, selected }: NodeProps<MindMapNodeData>) => {
+// Define the Custom Node Type
+export type MindMapNode = Node<MindMapData, 'mindMap'>;
+
+// Component
+const MindMapNodeComponent = ({ id, data, selected }: NodeProps<MindMapNode>) => {
 
     const onAdd = (direction: 'top' | 'bottom' | 'left' | 'right') => {
         if (data.onAddNode) {
@@ -68,4 +71,4 @@ const MindMapNode = ({ id, data, selected }: NodeProps<MindMapNodeData>) => {
     );
 };
 
-export default memo(MindMapNode);
+export default memo(MindMapNodeComponent);
